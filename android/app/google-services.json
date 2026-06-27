@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "211519231124",
+    "project_id": "lumiconte-1f086",
+    "storage_bucket": "lumiconte-1f086.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:211519231124:android:30c61336e2b616c7c5d081",
+        "android_client_info": {
+          "package_name": "com.example.lumiconte"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "211519231124-7vi4lcakkklcqgarc8ljc0d08rtfuqcq.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.lumiconte",
+            "certificate_hash": "c6368558d75c68d2589a33a6a579eec160a9e1c8"
+          }
+        },
+        {
+          "client_id": "211519231124-ln545r0eq2fhfj1no5ijdrpis9j7u8bj.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCs8HCgp7fgrRSeMucrN9EXwqkoWrJpc2M"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "211519231124-ln545r0eq2fhfj1no5ijdrpis9j7u8bj.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "211519231124-fbe0n7pvbfsieub9njcp3ehb9v3n0roi.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.lumiconte"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
