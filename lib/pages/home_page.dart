@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
+final GoogleSignIn googleSignIn = GoogleSignIn();
+
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
 
@@ -11,14 +13,13 @@ class HomePage extends StatelessWidget {
       appBar: AppBar(
         title: const Text("Lumiconte"),
         actions: [
-            IconButton(
-                icon: const Icon(Icons.logout),
-                onPressed: () async {
-                    await FirebaseAuth.instance.signOut();
-                    
-                    await GoogleSignIn().signOut();
-                },
-            )
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: () async {
+              await FirebaseAuth.instance.signOut();
+              await googleSignIn.signOut();
+            },
+          )
         ],
       ),
       body: Center(
@@ -32,7 +33,7 @@ class HomePage extends StatelessWidget {
             const SizedBox(height: 20),
             const Text("Prêt à lire une nouvelle histoire ?"),
             const SizedBox(height: 40),
-            
+
             // Un bouton d'action principal pour le MVP
             ElevatedButton(
               onPressed: () {
