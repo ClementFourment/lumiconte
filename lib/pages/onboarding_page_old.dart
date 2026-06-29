@@ -535,21 +535,21 @@ class _CloudsLayer extends StatelessWidget {
         Positioned(
           bottom: 200,
           left: -30 + (math.sin(t * 2 * math.pi) * 40),
-          child: _CloudShape(size: 140, opacity: 0.5),
+          child: const _CloudShape(size: 140, opacity: 0.5),
         ),
 
         // Cloud 2
         Positioned(
           bottom: 150,
           right: -50 + (math.cos(t * 2 * math.pi) * 50),
-          child: _CloudShape(size: 110, opacity: 0.35),
+          child: const _CloudShape(size: 110, opacity: 0.35),
         ),
 
         // Cloud 3
         Positioned(
           bottom: 280,
           left: 80 + (math.sin((t + 0.5) * 2 * math.pi) * 35),
-          child: _CloudShape(size: 95, opacity: 0.25),
+          child: const _CloudShape(size: 95, opacity: 0.25),
         ),
       ],
     );

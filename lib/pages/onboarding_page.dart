@@ -48,31 +48,31 @@ class _PetitesHistoiresHeroState extends State<_PetitesHistoiresHero>
     // Main background animations (stars, clouds)
     _mainController = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 100000),
+      duration: const Duration(seconds: 100),
     )..repeat();
 
     // Child floating animation
     _childFloatController = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 100000), //4
+      duration: const Duration(seconds: 100), //4
     )..repeat(reverse: true);
 
     // Rabbit bouncing animation
     _rabbitBounceController = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 100000),
+      duration: const Duration(seconds: 100),
     )..repeat(reverse: true);
 
     // Glow pulse effect
     _glowController = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 100000),
+      duration: const Duration(seconds: 10),
     )..repeat(reverse: true);
 
     // Particles floating
     _particleController = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 100000),
+      duration: const Duration(seconds: 100),
     )..repeat();
   }
 
@@ -127,49 +127,19 @@ class _PetitesHistoiresHeroState extends State<_PetitesHistoiresHero>
 
               // MAIN CONTENT
               Positioned(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: const [
-                    // Header spacing
-                    SizedBox(
-                      height: 210,
-                      child: Card(
-                        color: Colors.green,
-                        child: Center(
-                          child: Text(
-                            'topPadding',
-                            style: TextStyle(color: Colors.white, fontSize: 25),
-                          ),
-                        ),
-                      ),
-                    ),
-
-                    // Title section
-
-                    SizedBox(
-                      height: 160,
-                      child: Card(
-                        color: Colors.green,
-                        child: Center(
-                          child: Text(
-                            'bottomPadding',
-                            style: TextStyle(color: Colors.white, fontSize: 25),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+                top: -10,
+                right: 15,
+                child: _MoonSection(),
               ),
-              Positioned(
-                top: 240,
+              const Positioned(
+                top: 150,
                 left: 0,
                 right: 0,
                 child: _TitleSection(),
               ),
               // Hero illustration with assets
               Positioned(
-                bottom: 90,
+                bottom: 40,
                 left: 0,
                 right: 0,
                 child: _HeroAssetsSection(
@@ -180,7 +150,7 @@ class _PetitesHistoiresHeroState extends State<_PetitesHistoiresHero>
               ),
               // CTA BUTTON
               Positioned(
-                bottom: 90,
+                bottom: 40,
                 left: 24,
                 right: 24,
                 child: _PremiumButton(
@@ -208,38 +178,34 @@ class _TitleSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      color: Colors.red,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24),
-        child: Column(
-          children: [
-            const Text(
-              "Lumiconte",
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 48,
-                fontWeight: FontWeight.w900,
-                color: Colors.white,
-                letterSpacing: -1.2,
-                height: 1.0,
-              ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Column(
+        children: [
+          const Text(
+            "Lumiconte",
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 48,
+              fontWeight: FontWeight.w900,
+              color: Colors.white,
+              letterSpacing: -1.2,
+              height: 1.0,
             ),
-            const SizedBox(height: 16),
-            SizedBox(height: 20),
-            Text(
-              "Des histoires magiques\npour les petits rêveurs",
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 17,
-                color: Colors.white.withOpacity(0.78),
-                height: 1.6,
-                fontWeight: FontWeight.w500,
-                letterSpacing: 0.2,
-              ),
+          ),
+          const SizedBox(height: 30),
+          Text(
+            "Des histoires magiques\npour les petits rêveurs",
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 17,
+              color: Colors.white.withOpacity(0.78),
+              height: 1.6,
+              fontWeight: FontWeight.w500,
+              letterSpacing: 0.2,
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -248,6 +214,17 @@ class _TitleSection extends StatelessWidget {
 // ============================================================================
 // HERO ASSETS SECTION - Avec animations et effects
 // ============================================================================
+class _MoonSection extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Image.asset(
+      'assets/images/moon.png',
+      width: 220,
+      height: 220,
+      fit: BoxFit.cover,
+    );
+  }
+}
 
 class _HeroAssetsSection extends StatelessWidget {
   final double childFloatValue;
@@ -273,145 +250,116 @@ class _HeroAssetsSection extends StatelessWidget {
     final glowScale = 0.8 + (glowValue * 0.4);
     final glowOpacity = 0.4 + (glowValue * 0.3);
 
-    return Container(
-      color: Color.fromARGB(72, 137, 135, 124),
-      child: SizedBox(
-        height: 450,
-        width: 6000,
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            // GLOW EFFECT BEHIND
-            Positioned(
-              child: Transform.scale(
-                scale: glowScale,
-                child: Container(
-                  width: 280,
-                  height: 280,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: RadialGradient(
-                      colors: [
-                        const Color(0xFFFDB833).withOpacity(glowOpacity * 0.6),
-                        const Color(0xFF7B68EE).withOpacity(glowOpacity * 0.3),
-                        Colors.transparent,
-                      ],
+    return SizedBox(
+      height: 450,
+      width: 6000,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          // GLOW EFFECT BEHIND
+          Positioned(
+            child: Transform.scale(
+              scale: glowScale,
+              child: Container(
+                width: 280,
+                height: 280,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: [
+                      const Color(0xFFFDB833).withOpacity(glowOpacity * 0.6),
+                      const Color(0xFF7B68EE).withOpacity(glowOpacity * 0.3),
+                      Colors.transparent,
+                    ],
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFFFDB833)
+                          .withOpacity(glowOpacity * 0.4),
+                      blurRadius: 60,
+                      spreadRadius: 10,
                     ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+          // CHILD IMAGE - FLOATING
+          Positioned(
+            child: Transform.translate(
+              offset: Offset(0, childFloatOffset),
+              child: Transform.scale(
+                scale: 1.3,
+                child: // Shadow drop
+                    Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(80),
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFFFDB833)
-                            .withOpacity(glowOpacity * 0.4),
-                        blurRadius: 60,
-                        spreadRadius: 10,
+                        color: Colors.black.withOpacity(0.25),
+                        blurRadius: 40,
+                        offset: const Offset(0, 20),
+                      ),
+                      BoxShadow(
+                        color: const Color(0xFFFDB833).withOpacity(0.2),
+                        blurRadius: 30,
+                        offset: const Offset(0, 15),
                       ),
                     ],
                   ),
-                ),
-              ),
-            ),
-
-            // CHILD IMAGE - FLOATING
-            Positioned(
-              child: Transform.translate(
-                offset: Offset(0, childFloatOffset),
-                child: Transform.scale(
-                  scale: 1.3,
-                  child: // Shadow drop
-                      Container(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(80),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.25),
-                          blurRadius: 40,
-                          offset: const Offset(0, 20),
-                        ),
-                        BoxShadow(
-                          color: const Color(0xFFFDB833).withOpacity(0.2),
-                          blurRadius: 30,
-                          offset: const Offset(0, 15),
-                        ),
-                      ],
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(80),
-                      child: Image.asset(
-                        'assets/images/boy.png',
-                        width: 220,
-                        height: 220,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) {
-                          return Container(
-                            width: 220,
-                            height: 220,
-                            decoration: BoxDecoration(
-                              color: Colors.grey[300],
-                              borderRadius: BorderRadius.circular(80),
-                            ),
-                            child: const Center(
-                              child: Text('Add asset:\nboy.png'),
-                            ),
-                          );
-                        },
-                      ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(80),
+                    child: Image.asset(
+                      'assets/images/boy.png',
+                      width: 220,
+                      height: 220,
+                      fit: BoxFit.cover,
                     ),
                   ),
                 ),
               ),
             ),
+          ),
 
-            // RABBIT IMAGE - BOUNCING + HORIZONTAL SWAY
-            Positioned(
-              right: -30,
-              bottom: 10 - rabbitBounceOffset,
-              child: Transform.translate(
-                offset: Offset(rabbitBounceX, 0),
-                child: Transform.rotate(
-                  angle: rabbitBounceX * 0.05, // Slight rotation with sway
-                  child: Container(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(50),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.2),
-                          blurRadius: 25,
-                          offset: const Offset(0, 12),
-                        ),
-                        BoxShadow(
-                          color: const Color(0xFFFFB6D9).withOpacity(0.3),
-                          blurRadius: 20,
-                          offset: const Offset(0, 8),
-                        ),
-                      ],
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(50),
-                      child: Image.asset(
-                        'assets/images/rabbit.png',
-                        width: 100,
-                        height: 100,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) {
-                          return Container(
-                            width: 100,
-                            height: 100,
-                            decoration: BoxDecoration(
-                              color: Colors.grey[300],
-                              borderRadius: BorderRadius.circular(50),
-                            ),
-                            child: const Center(
-                              child: Text('Add asset:\nrabbit.png'),
-                            ),
-                          );
-                        },
+          // RABBIT IMAGE - BOUNCING + HORIZONTAL SWAY
+          Positioned(
+            right: 10,
+            bottom: 150 - rabbitBounceOffset,
+            child: Transform.translate(
+              offset: Offset(rabbitBounceX, 0),
+              child: Transform.scale(
+                scale: 3.0, // Slight rotation with sway
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(50),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.2),
+                        blurRadius: 25,
+                        offset: const Offset(0, 12),
                       ),
+                      BoxShadow(
+                        color: const Color(0xFFFFB6D9).withOpacity(0.3),
+                        blurRadius: 20,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(50),
+                    child: Image.asset(
+                      'assets/images/rabbit.png',
+                      width: 100,
+                      height: 100,
+                      fit: BoxFit.cover,
                     ),
                   ),
                 ),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -451,23 +399,23 @@ class _StarsPainter extends CustomPainter {
     );
 
     for (int i = 0; i < stars.length; i++) {
-      // final p = stars[i];
-      // final twinkle = (math.sin(t * 3.5 + i * 0.4) + 1) / 2;
+      final p = stars[i];
+      final twinkle = (math.sin(t * 3.5 + i * 0.4) + 1) / 2;
 
-      // // Star core
-      // final paint = Paint()
-      //   ..color = Colors.white.withOpacity(0.25 + twinkle * 0.55);
+      // Star core
+      final paint = Paint()
+        ..color = Colors.white.withOpacity(0.25 + twinkle * 0.55);
 
-      // final radius = (i % 4 == 0) ? 1.8 : 0.95;
-      // canvas.drawCircle(p, radius, paint);
+      final radius = (i % 4 == 0) ? 1.8 : 0.95;
+      canvas.drawCircle(p, radius, paint);
 
       // Star glow
-      // if (twinkle > 0.6) {
-      //   final glowPaint = Paint()
-      //     ..color = Colors.white.withOpacity((twinkle - 0.6) * 0.3)
-      //     ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4);
-      //   canvas.drawCircle(p, radius * 3, glowPaint);
-      // }
+      if (twinkle > 0.6) {
+        final glowPaint = Paint()
+          ..color = Colors.white.withOpacity((twinkle - 0.6) * 0.3)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4);
+        canvas.drawCircle(p, radius * 3, glowPaint);
+      }
     }
   }
 
@@ -486,50 +434,32 @@ class _GlowBlobsLayer extends StatelessWidget {
 
     return Stack(
       children: [
-        // Top-left purple glow
+        // Top-left purple glow moon
         Positioned(
-          top: 80,
-          right: 20,
+          top: 95,
+          right: 120,
           child: Transform.scale(
             scale: pulseScale,
-            child: Container(
-              width: 200,
-              height: 200,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: const Color(0xFF7B68EE).withOpacity(0.25),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFF7B68EE).withOpacity(0.3),
-                    blurRadius: 100,
-                    spreadRadius: 40,
+            child: Stack(
+              clipBehavior: Clip.none,
+              alignment: Alignment.center,
+              children: [
+                Container(
+                  width: 2,
+                  height: 2,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: const Color(0xFF7B68EE).withOpacity(0.25),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF7B68EE).withOpacity(0.3),
+                        blurRadius: 40,
+                        spreadRadius: 60,
+                      ),
+                    ],
                   ),
-                ],
-              ),
-            ),
-          ),
-        ),
-
-        // Bottom-right yellow glow
-        Positioned(
-          bottom: 100,
-          right: 10,
-          child: Transform.scale(
-            scale: pulseScale * 1.1,
-            child: Container(
-              width: 180,
-              height: 180,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: const Color(0xFFFFC048).withOpacity(0.2),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFFFFC048).withOpacity(0.25),
-                    blurRadius: 90,
-                    spreadRadius: 30,
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ),
@@ -547,25 +477,58 @@ class _CloudsLayer extends StatelessWidget {
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        // Cloud 1
+        // Clouds
+        Positioned(
+          bottom: 100,
+          left: -30 + (math.sin(t * 2 * math.pi) * 40),
+          child: Image.asset(
+            'assets/images/cloud1.png',
+            width: 220,
+            height: 220,
+            fit: BoxFit.cover,
+          ),
+        ),
         Positioned(
           bottom: 200,
-          left: -30 + (math.sin(t * 2 * math.pi) * 40),
-          child: _CloudShape(size: 140, opacity: 0.5),
+          left: 80 + (math.cos((t - 1) * 2 * math.pi) * 30),
+          child: Image.asset(
+            'assets/images/cloud5.png',
+            width: 220,
+            height: 220,
+            fit: BoxFit.cover,
+          ),
         ),
-
-        // Cloud 2
-        Positioned(
-          bottom: 150,
-          right: -50 + (math.cos(t * 2 * math.pi) * 50),
-          child: _CloudShape(size: 110, opacity: 0.35),
-        ),
-
-        // Cloud 3
         Positioned(
           bottom: 280,
           left: 80 + (math.sin((t + 0.5) * 2 * math.pi) * 35),
-          child: _CloudShape(size: 95, opacity: 0.25),
+          child: Image.asset(
+            'assets/images/cloud3.png',
+            width: 220,
+            height: 220,
+            fit: BoxFit.cover,
+          ),
+        ),
+
+        Positioned(
+          bottom: 150,
+          right: -50 + (math.cos(t * 2 * math.pi) * 50),
+          child: Image.asset(
+            'assets/images/cloud2.png',
+            width: 220,
+            height: 220,
+            fit: BoxFit.cover,
+          ),
+        ),
+
+        Positioned(
+          bottom: 280,
+          right: 80 + (math.cos((t + 0.5) * 2 * math.pi) * 35),
+          child: Image.asset(
+            'assets/images/cloud4.png',
+            width: 220,
+            height: 220,
+            fit: BoxFit.cover,
+          ),
         ),
       ],
     );
