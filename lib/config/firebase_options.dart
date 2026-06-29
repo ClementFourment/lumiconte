@@ -17,10 +17,7 @@ import 'package:flutter/foundation.dart'
 class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {
     if (kIsWeb) {
-      throw UnsupportedError(
-        'DefaultFirebaseOptions have not been configured for web - '
-        'you can reconfigure this by running the FlutterFire CLI again.',
-      );
+      return web;
     }
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
@@ -28,15 +25,9 @@ class DefaultFirebaseOptions {
       case TargetPlatform.iOS:
         return ios;
       case TargetPlatform.macOS:
-        throw UnsupportedError(
-          'DefaultFirebaseOptions have not been configured for macos - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
-        );
+        return macos;
       case TargetPlatform.windows:
-        throw UnsupportedError(
-          'DefaultFirebaseOptions have not been configured for windows - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
-        );
+        return windows;
       case TargetPlatform.linux:
         throw UnsupportedError(
           'DefaultFirebaseOptions have not been configured for linux - '
@@ -56,7 +47,6 @@ class DefaultFirebaseOptions {
     projectId: 'lumiconte-1f086',
     storageBucket: 'lumiconte-1f086.firebasestorage.app',
   );
-
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyAyu29G40E_wI41us6EDI1tIShlaANB5TU',
     appId: '1:211519231124:ios:0988cea71259af64c5d081',
@@ -66,5 +56,35 @@ class DefaultFirebaseOptions {
     androidClientId: '211519231124-7vi4lcakkklcqgarc8ljc0d08rtfuqcq.apps.googleusercontent.com',
     iosClientId: '211519231124-fbe0n7pvbfsieub9njcp3ehb9v3n0roi.apps.googleusercontent.com',
     iosBundleId: 'com.example.lumiconte',
+  );
+  static const FirebaseOptions web = FirebaseOptions(
+    apiKey: 'AIzaSyB3i5WmmzkGNfKsC1bbxmbquPEqbUAId0E',
+    appId: '1:211519231124:web:c53346cdd14a0673c5d081',
+    messagingSenderId: '211519231124',
+    projectId: 'lumiconte-1f086',
+    authDomain: 'lumiconte-1f086.firebaseapp.com',
+    storageBucket: 'lumiconte-1f086.firebasestorage.app',
+    measurementId: 'G-ZBGR4PY246',
+  );
+
+  static const FirebaseOptions macos = FirebaseOptions(
+    apiKey: 'AIzaSyAyu29G40E_wI41us6EDI1tIShlaANB5TU',
+    appId: '1:211519231124:ios:0988cea71259af64c5d081',
+    messagingSenderId: '211519231124',
+    projectId: 'lumiconte-1f086',
+    storageBucket: 'lumiconte-1f086.firebasestorage.app',
+    androidClientId: '211519231124-7vi4lcakkklcqgarc8ljc0d08rtfuqcq.apps.googleusercontent.com',
+    iosClientId: '211519231124-fbe0n7pvbfsieub9njcp3ehb9v3n0roi.apps.googleusercontent.com',
+    iosBundleId: 'com.example.lumiconte',
+  );
+
+  static const FirebaseOptions windows = FirebaseOptions(
+    apiKey: 'AIzaSyB3i5WmmzkGNfKsC1bbxmbquPEqbUAId0E',
+    appId: '1:211519231124:web:56d1d8383dd46826c5d081',
+    messagingSenderId: '211519231124',
+    projectId: 'lumiconte-1f086',
+    authDomain: 'lumiconte-1f086.firebaseapp.com',
+    storageBucket: 'lumiconte-1f086.firebasestorage.app',
+    measurementId: 'G-HE6EYSKDSK',
   );
 }

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 class OnboardingPage extends StatelessWidget {
   const OnboardingPage({super.key});
@@ -48,31 +47,31 @@ class _PetitesHistoiresHeroState extends State<_PetitesHistoiresHero>
     // Main background animations (stars, clouds)
     _mainController = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 100000),
+      duration: const Duration(seconds: 10),
     )..repeat();
 
     // Child floating animation
     _childFloatController = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 100000), //4
+      duration: const Duration(seconds: 4),
     )..repeat(reverse: true);
 
     // Rabbit bouncing animation
     _rabbitBounceController = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 100000),
+      duration: const Duration(seconds: 3),
     )..repeat(reverse: true);
 
     // Glow pulse effect
     _glowController = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 100000),
+      duration: const Duration(seconds: 2),
     )..repeat(reverse: true);
 
     // Particles floating
     _particleController = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 100000),
+      duration: const Duration(seconds: 8),
     )..repeat();
   }
 
@@ -126,61 +125,31 @@ class _PetitesHistoiresHeroState extends State<_PetitesHistoiresHero>
               _ParticlesLayer(t: _particleController.value),
 
               // MAIN CONTENT
-              Positioned(
+              Positioned.fill(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: const [
+                  children: [
                     // Header spacing
-                    SizedBox(
-                      height: 210,
-                      child: Card(
-                        color: Colors.green,
-                        child: Center(
-                          child: Text(
-                            'topPadding',
-                            style: TextStyle(color: Colors.white, fontSize: 25),
-                          ),
-                        ),
-                      ),
-                    ),
+                    const SizedBox(height: 40),
 
                     // Title section
+                    const _TitleSection(),
 
-                    SizedBox(
-                      height: 160,
-                      child: Card(
-                        color: Colors.green,
-                        child: Center(
-                          child: Text(
-                            'bottomPadding',
-                            style: TextStyle(color: Colors.white, fontSize: 25),
-                          ),
-                        ),
-                      ),
+                    // Hero illustration with assets
+                    _HeroAssetsSection(
+                      childFloatValue: _childFloatController.value,
+                      rabbitBounceValue: _rabbitBounceController.value,
+                      glowValue: _glowController.value,
                     ),
+
+                    const SizedBox(height: 60),
                   ],
                 ),
               ),
-              Positioned(
-                top: 240,
-                left: 0,
-                right: 0,
-                child: _TitleSection(),
-              ),
-              // Hero illustration with assets
-              Positioned(
-                bottom: 90,
-                left: 0,
-                right: 0,
-                child: _HeroAssetsSection(
-                  childFloatValue: _childFloatController.value,
-                  rabbitBounceValue: _rabbitBounceController.value,
-                  glowValue: _glowController.value,
-                ),
-              ),
+
               // CTA BUTTON
               Positioned(
-                bottom: 90,
+                bottom: 50,
                 left: 24,
                 right: 24,
                 child: _PremiumButton(
@@ -208,38 +177,34 @@ class _TitleSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      color: Colors.red,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24),
-        child: Column(
-          children: [
-            const Text(
-              "Lumiconte",
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 48,
-                fontWeight: FontWeight.w900,
-                color: Colors.white,
-                letterSpacing: -1.2,
-                height: 1.0,
-              ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Column(
+        children: [
+          const Text(
+            "Petites Histoires",
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 48,
+              fontWeight: FontWeight.w900,
+              color: Colors.white,
+              letterSpacing: -1.2,
+              height: 1.0,
             ),
-            const SizedBox(height: 16),
-            SizedBox(height: 20),
-            Text(
-              "Des histoires magiques\npour les petits rêveurs",
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 17,
-                color: Colors.white.withOpacity(0.78),
-                height: 1.6,
-                fontWeight: FontWeight.w500,
-                letterSpacing: 0.2,
-              ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            "Des histoires magiques pour\nles petits rêveurs",
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 17,
+              color: Colors.white.withOpacity(0.78),
+              height: 1.6,
+              fontWeight: FontWeight.w500,
+              letterSpacing: 0.2,
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -273,145 +238,164 @@ class _HeroAssetsSection extends StatelessWidget {
     final glowScale = 0.8 + (glowValue * 0.4);
     final glowOpacity = 0.4 + (glowValue * 0.3);
 
-    return Container(
-      color: Color.fromARGB(72, 137, 135, 124),
-      child: SizedBox(
-        height: 450,
-        width: 6000,
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            // GLOW EFFECT BEHIND
-            Positioned(
-              child: Transform.scale(
-                scale: glowScale,
-                child: Container(
-                  width: 280,
-                  height: 280,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: RadialGradient(
-                      colors: [
-                        const Color(0xFFFDB833).withOpacity(glowOpacity * 0.6),
-                        const Color(0xFF7B68EE).withOpacity(glowOpacity * 0.3),
-                        Colors.transparent,
-                      ],
+    return SizedBox(
+      height: 340,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          // GLOW EFFECT BEHIND
+          Positioned(
+            child: Transform.scale(
+              scale: glowScale,
+              child: Container(
+                width: 280,
+                height: 280,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: [
+                      const Color(0xFFFDB833).withOpacity(glowOpacity * 0.6),
+                      const Color(0xFF7B68EE).withOpacity(glowOpacity * 0.3),
+                      Colors.transparent,
+                    ],
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFFFDB833)
+                          .withOpacity(glowOpacity * 0.4),
+                      blurRadius: 60,
+                      spreadRadius: 20,
                     ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+          // CHILD IMAGE - FLOATING
+          Positioned(
+            child: Transform.translate(
+              offset: Offset(0, childFloatOffset),
+              child: Transform.scale(
+                scale: 1.0,
+                child: // Shadow drop
+                    Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(80),
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFFFDB833)
-                            .withOpacity(glowOpacity * 0.4),
-                        blurRadius: 60,
-                        spreadRadius: 10,
+                        color: Colors.black.withOpacity(0.25),
+                        blurRadius: 40,
+                        offset: const Offset(0, 20),
                       ),
+                      BoxShadow(
+                        color: const Color(0xFFFDB833).withOpacity(0.2),
+                        blurRadius: 30,
+                        offset: const Offset(0, 15),
+                      ),
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(80),
+                    child: Image.asset(
+                      'assets/images/boy.png',
+                      width: 220,
+                      height: 220,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          width: 220,
+                          height: 220,
+                          decoration: BoxDecoration(
+                            color: Colors.grey[300],
+                            borderRadius: BorderRadius.circular(80),
+                          ),
+                          child: const Center(
+                            child: Text('Add asset:\nboy.png'),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+          // RABBIT IMAGE - BOUNCING + HORIZONTAL SWAY
+          Positioned(
+            right: 30,
+            bottom: 10 - rabbitBounceOffset,
+            child: Transform.translate(
+              offset: Offset(rabbitBounceX, 0),
+              child: Transform.rotate(
+                angle: rabbitBounceX * 0.05, // Slight rotation with sway
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(50),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.2),
+                        blurRadius: 25,
+                        offset: const Offset(0, 12),
+                      ),
+                      BoxShadow(
+                        color: const Color(0xFFFFB6D9).withOpacity(0.3),
+                        blurRadius: 20,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(50),
+                    child: Image.asset(
+                      'assets/images/rabbit.png',
+                      width: 100,
+                      height: 100,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          width: 100,
+                          height: 100,
+                          decoration: BoxDecoration(
+                            color: Colors.grey[300],
+                            borderRadius: BorderRadius.circular(50),
+                          ),
+                          child: const Center(
+                            child: Text('Add asset:\nrabbit.png'),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+          // SHINE/LIGHT EFFECT on child
+          Positioned(
+            child: Transform.translate(
+              offset: Offset(0, childFloatOffset),
+              child: Container(
+                width: 220,
+                height: 220,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(80),
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Colors.white.withOpacity(0.15),
+                      Colors.transparent,
+                      Colors.transparent,
                     ],
                   ),
                 ),
               ),
             ),
-
-            // CHILD IMAGE - FLOATING
-            Positioned(
-              child: Transform.translate(
-                offset: Offset(0, childFloatOffset),
-                child: Transform.scale(
-                  scale: 1.3,
-                  child: // Shadow drop
-                      Container(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(80),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.25),
-                          blurRadius: 40,
-                          offset: const Offset(0, 20),
-                        ),
-                        BoxShadow(
-                          color: const Color(0xFFFDB833).withOpacity(0.2),
-                          blurRadius: 30,
-                          offset: const Offset(0, 15),
-                        ),
-                      ],
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(80),
-                      child: Image.asset(
-                        'assets/images/boy.png',
-                        width: 220,
-                        height: 220,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) {
-                          return Container(
-                            width: 220,
-                            height: 220,
-                            decoration: BoxDecoration(
-                              color: Colors.grey[300],
-                              borderRadius: BorderRadius.circular(80),
-                            ),
-                            child: const Center(
-                              child: Text('Add asset:\nboy.png'),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-
-            // RABBIT IMAGE - BOUNCING + HORIZONTAL SWAY
-            Positioned(
-              right: -30,
-              bottom: 10 - rabbitBounceOffset,
-              child: Transform.translate(
-                offset: Offset(rabbitBounceX, 0),
-                child: Transform.rotate(
-                  angle: rabbitBounceX * 0.05, // Slight rotation with sway
-                  child: Container(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(50),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.2),
-                          blurRadius: 25,
-                          offset: const Offset(0, 12),
-                        ),
-                        BoxShadow(
-                          color: const Color(0xFFFFB6D9).withOpacity(0.3),
-                          blurRadius: 20,
-                          offset: const Offset(0, 8),
-                        ),
-                      ],
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(50),
-                      child: Image.asset(
-                        'assets/images/rabbit.png',
-                        width: 100,
-                        height: 100,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) {
-                          return Container(
-                            width: 100,
-                            height: 100,
-                            decoration: BoxDecoration(
-                              color: Colors.grey[300],
-                              borderRadius: BorderRadius.circular(50),
-                            ),
-                            child: const Center(
-                              child: Text('Add asset:\nrabbit.png'),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -489,7 +473,7 @@ class _GlowBlobsLayer extends StatelessWidget {
         // Top-left purple glow
         Positioned(
           top: 80,
-          right: 20,
+          left: 20,
           child: Transform.scale(
             scale: pulseScale,
             child: Container(
@@ -696,49 +680,76 @@ class _PremiumButton extends StatefulWidget {
   State<_PremiumButton> createState() => _PremiumButtonState();
 }
 
-class _PremiumButtonState extends State<_PremiumButton> {
+class _PremiumButtonState extends State<_PremiumButton>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
   void _handleTap() {
-    context.go('/login');
+    _controller.forward().then((_) {
+      _controller.reverse();
+      widget.onPressed();
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: _handleTap,
-      child: Container(
-        height: 62,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(50),
-          gradient: const LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Color(0xFFFDB833),
-              Color(0xFFFFC94A),
+      child: ScaleTransition(
+        scale: Tween<double>(begin: 1.0, end: 0.94).animate(
+          CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+        ),
+        child: Container(
+          height: 62,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(28),
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFFFDB833), Color(0xFFFFC94A)],
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFFFDB833).withOpacity(0.6),
+                blurRadius: 25,
+                offset: const Offset(0, 12),
+              ),
+              BoxShadow(
+                color: const Color(0xFFFFC94A).withOpacity(0.3),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
             ],
           ),
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0xFFFDB833),
-              blurRadius: 2,
-              offset: Offset(0, 3),
-            ),
-            BoxShadow(
-              color: Color(0xFFFFC94A),
-              blurRadius: 5,
-              offset: Offset(0, 3),
-            ),
-          ],
-        ),
-        child: Center(
-          child: Text(
-            'Commencer',
-            textAlign: TextAlign.center,
-            style: GoogleFonts.nunito(
-              fontSize: 24,
-              fontWeight: FontWeight.w900,
-              color: Colors.black87,
-              letterSpacing: 1.0,
+          child: Center(
+            child: ElevatedButton(
+              onPressed: () {
+                context.go('/login');
+              },
+              child: const Text(
+                "Commencer",
+                style: TextStyle(
+                  fontSize: 19,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF1A1A4D),
+                  letterSpacing: 0.5,
+                ),
+              ),
             ),
           ),
         ),
