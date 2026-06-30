@@ -55,29 +55,19 @@ class AuthService extends FirebaseService {
 
   // 📧 Email/Password Sign In
   Future<UserModel> signInWithEmail(String email, String password) async {
-    try {
-      final userCredential = await _firebaseAuth.signInWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
+    final userCredential = await _firebaseAuth.signInWithEmailAndPassword(
+      email: email,
+      password: password,
+    );
 
-      final firebaseUser = userCredential.user;
-      if (firebaseUser == null) throw Exception("Erreur authentification");
+    final firebaseUser = userCredential.user;
 
-      return await _userService.getUser(firebaseUser.uid) ??
-          UserModel(
-            uid: firebaseUser.uid,
-            email: email,
-            displayName: firebaseUser.displayName,
-            photoUrl: firebaseUser.photoURL,
-            subscribed: false,
-            createdAt: DateTime.now(),
-            authProvider: UserAuthProvider.email,
-          );
-    } catch (e) {
-      print('Erreur Sign In Email: $e');
-      rethrow;
+    if (firebaseUser == null) {
+      throw Exception("Erreur authentification");
     }
+
+    return await _userService.getUser(firebaseUser.uid) ??
+        (throw Exception("User Firestore introuvable"));
   }
 
   // 📝 Email/Password Sign Up
