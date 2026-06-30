@@ -5,24 +5,50 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../pages/onboarding_page.dart';
 import '../pages/login_page.dart';
 import '../pages/home_page.dart';
+import '../pages/profile_creation_page.dart';
+import '../services/profile_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 final GoRouter appRouter = GoRouter(
   initialLocation: '/',
-  refreshListenable:
-      GoRouterRefreshStream(FirebaseAuth.instance.authStateChanges()),
-  redirect: (context, state) {
+  refreshListenable: GoRouterRefreshStream(
+    FirebaseAuth.instance.authStateChanges(),
+  ),
+  redirect: (context, state) async {
     final user = FirebaseAuth.instance.currentUser;
-    final isLoggedIn = user != null;
+    final prefs = await SharedPreferences.getInstance();
+    final hasSeenOnboarding = prefs.getBool('seen_onboarding') ?? false;
 
-    final isGoingToLogin = state.matchedLocation == '/login';
-    final isGoingToOnboarding = state.matchedLocation == '/';
+    final location = state.matchedLocation;
+    final isOnboarding = location == '/';
+    final isLogin = location == '/login';
+    final isProfileCreation = location == '/create-profile';
+    final isHome = location == '/home';
 
-    if (!isLoggedIn && !isGoingToLogin && !isGoingToOnboarding) {
-      return '/login';
+    // 1. Si pas vu onboarding → afficher onboarding
+    if (!hasSeenOnboarding) {
+      if (!isOnboarding) return '/';
+      return null;
     }
 
-    if (isLoggedIn && isGoingToLogin) {
-      return '/home';
+    // 2. Si pas connecté → afficher login
+    if (user == null) {
+      if (!isLogin) return '/login';
+      return null;
+    }
+
+    // 3. Si connecté mais pas de profil → créer profil
+    if (user != null) {
+      final profileService = ProfileService();
+      final profiles = await profileService.getUserProfiles(user.uid);
+
+      if (profiles.isEmpty) {
+        if (!isProfileCreation) return '/create-profile';
+        return null;
+      }
+
+      // 4. Si tout est bon → home
+      if (!isHome) return '/home';
     }
 
     return null;
@@ -30,6 +56,10 @@ final GoRouter appRouter = GoRouter(
   routes: [
     GoRoute(path: '/', builder: (context, state) => const OnboardingPage()),
     GoRoute(path: '/login', builder: (context, state) => const LoginPage()),
+    GoRoute(
+      path: '/create-profile',
+      builder: (context, state) => const ProfileCreationPage(),
+    ),
     GoRoute(path: '/home', builder: (context, state) => const HomePage()),
   ],
 );

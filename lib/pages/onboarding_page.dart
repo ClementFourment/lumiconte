@@ -2,16 +2,14 @@ import 'package:flutter/material.dart';
 import 'dart:math' as math;
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class OnboardingPage extends StatelessWidget {
   const OnboardingPage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
-      debugShowCheckedModeBanner: false,
-      home: OnboardingScreen(),
-    );
+    return const OnboardingScreen();
   }
 }
 
@@ -153,13 +151,7 @@ class _PetitesHistoiresHeroState extends State<_PetitesHistoiresHero>
                 bottom: 40,
                 left: 24,
                 right: 24,
-                child: _PremiumButton(
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Adventure starts! 🎉')),
-                    );
-                  },
-                ),
+                child: _PremiumButton(),
               ),
             ],
           ),
@@ -651,16 +643,23 @@ class _ParticlesPainter extends CustomPainter {
 // ============================================================================
 
 class _PremiumButton extends StatefulWidget {
-  final VoidCallback onPressed;
-
-  const _PremiumButton({required this.onPressed});
+  const _PremiumButton();
 
   @override
   State<_PremiumButton> createState() => _PremiumButtonState();
 }
 
 class _PremiumButtonState extends State<_PremiumButton> {
-  void _handleTap() {
+  Future<void> _handleTap() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    await prefs.setBool(
+      'seen_onboarding',
+      true,
+    );
+
+    if (!mounted) return;
+
     context.go('/login');
   }
 

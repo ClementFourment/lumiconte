@@ -1,0 +1,38 @@
+class StoryModel {
+  final String id;
+  final String name;
+  final String image;
+  final List<String> categoryIds;
+  final String type; // 'original' ou 'generated'
+  final DateTime createdAt;
+
+  StoryModel({
+    required this.id,
+    required this.name,
+    required this.image,
+    this.categoryIds = const [],
+    this.type = 'original',
+    required this.createdAt,
+  });
+
+  factory StoryModel.fromMap(Map<String, dynamic> data, String docId) {
+    return StoryModel(
+      id: docId,
+      name: data['name'] ?? '',
+      image: data['image'] ?? '',
+      categoryIds: List<String>.from(data['categoryIds'] ?? []),
+      type: data['type'] ?? 'original',
+      createdAt: data['createdAt']?.toDate() ?? DateTime.now(),
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'name': name,
+      'image': image,
+      'categoryIds': categoryIds,
+      'type': type,
+      'createdAt': createdAt,
+    };
+  }
+}
