@@ -3,6 +3,7 @@ import '../services/auth_service.dart';
 import 'package:go_router/go_router.dart';
 import 'dart:math' as math;
 import 'package:flutter_signin_button/flutter_signin_button.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -61,16 +62,72 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
   }
 
   Future<void> _signInWithEmail() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _isLoading = true);
+    try {
+      await _authService.signInWithEmail(
+        _emailController.text.trim(),
+        _passwordController.text.trim(),
+      );
+
+      if (mounted) {
+        context.go('/home');
+      }
+    } on FirebaseAuthException catch (e) {
+      String message;
+
+      switch (e.code) {
+        case 'user-not-found':
+          message = "Aucun compte avec cet email";
+          break;
+        case 'wrong-password':
+          message = "Mot de passe incorrect";
+          break;
+        case 'invalid-email':
+          message = "Email invalide";
+          break;
+        default:
+          message = "Erreur de connexion";
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(message)),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  Future<void> _signUpWithEmail() async {
     if (!_formKey.currentState!.validate()) {
       return;
     }
+
     setState(() => _isLoading = true);
 
-    await _authService.signInWithEmail(
-      _emailController.text.trim(),
-      _passwordController.text.trim(),
-    );
-    debugPrint("Connexion réussie");
+    try {
+      final user = await _authService.signUpWithEmail(
+        _emailController.text.trim(),
+        _passwordController.text.trim(),
+      );
+
+      debugPrint("Compte créé : ${user.email}");
+
+      if (mounted) {
+        context.go("/");
+      }
+    } catch (e) {
+      debugPrint("Erreur inscription : $e");
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
   }
 
   Future<void> _signInWithApple() async {
@@ -201,9 +258,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                                         : 'S\'inscrire',
                                     onPressed: _isLoginMode
                                         ? _signInWithEmail
-                                        : () {
-                                            debugPrint('Inscription');
-                                          },
+                                        : _signUpWithEmail,
                                   ),
                                   const SizedBox(height: 32),
 
