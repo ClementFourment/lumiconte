@@ -46,7 +46,10 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
 
   @override
   void dispose() {
+    _mainController.dispose();
+    _particleController.dispose();
     _glowController.dispose();
+
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
