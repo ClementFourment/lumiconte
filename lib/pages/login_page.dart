@@ -295,16 +295,18 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                                   const SizedBox(height: 32),
 
                                   // Icônes sociales
-                                  Row(
+                                  Column(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
                                       _buildSocialIconButton(
-                                        icon: '🔵',
+                                        type: Buttons.Google,
+                                        text: 'Continuer avec Google',
                                         onPressed: _signInWithGoogle,
                                       ),
                                       const SizedBox(width: 24),
                                       _buildSocialIconButton(
-                                        icon: '🍎',
+                                        type: Buttons.Apple,
+                                        text: 'Continuer avec Apple',
                                         onPressed: _signInWithApple,
                                       ),
                                     ],
@@ -565,23 +567,16 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
   }
 
   Widget _buildSocialIconButton({
-    required String icon,
+    required Buttons type,
+    required String text,
     required VoidCallback onPressed,
   }) {
     return Material(
       color: Colors.transparent,
-      child: InkWell(
-        onTap: onPressed,
-        customBorder: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Text(
-            icon,
-            style: const TextStyle(fontSize: 28),
-          ),
-        ),
+      child: SignInButton(
+        type,
+        text: text,
+        onPressed: onPressed,
       ),
     );
   }
