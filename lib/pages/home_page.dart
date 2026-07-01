@@ -1,8 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:lumiconte/models/category_model.dart';
+import 'package:lumiconte/models/story_model.dart';
 import 'profile_creation_page.dart';
+import '../models/profile_model.dart';
+import '../services/seed_database.dart';
 
 class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+  final ProfileModel profile;
+  final List<CategoryModel> categories;
+  final List<StoryModel> stories;
+
+  const HomePage(
+      {super.key,
+      required this.profile,
+      required this.categories,
+      required this.stories});
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -20,18 +32,21 @@ class _HomePageState extends State<HomePage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header
+              // ElevatedButton(
+              //     onPressed: () => seedDatabase(),
+              //     child: Text('Regénérer les données (debug)')),
+              // // Header
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    "Bonjour Anna !",
-                    style: TextStyle(
+                    "Bonjour ${widget.profile.name} !",
+                    style: const TextStyle(
                       fontSize: 28,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  CircleAvatar(
+                  const CircleAvatar(
                     radius: 22,
                     backgroundImage: AssetImage(
                       "assets/images/boy.png",
@@ -46,7 +61,7 @@ class _HomePageState extends State<HomePage> {
               TextField(
                 decoration: InputDecoration(
                     hintText: "Rechercher une histoire...",
-                    prefixIcon: Icon(Icons.search),
+                    prefixIcon: const Icon(Icons.search),
                     filled: true,
                     fillColor: Colors.grey.shade100,
                     border: OutlineInputBorder(
@@ -67,9 +82,9 @@ class _HomePageState extends State<HomePage> {
               // Continue card
               Container(
                 height: 160,
-                padding: EdgeInsets.all(15),
+                padding: const EdgeInsets.all(15),
                 decoration: BoxDecoration(
-                  color: Color(0xffeee8ff),
+                  color: const Color(0xffeee8ff),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Row(
@@ -83,7 +98,7 @@ class _HomePageState extends State<HomePage> {
                         fit: BoxFit.cover,
                       ),
                     ),
-                    SizedBox(width: 15),
+                    const SizedBox(width: 15),
                     Expanded(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -130,9 +145,8 @@ class _HomePageState extends State<HomePage> {
                 child: ListView(
                   scrollDirection: Axis.horizontal,
                   children: [
-                    storyCard("assets/images/boy.png", "Le courage\n de Lila"),
-                    storyCard("assets/images/boy.png", "La forêt\n lumineuse"),
-                    storyCard("assets/images/boy.png", "Dragon"),
+                    for (final story in widget.stories.take(10))
+                      storyCard(story),
                   ],
                 ),
               ),
@@ -147,12 +161,10 @@ class _HomePageState extends State<HomePage> {
               SizedBox(height: 15),
 
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  category("🌿", "Aventure"),
-                  category("🐻", "Animaux"),
-                  category("😊", "Émotions"),
-                  category("🌙", "Sommeil"),
+                  for (final category in widget.categories)
+                    categoryWidget(category),
                 ],
               )
             ],
@@ -162,25 +174,26 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget storyCard(String image, String title) {
+  Widget storyCard(StoryModel story) {
     return Container(
       width: 120,
-      margin: EdgeInsets.only(right: 15),
+      margin: const EdgeInsets.only(right: 15),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(15),
         image: DecorationImage(
-          image: AssetImage(image),
+          image: AssetImage(story.image),
           fit: BoxFit.cover,
         ),
       ),
       alignment: Alignment.bottomCenter,
       child: Container(
-        padding: EdgeInsets.all(8),
+        padding: const EdgeInsets.all(8),
         width: double.infinity,
+        alignment: Alignment.bottomCenter,
         child: Text(
-          title,
-          style: TextStyle(
-            color: Colors.white,
+          story.name,
+          style: const TextStyle(
+            color: Color.fromARGB(255, 0, 0, 0),
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -188,19 +201,20 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget category(String icon, String text) {
+  Widget categoryWidget(CategoryModel category) {
     return Container(
-      padding: EdgeInsets.all(12),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.grey.shade100,
         borderRadius: BorderRadius.circular(15),
       ),
       child: Column(
         children: [
-          Text(
-            icon,
+          CircleAvatar(
+            radius: 22,
+            backgroundImage: AssetImage(category.image),
           ),
-          Text(text)
+          Text(category.name)
         ],
       ),
     );
