@@ -4,6 +4,7 @@ class StoryModel {
   final String image;
   final List<String> categoryIds;
   final String type; // 'original' ou 'generated'
+  final String createdByProfileId;
   final DateTime createdAt;
 
   StoryModel({
@@ -12,6 +13,7 @@ class StoryModel {
     required this.image,
     this.categoryIds = const [],
     this.type = 'original',
+    this.createdByProfileId = '',
     required this.createdAt,
   });
 
@@ -22,6 +24,7 @@ class StoryModel {
       image: data['image'] ?? '',
       categoryIds: List<String>.from(data['categoryIds'] ?? []),
       type: data['type'] ?? 'original',
+      createdByProfileId: data['createdByProfileId'] ?? '',
       createdAt: data['createdAt']?.toDate() ?? DateTime.now(),
     );
   }
@@ -32,6 +35,7 @@ class StoryModel {
       'image': image,
       'categoryIds': categoryIds,
       'type': type,
+      'createdByProfileId': createdByProfileId,
       'createdAt': createdAt,
     };
   }
