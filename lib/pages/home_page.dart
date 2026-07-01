@@ -4,6 +4,7 @@ import 'package:lumiconte/models/story_model.dart';
 import 'profile_creation_page.dart';
 import '../models/profile_model.dart';
 import '../services/seed_database.dart';
+import '../widget/b2_image.dart';
 
 class HomePage extends StatefulWidget {
   final ProfileModel profile;
@@ -161,7 +162,7 @@ class _HomePageState extends State<HomePage> {
               SizedBox(height: 15),
 
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   for (final category in widget.categories)
                     categoryWidget(category),
@@ -177,26 +178,39 @@ class _HomePageState extends State<HomePage> {
   Widget storyCard(StoryModel story) {
     return Container(
       width: 120,
+      height: 180,
       margin: const EdgeInsets.only(right: 15),
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(15),
-        image: DecorationImage(
-          image: AssetImage(story.image),
-          fit: BoxFit.cover,
-        ),
+        color: Colors.grey.shade200,
       ),
-      alignment: Alignment.bottomCenter,
-      child: Container(
-        padding: const EdgeInsets.all(8),
-        width: double.infinity,
-        alignment: Alignment.bottomCenter,
-        child: Text(
-          story.name,
-          style: const TextStyle(
-            color: Color.fromARGB(255, 0, 0, 0),
-            fontWeight: FontWeight.bold,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          B2Image(objectKey: story.image, fit: BoxFit.cover),
+          // Dégradé + titre par-dessus l'image
+          Container(
+            alignment: Alignment.bottomCenter,
+            padding: const EdgeInsets.all(8),
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.bottomCenter,
+                end: Alignment.topCenter,
+                colors: [Colors.black87, Colors.transparent],
+              ),
+            ),
+            child: Text(
+              story.name,
+              maxLines: 4,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
@@ -210,9 +224,13 @@ class _HomePageState extends State<HomePage> {
       ),
       child: Column(
         children: [
-          CircleAvatar(
-            radius: 22,
-            backgroundImage: AssetImage(category.image),
+          ClipOval(
+            child: B2Image(
+              objectKey: category.image,
+              width: 44,
+              height: 44,
+              fit: BoxFit.cover,
+            ),
           ),
           Text(category.name)
         ],
