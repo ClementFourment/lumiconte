@@ -105,6 +105,7 @@ class _BottomNavState extends State<BottomNav> {
             currentIndex: index,
             onTap: (value) => setState(() => index = value),
             type: BottomNavigationBarType.fixed,
+            fixedColor: Colors.black,
             items: const [
               BottomNavigationBarItem(icon: Icon(Icons.home), label: "Accueil"),
               BottomNavigationBarItem(

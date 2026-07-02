@@ -3,6 +3,7 @@ import 'package:lumiconte/services/auth_service.dart';
 import 'package:go_router/go_router.dart';
 import 'dart:math' as math;
 import 'package:firebase_auth/firebase_auth.dart';
+import 'dart:io' show Platform;
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -16,6 +17,9 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
   bool _isLoading = false;
   late AnimationController _mainController;
   late AnimationController _particleController;
+  bool get canUseAppleSignIn {
+    return Platform.isIOS || Platform.isMacOS;
+  }
 
   bool _isLoginMode = true;
   late AnimationController _glowController;
@@ -297,17 +301,21 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                                   Column(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
-                                      _buildSocialIconButton(
-                                        type: Text(''), //Buttons.Google,
-                                        text: 'Continuer avec Google',
-                                        onPressed: _signInWithGoogle,
-                                      ),
+                                      if (_authService
+                                          .getInstance()
+                                          .supportsAuthenticate())
+                                        _buildSocialIconButton(
+                                          type: 'google',
+                                          text: 'Continuer avec Google',
+                                          onPressed: _signInWithGoogle,
+                                        ),
                                       const SizedBox(width: 24),
-                                      _buildSocialIconButton(
-                                        type: Text(''), //Buttons.Apple,
-                                        text: 'Continuer avec Apple',
-                                        onPressed: _signInWithApple,
-                                      ),
+                                      if (canUseAppleSignIn)
+                                        _buildSocialIconButton(
+                                          type: 'apple',
+                                          text: 'Continuer avec Apple',
+                                          onPressed: _signInWithApple,
+                                        ),
                                     ],
                                   ),
                                 ],
@@ -566,22 +574,39 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
   }
 
   Widget _buildSocialIconButton({
-    required Text type, //Buttons type,
+    required String type, //Buttons type,
     required String text,
     required VoidCallback onPressed,
   }) {
-    return Material(
-      color: Colors.transparent,
-      child: Text('temp'),
-      // SignInButton(
-      //   type,
-      //   text: text,
-      //   onPressed: onPressed,
-      // ),
+    return SizedBox(
+      width: 220,
+      child: Material(
+        color: Colors.transparent,
+        child: OutlinedButton.icon(
+          onPressed: onPressed,
+          icon: Image.asset(
+            'assets/images/${type}_logo.png',
+            height: 18,
+          ),
+          label: Text(text),
+        ),
+      ),
     );
   }
 }
 
+// Container(
+//   height: 48,
+//   decoration: BoxDecoration(
+//     border: Border.all(color: Colors.grey),
+//     borderRadius: BorderRadius.circular(8),
+//   ),
+//   child: TextButton.icon(
+//     onPressed: () {},
+//     icon: Image.asset('assets/google.png', height: 18),
+//     label: const Text("Sign in with Google"),
+//   ),
+// )
 // ============================================================================
 // BACKGROUND LAYERS - ANIMATIONS
 // ============================================================================
