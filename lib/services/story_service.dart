@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../models/story_model.dart';
+import 'package:lumiconte/models/story_model.dart';
+
 import 'firebase_service.dart';
 
 class StoryService extends FirebaseService {

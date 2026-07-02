@@ -3,13 +3,13 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:lumiconte/models/story_model.dart';
 import 'package:lumiconte/services/category_service.dart';
 import 'package:lumiconte/services/story_service.dart';
-import '../models/profile_model.dart';
-import '../models/category_model.dart';
-import '../services/profile_service.dart';
-import '../pages/home_page.dart';
-import '../pages/profile_page.dart';
-import '../pages/library_page.dart';
-import '../pages/favorites_page.dart';
+import 'package:lumiconte/models/profile_model.dart';
+import 'package:lumiconte/models/category_model.dart';
+import 'package:lumiconte/services/profile_service.dart';
+import 'package:lumiconte/pages/home_page.dart';
+import 'package:lumiconte/pages/profile_page.dart';
+import 'package:lumiconte/pages/library_page.dart';
+import 'package:lumiconte/pages/favorites_page.dart';
 
 class BottomNav extends StatefulWidget {
   const BottomNav({super.key});

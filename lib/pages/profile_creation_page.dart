@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:go_router/go_router.dart';
-import '../services/profile_service.dart';
-import '../services/settings_service.dart';
+import 'package:lumiconte/services/profile_service.dart';
+import 'package:lumiconte/services/settings_service.dart';
 
 class ProfileCreationPage extends StatefulWidget {
   const ProfileCreationPage({super.key});

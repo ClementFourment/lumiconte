@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:lumiconte/models/category_model.dart';
 import 'package:lumiconte/models/story_model.dart';
 import 'profile_creation_page.dart';
-import '../models/profile_model.dart';
-import '../services/seed_database.dart';
-import '../widget/b2_image.dart';
+import 'package:lumiconte/models/profile_model.dart';
+import 'package:lumiconte/services/seed_database.dart';
+import 'package:lumiconte/widget/b2_image.dart';
 
 class HomePage extends StatefulWidget {
   final ProfileModel profile;
@@ -202,7 +202,7 @@ class _HomePageState extends State<HomePage> {
             ),
             child: Text(
               story.name,
-              maxLines: 4,
+              maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                 color: Colors.white,

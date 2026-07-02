@@ -2,12 +2,12 @@
 // par ex. depuis un bouton de debug ou un test, le temps de foutre des données dans Firestore.
 
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../models/category_model.dart';
-import '../models/interest_model.dart';
-import '../models/story_model.dart';
-import '../models/user_model.dart';
-import '../services/profile_service.dart';
-import '../services/settings_service.dart';
+import 'package:lumiconte/models/category_model.dart';
+import 'package:lumiconte/models/interest_model.dart';
+import 'package:lumiconte/models/story_model.dart';
+import 'package:lumiconte/models/user_model.dart';
+import 'package:lumiconte/services/profile_service.dart';
+import 'package:lumiconte/services/settings_service.dart';
 
 Future<void> seedDatabase() async {
   final firestore = FirebaseFirestore.instance;
