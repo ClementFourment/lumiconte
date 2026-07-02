@@ -5,7 +5,8 @@ import 'firebase_service.dart';
 import 'user_service.dart';
 
 class AuthService extends FirebaseService {
-  static final GoogleSignIn _googleSignIn = GoogleSignIn();
+  static final GoogleSignIn _googleSignIn = GoogleSignIn.instance;
+
   final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
   late UserService _userService;
 
@@ -16,14 +17,19 @@ class AuthService extends FirebaseService {
   // 🔑 Google Sign In avec création du user Firestore
   Future<UserModel> signInWithGoogle() async {
     try {
-      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+      await _googleSignIn.initialize();
+
+      final GoogleSignInAccount? googleUser =
+          await _googleSignIn.authenticate();
       if (googleUser == null) throw Exception("Connexion Google annulée");
 
       final GoogleSignInAuthentication googleAuth =
           await googleUser.authentication;
+      if (googleUser == null) {
+        throw Exception("Connexion Google annulée");
+      }
 
       final OAuthCredential credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
       );
 
