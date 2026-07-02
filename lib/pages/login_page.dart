@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-import '../services/auth_service.dart';
+import 'package:lumiconte/services/auth_service.dart';
 import 'package:go_router/go_router.dart';
 import 'dart:math' as math;
-import 'package:flutter_signin_button/flutter_signin_button.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 class LoginPage extends StatefulWidget {
@@ -299,13 +298,13 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
                                       _buildSocialIconButton(
-                                        type: Buttons.Google,
+                                        type: Text(''), //Buttons.Google,
                                         text: 'Continuer avec Google',
                                         onPressed: _signInWithGoogle,
                                       ),
                                       const SizedBox(width: 24),
                                       _buildSocialIconButton(
-                                        type: Buttons.Apple,
+                                        type: Text(''), //Buttons.Apple,
                                         text: 'Continuer avec Apple',
                                         onPressed: _signInWithApple,
                                       ),
@@ -567,17 +566,18 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
   }
 
   Widget _buildSocialIconButton({
-    required Buttons type,
+    required Text type, //Buttons type,
     required String text,
     required VoidCallback onPressed,
   }) {
     return Material(
       color: Colors.transparent,
-      child: SignInButton(
-        type,
-        text: text,
-        onPressed: onPressed,
-      ),
+      child: Text('temp'),
+      // SignInButton(
+      //   type,
+      //   text: text,
+      //   onPressed: onPressed,
+      // ),
     );
   }
 }

@@ -1,5 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../models/profile_model.dart';
+import 'package:lumiconte/models/profile_model.dart';
 import 'firebase_service.dart';
 
 class ProfileService extends FirebaseService {
