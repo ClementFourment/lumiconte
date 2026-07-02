@@ -2,11 +2,11 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../pages/onboarding_page.dart';
-import '../pages/login_page.dart';
-import '../navigation/bottom_nav.dart';
-import '../pages/profile_creation_page.dart';
-import '../services/profile_service.dart';
+import 'package:lumiconte/pages/onboarding_page.dart';
+import 'package:lumiconte/pages/login_page.dart';
+import 'package:lumiconte/navigation/bottom_nav.dart';
+import 'package:lumiconte/pages/profile_creation_page.dart';
+import 'package:lumiconte/services/profile_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 final GoRouter appRouter = GoRouter(

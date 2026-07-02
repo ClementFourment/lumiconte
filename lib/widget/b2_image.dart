@@ -1,6 +1,6 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
-import '../services/storage_service.dart';
+import 'package:lumiconte/services/storage_service.dart';
 
 /// Affiche une image privée stockée sur Backblaze B2, en gérant
 /// automatiquement le chargement, les erreurs, et le cache.
