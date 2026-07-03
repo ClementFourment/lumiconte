@@ -2,10 +2,12 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:lumiconte/models/story_model.dart';
 import 'package:lumiconte/pages/onboarding_page.dart';
 import 'package:lumiconte/pages/login_page.dart';
 import 'package:lumiconte/navigation/bottom_nav.dart';
 import 'package:lumiconte/pages/profile_creation_page.dart';
+import 'package:lumiconte/pages/story_page.dart';
 import 'package:lumiconte/services/profile_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -23,7 +25,6 @@ final GoRouter appRouter = GoRouter(
     final isOnboarding = location == '/';
     final isLogin = location == '/login';
     final isProfileCreation = location == '/create-profile';
-    final isHome = location == '/home';
 
     // 1. Si pas vu onboarding → afficher onboarding
     if (!hasSeenOnboarding) {
@@ -48,7 +49,9 @@ final GoRouter appRouter = GoRouter(
       }
 
       // 4. Si tout est bon → home
-      if (!isHome) return '/home';
+      if (isOnboarding || isLogin || isProfileCreation) {
+        return '/home';
+      }
     }
 
     return null;
@@ -61,6 +64,17 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) => const ProfileCreationPage(),
     ),
     GoRoute(path: '/home', builder: (context, state) => const BottomNav()),
+    GoRoute(
+      path: '/story',
+      builder: (context, state) {
+        final story = state.extra as StoryModel?;
+        if (story == null) {
+          // sécurité si on arrive sur /story sans données (deep link, etc.)
+          return const BottomNav();
+        }
+        return StoryPage(story: story);
+      },
+    ),
   ],
 );
 

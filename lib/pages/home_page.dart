@@ -5,6 +5,7 @@ import 'profile_creation_page.dart';
 import 'package:lumiconte/models/profile_model.dart';
 import 'package:lumiconte/services/seed_database.dart';
 import 'package:lumiconte/widget/b2_image.dart';
+import 'package:go_router/go_router.dart';
 
 class HomePage extends StatefulWidget {
   final ProfileModel profile;
@@ -147,7 +148,11 @@ class _HomePageState extends State<HomePage> {
                   scrollDirection: Axis.horizontal,
                   children: [
                     for (final story in widget.stories.take(10))
-                      storyCard(story),
+                      // storyCard(story)
+                      GestureDetector(
+                        onTap: () => context.push('/story', extra: story),
+                        child: storyCard(story),
+                      )
                   ],
                 ),
               ),
