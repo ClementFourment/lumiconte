@@ -1,6 +1,7 @@
 class StoryModel {
   final String id;
   final String name;
+  final String content;
   final String image;
   final List<String> categoryIds;
   final String type; // 'original' ou 'generated'
@@ -10,6 +11,7 @@ class StoryModel {
   StoryModel({
     required this.id,
     required this.name,
+    required this.content,
     required this.image,
     this.categoryIds = const [],
     this.type = 'original',
@@ -21,6 +23,7 @@ class StoryModel {
     return StoryModel(
       id: docId,
       name: data['name'] ?? '',
+      content: data['content'] ?? '',
       image: data['image'] ?? '',
       categoryIds: List<String>.from(data['categoryIds'] ?? []),
       type: data['type'] ?? 'original',
@@ -32,6 +35,7 @@ class StoryModel {
   Map<String, dynamic> toMap() {
     return {
       'name': name,
+      'content': content,
       'image': image,
       'categoryIds': categoryIds,
       'type': type,
