@@ -40,6 +40,7 @@ Future<void> seedDatabase() async {
     content:
         'bla bla bla la mmission lune bla bla aller sur la lune owi la lune ca brille',
     image: 'lien_image_story',
+    audio: '',
     categoryIds: [categoryRef.id],
     type: 'original',
     createdAt: DateTime.now(),

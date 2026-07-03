@@ -3,6 +3,8 @@ import 'package:lumiconte/models/story_model.dart';
 import 'package:lumiconte/widget/b2_audio.dart';
 import 'package:lumiconte/widget/b2_image.dart';
 import 'package:flutter_tts/flutter_tts.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 
 class StoryPage extends StatefulWidget {
   final StoryModel story;
@@ -19,77 +21,28 @@ class _StoryPageState extends State<StoryPage> {
   bool _isPlaying = false;
 
   late final B2Audio _audio;
-  late final FlutterTts _flutterTts;
 
   @override
   void initState() {
     super.initState();
-    _flutterTts = FlutterTts();
-    _flutterTts.setLanguage("fr-FR");
-    _flutterTts.setSpeechRate(0.42);
-    _flutterTts.setPitch(1.05);
-    _flutterTts.setVolume(1.0);
-    _useGoogleEngineIfAvailable();
-    _selectBestFrenchVoice();
-
-    // Remet l'icône sur "play" quand la lecture se termine toute seule
-    _flutterTts.setCompletionHandler(() {
-      if (mounted) setState(() => _isPlaying = false);
-    });
-    _flutterTts.setCancelHandler(() {
-      if (mounted) setState(() => _isPlaying = false);
-    });
-    _flutterTts.setErrorHandler((msg) {
+    _audio = B2Audio(objectKey: widget.story.audio);
+    _audio.onComplete.listen((_) {
       if (mounted) setState(() => _isPlaying = false);
     });
   }
 
   Future<void> _toggleAudio(String text) async {
     if (_isPlaying) {
-      await _flutterTts.stop();
-      setState(() => _isPlaying = false);
+      await _audio.pause();
     } else {
-      setState(() => _isPlaying = true);
-      await _flutterTts
-          .speak(text.replaceAll('.', '.  ').replaceAll(',', ',  '));
+      await _audio.play();
     }
-  }
-
-  Future<void> _selectBestFrenchVoice() async {
-    final voices = await _flutterTts.getVoices;
-    if (voices == null) return;
-
-    final frenchVoices = (voices as List)
-        .cast<Map>()
-        .where((v) => (v['locale'] as String?)?.startsWith('fr') ?? false)
-        .toList();
-
-    if (frenchVoices.isEmpty) return;
-
-    // Sur Android, 'quality' existe (souvent 300/400/500+, plus haut = mieux)
-    frenchVoices.sort((a, b) {
-      final qa = int.tryParse(a['quality']?.toString() ?? '0') ?? 0;
-      final qb = int.tryParse(b['quality']?.toString() ?? '0') ?? 0;
-      return qb.compareTo(qa);
-    });
-
-    await _flutterTts.setVoice({
-      "name": frenchVoices.first['name'],
-      "locale": frenchVoices.first['locale'],
-    });
-  }
-
-  Future<void> _useGoogleEngineIfAvailable() async {
-    final engines = await _flutterTts.getEngines;
-    if (engines != null &&
-        (engines as List).contains("com.google.android.tts")) {
-      await _flutterTts.setEngine("com.google.android.tts");
-    }
+    setState(() => _isPlaying = !_isPlaying);
   }
 
   @override
   void dispose() {
-    _flutterTts.stop();
+    _audio.dispose();
     super.dispose();
   }
 
@@ -175,6 +128,8 @@ class _StoryPageState extends State<StoryPage> {
                     Padding(
                       padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                       child: _BottomControls(
+                        storyId: widget.story.id,
+                        text: widget.story.content,
                         isPlaying: _isPlaying,
                         onDecreaseText: () => setState(
                           () => _fontSize = (_fontSize - 2).clamp(18, 34),
@@ -246,12 +201,16 @@ class _TopBar extends StatelessWidget {
 }
 
 class _BottomControls extends StatelessWidget {
+  final String storyId;
+  final String text;
   final bool isPlaying;
   final VoidCallback onDecreaseText;
   final VoidCallback onIncreaseText;
   final VoidCallback onToggleAudio;
 
   const _BottomControls({
+    required this.storyId,
+    required this.text,
     required this.isPlaying,
     required this.onDecreaseText,
     required this.onIncreaseText,
@@ -271,6 +230,11 @@ class _BottomControls extends StatelessWidget {
           _ControlButton(icon: Icons.remove, onPressed: onDecreaseText),
           _ControlButton(icon: Icons.add, onPressed: onIncreaseText),
           const Spacer(),
+          _GenerateAudioButton(
+            storyId: storyId,
+            text: text,
+            icon: Icons.generating_tokens_outlined,
+          ),
           _ControlButton(
             icon: isPlaying ? Icons.pause : Icons.volume_up,
             onPressed: onToggleAudio,
@@ -319,5 +283,58 @@ class _ControlButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return IconButton(onPressed: onPressed, icon: Icon(icon));
+  }
+}
+
+class _GenerateAudioButton extends StatelessWidget {
+  final String storyId;
+  final String text;
+  final IconData icon;
+
+  const _GenerateAudioButton(
+      {required this.storyId, required this.text, required this.icon});
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+        onPressed: () async {
+          try {
+            final objectKey = await generateAudio(storyId: storyId, text: text);
+            print(objectKey);
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text("Audio généré !")),
+            );
+          } catch (e) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(e.toString())),
+            );
+          }
+        },
+        icon: Icon(icon));
+  }
+
+  Future<String> generateAudio({
+    required String storyId,
+    required String text,
+  }) async {
+    final response = await http.post(
+      Uri.parse("https://clementfourment.fr/google-key/"),
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: jsonEncode({
+        "storyId": storyId,
+        "text": text,
+      }),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception(response.body);
+    }
+    print(response.body);
+
+    final json = jsonDecode(response.body);
+
+    return json["objectKey"];
   }
 }

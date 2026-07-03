@@ -3,6 +3,7 @@ class StoryModel {
   final String name;
   final String content;
   final String image;
+  final String audio;
   final List<String> categoryIds;
   final String type; // 'original' ou 'generated'
   final String createdByProfileId;
@@ -13,6 +14,7 @@ class StoryModel {
     required this.name,
     required this.content,
     required this.image,
+    required this.audio,
     this.categoryIds = const [],
     this.type = 'original',
     this.createdByProfileId = '',
@@ -25,6 +27,7 @@ class StoryModel {
       name: data['name'] ?? '',
       content: data['content'] ?? '',
       image: data['image'] ?? '',
+      audio: data['audio'] ?? '',
       categoryIds: List<String>.from(data['categoryIds'] ?? []),
       type: data['type'] ?? 'original',
       createdByProfileId: data['createdByProfileId'] ?? '',
