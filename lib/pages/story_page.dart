@@ -18,7 +18,6 @@ class _StoryPageState extends State<StoryPage> {
   bool _isPlaying = false;
   bool _isLoading = false;
   bool _isSeeking = false;
-  double _seekValue = 0;
   Duration _audioPosition = Duration.zero;
   Duration _audioDuration = Duration.zero;
 
