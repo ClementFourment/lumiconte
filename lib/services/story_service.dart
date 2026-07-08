@@ -13,8 +13,7 @@ class StoryService extends FirebaseService {
           .get();
 
       return querySnapshot.docs
-          .map((doc) =>
-              StoryModel.fromMap(doc.data() as Map<String, dynamic>, doc.id))
+          .map((doc) => StoryModel.fromMap(doc.data(), doc.id))
           .toList();
     } catch (e) {
       print('Erreur récupération stories: $e');
@@ -45,8 +44,7 @@ class StoryService extends FirebaseService {
           .get();
 
       return querySnapshot.docs
-          .map((doc) =>
-              StoryModel.fromMap(doc.data() as Map<String, dynamic>, doc.id))
+          .map((doc) => StoryModel.fromMap(doc.data(), doc.id))
           .toList();
     } catch (e) {
       print('Erreur récupération stories par catégorie: $e');
@@ -64,8 +62,7 @@ class StoryService extends FirebaseService {
           .get();
 
       return querySnapshot.docs
-          .map((doc) =>
-              StoryModel.fromMap(doc.data() as Map<String, dynamic>, doc.id))
+          .map((doc) => StoryModel.fromMap(doc.data(), doc.id))
           .toList();
     } catch (e) {
       print('Erreur récupération stories par âge: $e');
@@ -81,8 +78,7 @@ class StoryService extends FirebaseService {
         .snapshots()
         .map((querySnapshot) {
       return querySnapshot.docs
-          .map((doc) =>
-              StoryModel.fromMap(doc.data() as Map<String, dynamic>, doc.id))
+          .map((doc) => StoryModel.fromMap(doc.data(), doc.id))
           .toList();
     });
   }
