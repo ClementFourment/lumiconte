@@ -17,28 +17,25 @@ class _StoryPageState extends State<StoryPage> {
   bool _isFavorite = false;
   bool _isPlaying = false;
   bool _isLoading = false;
-  bool _hasStarted =
-      false; // true dès qu'on a lancé la lecture au moins une fois
 
   late final B2Audio _audio;
 
   @override
   void initState() {
     super.initState();
-
     final test = widget.story.audio[1]['harry'] ?? '';
-
     // NB : widget.story.audio doit contenir la clé de l'objet mp3 sur B2
     // (même principe que widget.story.image pour B2Image).
     _audio = B2Audio(objectKey: test);
 
-    _audio.onComplete.listen((_) {
-      if (mounted) {
-        setState(() {
-          _isPlaying = false;
-          _hasStarted = false; // pour repartir du début au prochain tap
-        });
-      }
+    // Démarre le buffering en arrière-plan dès l'ouverture de la page,
+    // pendant que l'utilisateur lit le texte : au moment où il appuie sur
+    // lecture, le flux est déjà prêt (ou bien avancé).
+    _audio.preload();
+
+    _audio.onComplete.listen((_) async {
+      await _audio.seekToStart();
+      if (mounted) setState(() => _isPlaying = false);
     });
   }
 
@@ -49,14 +46,9 @@ class _StoryPageState extends State<StoryPage> {
       return;
     }
 
+    setState(() => _isLoading = true);
     try {
-      if (_hasStarted) {
-        await _audio.resume();
-      } else {
-        setState(() => _isLoading = true);
-        await _audio.play();
-        _hasStarted = true;
-      }
+      await _audio.play();
       if (mounted) setState(() => _isPlaying = true);
     } catch (e) {
       if (mounted) {
