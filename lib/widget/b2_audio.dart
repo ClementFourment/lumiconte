@@ -17,6 +17,11 @@ class B2Audio {
   /// fond, avant même que l'utilisateur n'appuie sur lecture.
   Future<void> preload() async {
     if (_prepared) return;
+    // Important : par défaut audioplayers utilise ReleaseMode.release, qui
+    // libère complètement la source à la fin de la lecture. Résultat : un
+    // seek() ou resume() après la fin ne fait plus rien (source absente).
+    // ReleaseMode.stop garde la source chargée, seule la lecture s'arrête.
+    await _player.setReleaseMode(ReleaseMode.stop);
     final url = await _urlFuture;
     await _player.setSourceUrl(url);
     _prepared = true;
@@ -34,8 +39,11 @@ class B2Audio {
   /// Reprend la lecture après une pause.
   Future<void> resume() => _player.resume();
 
+  /// Déplace la tête de lecture à une position donnée.
+  Future<void> seek(Duration position) => _player.seek(position);
+
   /// Repart du début (utile après la fin de la lecture).
-  Future<void> seekToStart() => _player.seek(Duration.zero);
+  Future<void> seekToStart() => seek(Duration.zero);
 
   Future<void> pause() => _player.pause();
   Future<void> stop() => _player.stop();
