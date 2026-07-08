@@ -711,29 +711,3 @@ class _ParticlesPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }
-
-Widget _buildSocialButton({
-  required String label,
-  required String assetPath,
-  required VoidCallback onPressed,
-}) {
-  return SizedBox(
-    width: double.infinity,
-    height: 52,
-    child: ElevatedButton.icon(
-      style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.white.withOpacity(0.08),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-          side: BorderSide(color: Colors.white.withOpacity(0.15)),
-        ),
-      ),
-      icon: Image.asset(assetPath, height: 22),
-      label: Text(
-        label,
-        style: const TextStyle(color: Colors.white),
-      ),
-      onPressed: onPressed,
-    ),
-  );
-}

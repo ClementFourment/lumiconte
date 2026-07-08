@@ -527,66 +527,6 @@ class _CloudsLayer extends StatelessWidget {
   }
 }
 
-class _CloudShape extends StatelessWidget {
-  final double size;
-  final double opacity;
-
-  const _CloudShape({
-    required this.size,
-    required this.opacity,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return CustomPaint(
-      size: Size(size, size * 0.6),
-      painter: _CloudPainter(opacity: opacity),
-    );
-  }
-}
-
-class _CloudPainter extends CustomPainter {
-  final double opacity;
-
-  _CloudPainter({required this.opacity});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final cloudPaint = Paint()
-      ..color = const Color(0xFF7B68EE).withOpacity(opacity * 0.65)
-      ..style = PaintingStyle.fill;
-
-    canvas.drawCircle(
-      Offset(size.width * 0.2, size.height * 0.5),
-      size.height * 0.45,
-      cloudPaint,
-    );
-
-    canvas.drawCircle(
-      Offset(size.width * 0.5, size.height * 0.3),
-      size.height * 0.5,
-      cloudPaint,
-    );
-
-    canvas.drawCircle(
-      Offset(size.width * 0.8, size.height * 0.5),
-      size.height * 0.45,
-      cloudPaint,
-    );
-
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromLTWH(0, size.height * 0.25, size.width, size.height * 0.5),
-        Radius.circular(size.height * 0.25),
-      ),
-      cloudPaint,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
 class _ParticlesLayer extends StatelessWidget {
   final double t;
 

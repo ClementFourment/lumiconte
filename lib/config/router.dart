@@ -39,20 +39,20 @@ final GoRouter appRouter = GoRouter(
     }
 
     // 3. Si connecté mais pas de profil → créer profil
-    if (user != null) {
-      final profileService = ProfileService();
-      final profiles = await profileService.getUserProfiles(user.uid);
+    // if (user != null) {
+    final profileService = ProfileService();
+    final profiles = await profileService.getUserProfiles(user.uid);
 
-      if (profiles.isEmpty) {
-        if (!isProfileCreation) return '/create-profile';
-        return null;
-      }
-
-      // 4. Si tout est bon → home
-      if (isOnboarding || isLogin || isProfileCreation) {
-        return '/home';
-      }
+    if (profiles.isEmpty) {
+      if (!isProfileCreation) return '/create-profile';
+      return null;
     }
+
+    // 4. Si tout est bon → home
+    if (isOnboarding || isLogin || isProfileCreation) {
+      return '/home';
+    }
+    // }
 
     return null;
   },

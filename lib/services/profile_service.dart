@@ -39,8 +39,7 @@ class ProfileService extends FirebaseService {
           .get();
 
       return querySnapshot.docs
-          .map((doc) => ProfileModel.fromMap(
-              doc.data() as Map<String, dynamic>, doc.id, userId))
+          .map((doc) => ProfileModel.fromMap(doc.data(), doc.id, userId))
           .toList();
     } catch (e) {
       print('Erreur récupération profils: $e');
@@ -126,8 +125,7 @@ class ProfileService extends FirebaseService {
         .snapshots()
         .map((querySnapshot) {
       return querySnapshot.docs
-          .map((doc) => ProfileModel.fromMap(
-              doc.data() as Map<String, dynamic>, doc.id, userId))
+          .map((doc) => ProfileModel.fromMap(doc.data(), doc.id, userId))
           .toList();
     });
   }
