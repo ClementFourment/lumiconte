@@ -3,8 +3,8 @@ class StoryModel {
   final String name;
   final String content;
   final String image;
-  final String audio;
-  final List<int> audioTimes;
+  final List<Map<String, String>> audio;
+  final String audioTimes;
   final List<String> categoryIds;
   final String type; // 'original' ou 'generated'
   final String createdByProfileId;
@@ -29,8 +29,10 @@ class StoryModel {
       name: data['name'] ?? '',
       content: data['content'] ?? '',
       image: data['image'] ?? '',
-      audio: data['audio'] ?? '',
-      audioTimes: data['audioTimes'] ?? [],
+      audio: (data['audio'] as List<dynamic>? ?? [])
+          .map((item) => Map<String, String>.from(item as Map))
+          .toList(),
+      audioTimes: data['audioTimes'] ?? '',
       categoryIds: List<String>.from(data['categoryIds'] ?? []),
       type: data['type'] ?? 'original',
       createdByProfileId: data['createdByProfileId'] ?? '',
@@ -43,6 +45,7 @@ class StoryModel {
       'name': name,
       'content': content,
       'image': image,
+      'audio': audio,
       'audioTimes': audioTimes,
       'categoryIds': categoryIds,
       'type': type,

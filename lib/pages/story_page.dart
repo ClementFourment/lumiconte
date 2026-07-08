@@ -1,15 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:lumiconte/models/story_model.dart';
 import 'package:lumiconte/widget/b2_audio.dart';
 import 'package:lumiconte/widget/b2_image.dart';
-import 'package:lumiconte/services/audio_generation_service.dart';
-import 'dart:convert';
-import 'package:http/http.dart' as http;
-import 'dart:typed_data';
-import 'package:crypto/crypto.dart';
-import 'package:edge_tts/edge_tts.dart';
-import 'package:audioplayers/audioplayers.dart';
 
 class StoryPage extends StatefulWidget {
   final StoryModel story;
@@ -25,77 +17,51 @@ class _StoryPageState extends State<StoryPage> {
   bool _isFavorite = false;
   bool _isPlaying = false;
   bool _isLoading = false;
-  bool _hasAudio = false;
-  final _player = AudioPlayer();
+  bool _hasStarted =
+      false; // true dès qu'on a lancé la lecture au moins une fois
 
-  final Set<String> punctuation = {
-    '.', ',', ';', ':', '!', '?', '…', '(', ')', '[', ']',
-    '{', '}', '"', '«', '»', '|', '*', '^', '~', '/', '\\',
-    "'", "’", '-', '_' //a
-  };
-  List<_WordTiming> _wordTimings = [];
-  int _currentWordIndex = -1;
+  late final B2Audio _audio;
 
   @override
   void initState() {
     super.initState();
 
-    // Ces listeners sont posés UNE SEULE FOIS, pas à chaque lecture
-    _player.onPositionChanged.listen((position) {
-      final ms = position.inMilliseconds;
-      final index = _wordTimings.lastIndexWhere((w) => w.offsetMs <= ms);
-      if (index != _currentWordIndex && mounted) {
-        setState(() => _currentWordIndex = index);
-      }
-    });
+    final test = widget.story.audio[1]['harry'] ?? '';
 
-    _player.onPlayerComplete.listen((_) {
+    // NB : widget.story.audio doit contenir la clé de l'objet mp3 sur B2
+    // (même principe que widget.story.image pour B2Image).
+    _audio = B2Audio(objectKey: test);
+
+    _audio.onComplete.listen((_) {
       if (mounted) {
         setState(() {
           _isPlaying = false;
-          _currentWordIndex = -1;
+          _hasStarted = false; // pour repartir du début au prochain tap
         });
       }
     });
   }
 
-  Future<void> _generateAndPlay() async {
-    setState(() {
-      _isLoading = true;
-      _wordTimings = [];
-      _currentWordIndex = -1;
-    });
+  Future<void> _toggleAudio() async {
+    if (_isPlaying) {
+      await _audio.pause();
+      setState(() => _isPlaying = false);
+      return;
+    }
 
     try {
-      final tts = Communicate(
-        text: widget.story.content.replaceAll(
-            r'\n', '. '), //permet de respecter les intonnations de poesie
-        voice: 'fr-FR-DeniseNeural',
-        rate: '-10%', // légèrement ralenti, adapté conte du soir
-        wordBoundary: true,
-      );
-
-      final audioChunks = <int>[];
-
-      await for (final event in tts.stream()) {
-        if (event is AudioDataEvent) {
-          audioChunks.addAll(event.data);
-        } else if (event is WordBoundaryEvent) {
-          _wordTimings.add(_WordTiming(
-            text: event.text,
-            offsetMs: event.offset ~/
-                10000, // conversion ticks -> ms, à ajuster selon l'unité réelle
-          ));
-        }
+      if (_hasStarted) {
+        await _audio.resume();
+      } else {
+        setState(() => _isLoading = true);
+        await _audio.play();
+        _hasStarted = true;
       }
-
-      await _player.play(BytesSource(Uint8List.fromList(audioChunks)));
-      _hasAudio = true; // <-- on retient qu'on a déjà l'audio
-      setState(() => _isPlaying = true);
+      if (mounted) setState(() => _isPlaying = true);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erreur: $e')),
+          SnackBar(content: Text('Erreur audio: $e')),
         );
       }
     } finally {
@@ -103,45 +69,19 @@ class _StoryPageState extends State<StoryPage> {
     }
   }
 
-  Future<void> _toggleAudio() async {
-    if (_isPlaying) {
-      await _player.pause();
-      setState(() => _isPlaying = false);
-      return;
-    }
-
-    if (_hasAudio) {
-      await _player.resume();
-      setState(() => _isPlaying = true);
-      return;
-    }
-
-    await _generateAndPlay();
-  }
-
   @override
   void dispose() {
-    _player.dispose();
+    _audio.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final text = widget.story.content
-        .replaceAll(r'\n', ' ')
-        .replaceAll(RegExp(r'\s+'), ' ')
+        .replaceAll(r'\n', '\n\n')
+        .replaceAll(RegExp(r'[ \t]+'), ' ')
         .trim();
-    final List<String> _words = text.split(' ');
 
-    print(_words);
-
-    final String textToDisplay = _words
-        .map((w) => punctuation.contains(w) ? '' : w)
-        .join(' ')
-        .replaceAll(RegExp(r'\s+'), ' ')
-        .trim();
-    final wordsToDisplay =
-        textToDisplay.split(' '); //.replaceAll(r'\n', ' ').split(' ');
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
@@ -206,40 +146,15 @@ class _StoryPageState extends State<StoryPage> {
                         controller: scrollController,
                         physics: const BouncingScrollPhysics(),
                         padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
-                        child: Wrap(
-                          children: List.generate(wordsToDisplay.length, (i) {
-                            final isCurrent = i == _currentWordIndex;
-                            return Container(
-                              margin:
-                                  const EdgeInsets.only(right: 4, bottom: 4),
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 2),
-                              decoration: BoxDecoration(
-                                color: isCurrent ? Colors.amber.shade200 : null,
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: Text(
-                                wordsToDisplay[i],
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: isCurrent
-                                      ? FontWeight.bold
-                                      : FontWeight.normal,
-                                ),
-                              ),
-                            );
-                          }),
+                        child: AnimatedDefaultTextStyle(
+                          duration: const Duration(milliseconds: 200),
+                          style: TextStyle(
+                            fontSize: _fontSize,
+                            height: 1.7,
+                            color: Colors.black87,
+                          ),
+                          child: Text(text),
                         ),
-
-                        // AnimatedDefaultTextStyle(
-                        //   duration: const Duration(milliseconds: 200),
-                        //   style: TextStyle(
-                        //     fontSize: _fontSize,
-                        //     height: 1.7,
-                        //     color: Colors.black87,
-                        //   ),
-                        //   child: Text(wordsToDisplay[i]),
-                        // ),
                       ),
                     ),
                     Padding(
@@ -247,13 +162,14 @@ class _StoryPageState extends State<StoryPage> {
                       child: _BottomControls(
                         storyId: widget.story.id,
                         isPlaying: _isPlaying,
+                        isLoading: _isLoading,
                         onDecreaseText: () => setState(
                           () => _fontSize = (_fontSize - 2).clamp(18, 34),
                         ),
                         onIncreaseText: () => setState(
                           () => _fontSize = (_fontSize + 2).clamp(18, 34),
                         ),
-                        onToggleAudio: () => _toggleAudio(),
+                        onToggleAudio: _toggleAudio,
                       ),
                     ),
                   ],
@@ -319,6 +235,7 @@ class _TopBar extends StatelessWidget {
 class _BottomControls extends StatelessWidget {
   final String storyId;
   final bool isPlaying;
+  final bool isLoading;
   final VoidCallback onDecreaseText;
   final VoidCallback onIncreaseText;
   final VoidCallback onToggleAudio;
@@ -326,6 +243,7 @@ class _BottomControls extends StatelessWidget {
   const _BottomControls({
     required this.storyId,
     required this.isPlaying,
+    required this.isLoading,
     required this.onDecreaseText,
     required this.onIncreaseText,
     required this.onToggleAudio,
@@ -344,10 +262,17 @@ class _BottomControls extends StatelessWidget {
           _ControlButton(icon: Icons.remove, onPressed: onDecreaseText),
           _ControlButton(icon: Icons.add, onPressed: onIncreaseText),
           const Spacer(),
-          _ControlButton(
-            icon: isPlaying ? Icons.pause : Icons.volume_up,
-            onPressed: onToggleAudio,
-          ),
+          if (isLoading)
+            const SizedBox(
+              width: 24,
+              height: 24,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          else
+            _ControlButton(
+              icon: isPlaying ? Icons.pause : Icons.volume_up,
+              onPressed: onToggleAudio,
+            ),
         ],
       ),
     );
@@ -393,10 +318,4 @@ class _ControlButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return IconButton(onPressed: onPressed, icon: Icon(icon));
   }
-}
-
-class _WordTiming {
-  final String text;
-  final int offsetMs;
-  _WordTiming({required this.text, required this.offsetMs});
 }

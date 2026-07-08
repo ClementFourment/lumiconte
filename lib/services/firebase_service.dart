@@ -21,4 +21,5 @@ abstract class FirebaseService {
     final doc = await firestore.doc(path).get();
     return doc.data();
   }
+  
 }
