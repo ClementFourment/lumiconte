@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lumiconte/models/category_model.dart';
 import 'package:lumiconte/models/story_model.dart';
-import 'profile_creation_page.dart';
 import 'package:lumiconte/models/profile_model.dart';
-import 'package:lumiconte/services/seed_database.dart';
 import 'package:lumiconte/widget/b2_image.dart';
 import 'package:go_router/go_router.dart';
 

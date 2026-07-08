@@ -1,4 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:lumiconte/models/category_model.dart';
 import 'firebase_service.dart';
 
@@ -9,8 +8,7 @@ class CategoryService extends FirebaseService {
       final querySnapshot = await firestore.collection('categories').get();
 
       return querySnapshot.docs
-          .map((doc) =>
-              CategoryModel.fromMap(doc.data() as Map<String, dynamic>, doc.id))
+          .map((doc) => CategoryModel.fromMap(doc.data(), doc.id))
           .toList();
     } catch (e) {
       print('Erreur récupération catégories: $e');
@@ -22,8 +20,7 @@ class CategoryService extends FirebaseService {
   Stream<List<CategoryModel>> getCategoriesStream() {
     return firestore.collection('categories').snapshots().map((querySnapshot) {
       return querySnapshot.docs
-          .map((doc) =>
-              CategoryModel.fromMap(doc.data() as Map<String, dynamic>, doc.id))
+          .map((doc) => CategoryModel.fromMap(doc.data(), doc.id))
           .toList();
     });
   }

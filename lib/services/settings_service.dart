@@ -1,4 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:lumiconte/models/settings_model.dart';
 import 'firebase_service.dart';
 
@@ -51,8 +50,7 @@ class SettingsService extends FirebaseService {
 
       if (querySnapshot.docs.isNotEmpty) {
         final doc = querySnapshot.docs.first;
-        return SettingsModel.fromMap(
-            doc.data() as Map<String, dynamic>, doc.id);
+        return SettingsModel.fromMap(doc.data(), doc.id);
       }
       return null;
     } catch (e) {
@@ -99,8 +97,7 @@ class SettingsService extends FirebaseService {
         .map((querySnapshot) {
       if (querySnapshot.docs.isNotEmpty) {
         final doc = querySnapshot.docs.first;
-        return SettingsModel.fromMap(
-            doc.data() as Map<String, dynamic>, doc.id);
+        return SettingsModel.fromMap(doc.data(), doc.id);
       }
       return null;
     });
