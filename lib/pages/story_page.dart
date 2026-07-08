@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:lumiconte/models/story_model.dart';
 import 'package:lumiconte/widget/b2_audio.dart';
 import 'package:lumiconte/widget/b2_image.dart';
-import 'package:flutter_tts/flutter_tts.dart';
+import 'package:lumiconte/services/audio_generation_service.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'dart:typed_data';
+import 'package:crypto/crypto.dart';
+import 'package:edge_tts/edge_tts.dart';
+import 'package:audioplayers/audioplayers.dart';
 
 class StoryPage extends StatefulWidget {
   final StoryModel story;
@@ -19,35 +24,124 @@ class _StoryPageState extends State<StoryPage> {
   double _fontSize = 22;
   bool _isFavorite = false;
   bool _isPlaying = false;
+  bool _isLoading = false;
+  bool _hasAudio = false;
+  final _player = AudioPlayer();
 
-  late final B2Audio _audio;
+  final Set<String> punctuation = {
+    '.', ',', ';', ':', '!', '?', '…', '(', ')', '[', ']',
+    '{', '}', '"', '«', '»', '|', '*', '^', '~', '/', '\\',
+    "'", "’", '-', '_' //a
+  };
+  List<_WordTiming> _wordTimings = [];
+  int _currentWordIndex = -1;
 
   @override
   void initState() {
     super.initState();
-    _audio = B2Audio(objectKey: widget.story.audio);
-    _audio.onComplete.listen((_) {
-      if (mounted) setState(() => _isPlaying = false);
+
+    // Ces listeners sont posés UNE SEULE FOIS, pas à chaque lecture
+    _player.onPositionChanged.listen((position) {
+      final ms = position.inMilliseconds;
+      final index = _wordTimings.lastIndexWhere((w) => w.offsetMs <= ms);
+      if (index != _currentWordIndex && mounted) {
+        setState(() => _currentWordIndex = index);
+      }
+    });
+
+    _player.onPlayerComplete.listen((_) {
+      if (mounted) {
+        setState(() {
+          _isPlaying = false;
+          _currentWordIndex = -1;
+        });
+      }
     });
   }
 
-  Future<void> _toggleAudio(String text) async {
-    if (_isPlaying) {
-      await _audio.pause();
-    } else {
-      await _audio.play();
+  Future<void> _generateAndPlay() async {
+    setState(() {
+      _isLoading = true;
+      _wordTimings = [];
+      _currentWordIndex = -1;
+    });
+
+    try {
+      final tts = Communicate(
+        text: widget.story.content.replaceAll(
+            r'\n', '. '), //permet de respecter les intonnations de poesie
+        voice: 'fr-FR-DeniseNeural',
+        rate: '-10%', // légèrement ralenti, adapté conte du soir
+        wordBoundary: true,
+      );
+
+      final audioChunks = <int>[];
+
+      await for (final event in tts.stream()) {
+        if (event is AudioDataEvent) {
+          audioChunks.addAll(event.data);
+        } else if (event is WordBoundaryEvent) {
+          _wordTimings.add(_WordTiming(
+            text: event.text,
+            offsetMs: event.offset ~/
+                10000, // conversion ticks -> ms, à ajuster selon l'unité réelle
+          ));
+        }
+      }
+
+      await _player.play(BytesSource(Uint8List.fromList(audioChunks)));
+      _hasAudio = true; // <-- on retient qu'on a déjà l'audio
+      setState(() => _isPlaying = true);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erreur: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
-    setState(() => _isPlaying = !_isPlaying);
+  }
+
+  Future<void> _toggleAudio() async {
+    if (_isPlaying) {
+      await _player.pause();
+      setState(() => _isPlaying = false);
+      return;
+    }
+
+    if (_hasAudio) {
+      await _player.resume();
+      setState(() => _isPlaying = true);
+      return;
+    }
+
+    await _generateAndPlay();
   }
 
   @override
   void dispose() {
-    _audio.dispose();
+    _player.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final text = widget.story.content
+        .replaceAll(r'\n', ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+    final List<String> _words = text.split(' ');
+
+    print(_words);
+
+    final String textToDisplay = _words
+        .map((w) => punctuation.contains(w) ? '' : w)
+        .join(' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+    final wordsToDisplay =
+        textToDisplay.split(' '); //.replaceAll(r'\n', ' ').split(' ');
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
@@ -112,24 +206,46 @@ class _StoryPageState extends State<StoryPage> {
                         controller: scrollController,
                         physics: const BouncingScrollPhysics(),
                         padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
-                        child: AnimatedDefaultTextStyle(
-                          duration: const Duration(milliseconds: 200),
-                          style: TextStyle(
-                            fontSize: _fontSize,
-                            height: 1.7,
-                            color: Colors.black87,
-                          ),
-                          child: Text(
-                            widget.story.content.replaceAll(r'\n', '\n'),
-                          ),
+                        child: Wrap(
+                          children: List.generate(wordsToDisplay.length, (i) {
+                            final isCurrent = i == _currentWordIndex;
+                            return Container(
+                              margin:
+                                  const EdgeInsets.only(right: 4, bottom: 4),
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 2),
+                              decoration: BoxDecoration(
+                                color: isCurrent ? Colors.amber.shade200 : null,
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                wordsToDisplay[i],
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: isCurrent
+                                      ? FontWeight.bold
+                                      : FontWeight.normal,
+                                ),
+                              ),
+                            );
+                          }),
                         ),
+
+                        // AnimatedDefaultTextStyle(
+                        //   duration: const Duration(milliseconds: 200),
+                        //   style: TextStyle(
+                        //     fontSize: _fontSize,
+                        //     height: 1.7,
+                        //     color: Colors.black87,
+                        //   ),
+                        //   child: Text(wordsToDisplay[i]),
+                        // ),
                       ),
                     ),
                     Padding(
                       padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                       child: _BottomControls(
                         storyId: widget.story.id,
-                        text: widget.story.content,
                         isPlaying: _isPlaying,
                         onDecreaseText: () => setState(
                           () => _fontSize = (_fontSize - 2).clamp(18, 34),
@@ -137,7 +253,7 @@ class _StoryPageState extends State<StoryPage> {
                         onIncreaseText: () => setState(
                           () => _fontSize = (_fontSize + 2).clamp(18, 34),
                         ),
-                        onToggleAudio: () => _toggleAudio(widget.story.content),
+                        onToggleAudio: () => _toggleAudio(),
                       ),
                     ),
                   ],
@@ -202,7 +318,6 @@ class _TopBar extends StatelessWidget {
 
 class _BottomControls extends StatelessWidget {
   final String storyId;
-  final String text;
   final bool isPlaying;
   final VoidCallback onDecreaseText;
   final VoidCallback onIncreaseText;
@@ -210,7 +325,6 @@ class _BottomControls extends StatelessWidget {
 
   const _BottomControls({
     required this.storyId,
-    required this.text,
     required this.isPlaying,
     required this.onDecreaseText,
     required this.onIncreaseText,
@@ -230,11 +344,6 @@ class _BottomControls extends StatelessWidget {
           _ControlButton(icon: Icons.remove, onPressed: onDecreaseText),
           _ControlButton(icon: Icons.add, onPressed: onIncreaseText),
           const Spacer(),
-          _GenerateAudioButton(
-            storyId: storyId,
-            text: text,
-            icon: Icons.generating_tokens_outlined,
-          ),
           _ControlButton(
             icon: isPlaying ? Icons.pause : Icons.volume_up,
             onPressed: onToggleAudio,
@@ -286,55 +395,8 @@ class _ControlButton extends StatelessWidget {
   }
 }
 
-class _GenerateAudioButton extends StatelessWidget {
-  final String storyId;
+class _WordTiming {
   final String text;
-  final IconData icon;
-
-  const _GenerateAudioButton(
-      {required this.storyId, required this.text, required this.icon});
-
-  @override
-  Widget build(BuildContext context) {
-    return IconButton(
-        onPressed: () async {
-          try {
-            final objectKey = await generateAudio(storyId: storyId, text: text);
-            print(objectKey);
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text("Audio généré !")),
-            );
-          } catch (e) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(e.toString())),
-            );
-          }
-        },
-        icon: Icon(icon));
-  }
-
-  Future<String> generateAudio({
-    required String storyId,
-    required String text,
-  }) async {
-    final response = await http.post(
-      Uri.parse("https://clementfourment.fr/google-key/"),
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: jsonEncode({
-        "storyId": storyId,
-        "text": text,
-      }),
-    );
-
-    if (response.statusCode != 200) {
-      throw Exception(response.body);
-    }
-    print(response.body);
-
-    final json = jsonDecode(response.body);
-
-    return json["objectKey"];
-  }
+  final int offsetMs;
+  _WordTiming({required this.text, required this.offsetMs});
 }
