@@ -84,6 +84,73 @@ class StorageService {
     return response.bodyBytes;
   }
 
+  /// Génère une URL pré-signée (signature dans la query string, façon
+  /// "lien temporaire"). Contrairement à [fetchObject], aucun en-tête custom
+  /// n'est requis pour l'appel final : l'URL retournée peut être utilisée
+  /// telle quelle par n'importe quel client HTTP (ex: UrlSource d'audioplayers),
+  /// qui peut alors faire des range-requests et streamer progressivement au
+  /// lieu d'attendre le fichier entier.
+  static Future<String> getPresignedUrl(
+    String url, {
+    Duration expiresIn = const Duration(hours: 1),
+  }) async {
+    final uri = Uri.parse(url);
+    final host = uri.host;
+    final region = _regionFromHost(host);
+
+    final now = DateTime.now().toUtc();
+    final amzDate = _formatAmzDate(now);
+    final dateStamp = amzDate.substring(0, 8);
+    final credentialScope = '$dateStamp/$region/$_service/aws4_request';
+
+    final canonicalUriPath =
+        '/' + uri.pathSegments.map(Uri.encodeComponent).join('/');
+
+    final queryParams = <String, String>{
+      'X-Amz-Algorithm': 'AWS4-HMAC-SHA256',
+      'X-Amz-Credential': '$_accessKey/$credentialScope',
+      'X-Amz-Date': amzDate,
+      'X-Amz-Expires': expiresIn.inSeconds.toString(),
+      'X-Amz-SignedHeaders': 'host',
+    };
+
+    final sortedKeys = queryParams.keys.toList()..sort();
+    final canonicalQueryString = sortedKeys
+        .map((k) =>
+            '${Uri.encodeComponent(k)}=${Uri.encodeComponent(queryParams[k]!)}')
+        .join('&');
+
+    const signedHeaders = 'host';
+    final canonicalHeaders = 'host:$host\n';
+
+    final canonicalRequest = [
+      'GET',
+      canonicalUriPath,
+      canonicalQueryString,
+      canonicalHeaders,
+      signedHeaders,
+      'UNSIGNED-PAYLOAD',
+    ].join('\n');
+
+    const algorithm = 'AWS4-HMAC-SHA256';
+    final stringToSign = [
+      algorithm,
+      amzDate,
+      credentialScope,
+      sha256.convert(utf8.encode(canonicalRequest)).toString(),
+    ].join('\n');
+
+    final signingKey =
+        _getSignatureKey(_secretKey, dateStamp, region, _service);
+    final signature =
+        Hmac(sha256, signingKey).convert(utf8.encode(stringToSign)).toString();
+
+    final finalQuery = '$canonicalQueryString'
+        '&X-Amz-Signature=$signature';
+
+    return 'https://$host$canonicalUriPath?$finalQuery';
+  }
+
   static const String _emptyPayloadHash =
       'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855';
 

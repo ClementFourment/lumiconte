@@ -1,7 +1,10 @@
 class StoryModel {
   final String id;
   final String name;
+  final String content;
   final String image;
+  final List<Map<String, String>> audio;
+  final String audioTimes;
   final List<String> categoryIds;
   final String type; // 'original' ou 'generated'
   final String createdByProfileId;
@@ -10,7 +13,10 @@ class StoryModel {
   StoryModel({
     required this.id,
     required this.name,
+    required this.content,
     required this.image,
+    required this.audio,
+    required this.audioTimes,
     this.categoryIds = const [],
     this.type = 'original',
     this.createdByProfileId = '',
@@ -21,7 +27,12 @@ class StoryModel {
     return StoryModel(
       id: docId,
       name: data['name'] ?? '',
+      content: data['content'] ?? '',
       image: data['image'] ?? '',
+      audio: (data['audio'] as List<dynamic>? ?? [])
+          .map((item) => Map<String, String>.from(item as Map))
+          .toList(),
+      audioTimes: data['audioTimes'] ?? '',
       categoryIds: List<String>.from(data['categoryIds'] ?? []),
       type: data['type'] ?? 'original',
       createdByProfileId: data['createdByProfileId'] ?? '',
@@ -32,7 +43,10 @@ class StoryModel {
   Map<String, dynamic> toMap() {
     return {
       'name': name,
+      'content': content,
       'image': image,
+      'audio': audio,
+      'audioTimes': audioTimes,
       'categoryIds': categoryIds,
       'type': type,
       'createdByProfileId': createdByProfileId,

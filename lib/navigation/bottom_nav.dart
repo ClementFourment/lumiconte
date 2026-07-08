@@ -69,7 +69,7 @@ class _BottomNavState extends State<BottomNav> {
             body: Center(child: CircularProgressIndicator()),
           );
         }
-
+        print(snapshot.error);
         if (snapshot.hasError || !snapshot.hasData) {
           return const Scaffold(
             body: Center(child: Text("Erreur de chargement")),
