@@ -17,6 +17,10 @@ class _StoryPageState extends State<StoryPage> {
   bool _isFavorite = false;
   bool _isPlaying = false;
   bool _isLoading = false;
+  bool _isSeeking = false;
+  double _seekValue = 0;
+  Duration _audioPosition = Duration.zero;
+  Duration _audioDuration = Duration.zero;
 
   late final B2Audio _audio;
 
@@ -33,19 +37,100 @@ class _StoryPageState extends State<StoryPage> {
     // lecture, le flux est déjà prêt (ou bien avancé).
     _audio.preload();
 
-    _audio.onComplete.listen((_) async {
-      await _audio.seekToStart();
-      if (mounted) setState(() => _isPlaying = false);
+    // Gestion de la fin d'audio
+    _audio.onComplete.listen((_) {
+      _handleAudioComplete();
     });
+
+    _audio.onPositionChanged.listen((position) {
+      if (mounted && !_isSeeking) {
+        setState(() {
+          _audioPosition = position;
+        });
+      }
+    });
+
+    _audio.onDurationChanged.listen((duration) {
+      if (mounted) {
+        setState(() {
+          _audioDuration = duration;
+        });
+      }
+    });
+  }
+
+  /// Gère la fin de l'audio de manière robuste
+  Future<void> _handleAudioComplete() async {
+    if (!mounted) return;
+
+    try {
+      // Mettre d'abord l'état à jour avant de faire le seek
+      setState(() {
+        _isPlaying = false;
+        _audioPosition = Duration.zero;
+        _isSeeking = true; // Empêcher les updates pendant le seek
+      });
+
+      // Puis rembobiner à zéro
+      await _audio.seekToStart();
+
+      if (mounted) {
+        setState(() {
+          _isSeeking = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Erreur lors de la fin d\'audio: $e');
+      if (mounted) {
+        setState(() {
+          _isSeeking = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _seekAudio(double value) async {
+    setState(() => _isSeeking = true);
+    try {
+      await _audio.seek(Duration(seconds: value.toInt()));
+      if (mounted) {
+        setState(() {
+          _audioPosition = Duration(seconds: value.toInt());
+        });
+      }
+    } catch (e) {
+      debugPrint('Erreur seek: $e');
+    } finally {
+      if (mounted) {
+        setState(() => _isSeeking = false);
+      }
+    }
   }
 
   Future<void> _toggleAudio() async {
     if (_isPlaying) {
+      // Si on est en train de jouer, pause
       await _audio.pause();
       setState(() => _isPlaying = false);
       return;
     }
 
+    // Si on est à la fin, rembobiner d'abord
+    if (_audioPosition >= _audioDuration && _audioDuration > Duration.zero) {
+      setState(() => _isSeeking = true);
+      try {
+        await _audio.seekToStart();
+        setState(() {
+          _audioPosition = Duration.zero;
+          _isSeeking = false;
+        });
+      } catch (e) {
+        debugPrint('Erreur lors du rewind: $e');
+        setState(() => _isSeeking = false);
+      }
+    }
+
+    // Ensuite, jouer
     setState(() => _isLoading = true);
     try {
       await _audio.play();
@@ -155,6 +240,9 @@ class _StoryPageState extends State<StoryPage> {
                         storyId: widget.story.id,
                         isPlaying: _isPlaying,
                         isLoading: _isLoading,
+                        audioPosition: _audioPosition,
+                        audioDuration: _audioDuration,
+                        onSeek: _seekAudio,
                         onDecreaseText: () => setState(
                           () => _fontSize = (_fontSize - 2).clamp(18, 34),
                         ),
@@ -228,6 +316,9 @@ class _BottomControls extends StatelessWidget {
   final String storyId;
   final bool isPlaying;
   final bool isLoading;
+  final Duration audioPosition;
+  final Duration audioDuration;
+  final ValueChanged<double> onSeek;
   final VoidCallback onDecreaseText;
   final VoidCallback onIncreaseText;
   final VoidCallback onToggleAudio;
@@ -236,6 +327,9 @@ class _BottomControls extends StatelessWidget {
     required this.storyId,
     required this.isPlaying,
     required this.isLoading,
+    required this.audioPosition,
+    required this.audioDuration,
+    required this.onSeek,
     required this.onDecreaseText,
     required this.onIncreaseText,
     required this.onToggleAudio,
@@ -249,22 +343,53 @@ class _BottomControls extends StatelessWidget {
         color: Colors.deepPurple.shade50,
         borderRadius: BorderRadius.circular(24),
       ),
-      child: Row(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          _ControlButton(icon: Icons.remove, onPressed: onDecreaseText),
-          _ControlButton(icon: Icons.add, onPressed: onIncreaseText),
-          const Spacer(),
-          if (isLoading)
-            const SizedBox(
-              width: 24,
-              height: 24,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            )
-          else
-            _ControlButton(
-              icon: isPlaying ? Icons.pause : Icons.volume_up,
-              onPressed: onToggleAudio,
-            ),
+          Slider(
+            min: 0,
+            max: audioDuration.inSeconds.toDouble() > 0
+                ? audioDuration.inSeconds.toDouble()
+                : 1,
+            value: audioPosition.inSeconds
+                .clamp(
+                  0,
+                  audioDuration.inSeconds,
+                )
+                .toDouble(),
+            onChanged: (value) {
+              // uniquement déplacer visuellement le curseur
+            },
+            onChangeEnd: (value) {
+              onSeek(value);
+            },
+          ),
+          Row(
+            children: [
+              _ControlButton(
+                icon: Icons.remove,
+                onPressed: onDecreaseText,
+              ),
+              _ControlButton(
+                icon: Icons.add,
+                onPressed: onIncreaseText,
+              ),
+              const Spacer(),
+              if (isLoading)
+                const SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                  ),
+                )
+              else
+                _ControlButton(
+                  icon: isPlaying ? Icons.pause : Icons.volume_up,
+                  onPressed: onToggleAudio,
+                ),
+            ],
+          ),
         ],
       ),
     );
