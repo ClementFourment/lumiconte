@@ -2,14 +2,14 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'package:crypto/crypto.dart';
 import 'package:http/http.dart' as http;
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class AudioGenerationService {
-  static const _googleApiKey =
-      'REMOVED_GOOGLE_TTS_API_KEY'; //'REMOVED_GOOGLE_TTS_API_KEY';
+  static String get _googleApiKey => dotenv.env['GOOGLE_TTS_API_KEY']!;
 
-  static const _b2KeyId = 'REMOVED_B2_KEY_ID';
-  static const _b2AppKey = 'REMOVED_B2_APP_KEY';
-  static const _b2BucketId = 'REMOVED_B2_BUCKET_ID';
+  static String get _b2KeyId => dotenv.env['B2_KEY_ID']!;
+  static String get _b2AppKey => dotenv.env['B2_APP_KEY']!;
+  static String get _b2BucketId => dotenv.env['B2_BUCKET_ID']!;
 
   /// Génère l'audio via Google TTS, l'upload sur B2, et renvoie l'objectKey.
   static Future<String> generateAndUploadAudio({

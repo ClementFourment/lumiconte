@@ -2,10 +2,11 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'package:crypto/crypto.dart';
 import 'package:http/http.dart' as http;
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class StorageService {
-  static const String _accessKey = 'REMOVED_B2_ACCESS_KEY';
-  static const String _secretKey = 'REMOVED_B2_SECRET_KEY';
+  static String get _accessKey => dotenv.env['B2_ACCESS_KEY']!;
+  static String get _secretKey => dotenv.env['B2_SECRET_KEY']!;
   static const String _service = 's3';
 
   static final Map<String, Future<Uint8List>> _cache = {};
