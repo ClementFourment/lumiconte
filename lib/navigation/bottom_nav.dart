@@ -98,7 +98,7 @@ class _BottomNavState extends State<BottomNav> {
           //CategoriesPage(categories: categories, stories: stories), 
           LibraryPage(profileId: profile.id,categories: categories, stories: stories),
           const FavoritesPage(),
-          const ProfilePage(),
+           ProfilePage(profileId: profile.id),
         ];
 
         return Scaffold(
