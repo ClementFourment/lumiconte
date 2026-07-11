@@ -18,44 +18,48 @@ class _StoryPageState extends State<StoryPage> {
   bool _isPlaying = false;
   bool _isLoading = false;
   bool _isSeeking = false;
+  bool _isAudio = false;
   Duration _audioPosition = Duration.zero;
   Duration _audioDuration = Duration.zero;
 
-  late final B2Audio _audio;
+  B2Audio? _audio;
 
   @override
   void initState() {
     super.initState();
-    final test = widget.story.audio[1]['harry'] ?? '';
-    // NB : widget.story.audio doit contenir la clé de l'objet mp3 sur B2
-    // (même principe que widget.story.image pour B2Image).
-    _audio = B2Audio(objectKey: test);
+    _isAudio = (widget.story.audio.isNotEmpty &&
+        widget.story.audio.first.values.isNotEmpty);
+    print("audio");
+    print(_isAudio);
+    print("audio");
+    final audio = _isAudio ? widget.story.audio.first.values.first : '';
 
-    // Démarre le buffering en arrière-plan dès l'ouverture de la page,
-    // pendant que l'utilisateur lit le texte : au moment où il appuie sur
-    // lecture, le flux est déjà prêt (ou bien avancé).
-    _audio.preload();
+    if (_isAudio) {
+      _audio = B2Audio(objectKey: audio);
 
-    // Gestion de la fin d'audio
-    _audio.onComplete.listen((_) {
-      _handleAudioComplete();
-    });
+      _audio!.preload();
 
-    _audio.onPositionChanged.listen((position) {
-      if (mounted && !_isSeeking) {
-        setState(() {
-          _audioPosition = position;
-        });
-      }
-    });
+      // Gestion de la fin d'audio
+      _audio!.onComplete.listen((_) {
+        _handleAudioComplete();
+      });
 
-    _audio.onDurationChanged.listen((duration) {
-      if (mounted) {
-        setState(() {
-          _audioDuration = duration;
-        });
-      }
-    });
+      _audio!.onPositionChanged.listen((position) {
+        if (mounted && !_isSeeking) {
+          setState(() {
+            _audioPosition = position;
+          });
+        }
+      });
+
+      _audio!.onDurationChanged.listen((duration) {
+        if (mounted) {
+          setState(() {
+            _audioDuration = duration;
+          });
+        }
+      });
+    }
   }
 
   /// Gère la fin de l'audio de manière robuste
@@ -71,7 +75,7 @@ class _StoryPageState extends State<StoryPage> {
       });
 
       // Puis rembobiner à zéro
-      await _audio.seekToStart();
+      await _audio?.seekToStart();
 
       if (mounted) {
         setState(() {
@@ -91,7 +95,7 @@ class _StoryPageState extends State<StoryPage> {
   Future<void> _seekAudio(double value) async {
     setState(() => _isSeeking = true);
     try {
-      await _audio.seek(Duration(seconds: value.toInt()));
+      await _audio?.seek(Duration(seconds: value.toInt()));
       if (mounted) {
         setState(() {
           _audioPosition = Duration(seconds: value.toInt());
@@ -109,7 +113,7 @@ class _StoryPageState extends State<StoryPage> {
   Future<void> _toggleAudio() async {
     if (_isPlaying) {
       // Si on est en train de jouer, pause
-      await _audio.pause();
+      await _audio?.pause();
       setState(() => _isPlaying = false);
       return;
     }
@@ -118,7 +122,7 @@ class _StoryPageState extends State<StoryPage> {
     if (_audioPosition >= _audioDuration && _audioDuration > Duration.zero) {
       setState(() => _isSeeking = true);
       try {
-        await _audio.seekToStart();
+        await _audio?.seekToStart();
         setState(() {
           _audioPosition = Duration.zero;
           _isSeeking = false;
@@ -132,7 +136,7 @@ class _StoryPageState extends State<StoryPage> {
     // Ensuite, jouer
     setState(() => _isLoading = true);
     try {
-      await _audio.play();
+      await _audio?.play();
       if (mounted) setState(() => _isPlaying = true);
     } catch (e) {
       if (mounted) {
@@ -147,7 +151,7 @@ class _StoryPageState extends State<StoryPage> {
 
   @override
   void dispose() {
-    _audio.dispose();
+    _audio?.dispose();
     super.dispose();
   }
 
@@ -239,6 +243,7 @@ class _StoryPageState extends State<StoryPage> {
                         storyId: widget.story.id,
                         isPlaying: _isPlaying,
                         isLoading: _isLoading,
+                        isAudio: _isAudio,
                         audioPosition: _audioPosition,
                         audioDuration: _audioDuration,
                         onSeek: _seekAudio,
@@ -315,6 +320,7 @@ class _BottomControls extends StatelessWidget {
   final String storyId;
   final bool isPlaying;
   final bool isLoading;
+  final bool isAudio;
   final Duration audioPosition;
   final Duration audioDuration;
   final ValueChanged<double> onSeek;
@@ -326,6 +332,7 @@ class _BottomControls extends StatelessWidget {
     required this.storyId,
     required this.isPlaying,
     required this.isLoading,
+    required this.isAudio,
     required this.audioPosition,
     required this.audioDuration,
     required this.onSeek,
@@ -382,7 +389,7 @@ class _BottomControls extends StatelessWidget {
                     strokeWidth: 2,
                   ),
                 )
-              else
+              else if (isAudio)
                 _ControlButton(
                   icon: isPlaying ? Icons.pause : Icons.volume_up,
                   onPressed: onToggleAudio,
