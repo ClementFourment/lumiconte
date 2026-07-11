@@ -33,8 +33,8 @@ class _SettingsPageState extends State<SettingsPage> {
     await _settingsCollection.doc(docId).update({key: value});
   }
 
-  // 🧪 Algorithme de découpage en syllabes et détection des lettres muettes (LireCouleur)
-List<TextSpan> _parseWordToDyslexiaSpans(String word, TextStyle baseDysStyle, Color defaultTextColor) {
+  // 🧪 Algorithme de découpage en syllabes et détection des lettres muettes
+  List<TextSpan> _parseWordToDyslexiaSpans(String word, TextStyle baseDysStyle, Color defaultTextColor) {
     final Color colorRed = Colors.red.shade700;
     final Color colorBlue = Colors.blue.shade700;
     final Color colorSilent = defaultTextColor.withOpacity(0.35);
@@ -43,7 +43,6 @@ List<TextSpan> _parseWordToDyslexiaSpans(String word, TextStyle baseDysStyle, Co
       return [TextSpan(text: word, style: baseDysStyle.copyWith(color: defaultTextColor))];
     }
 
-    // 1. Isoler la ponctuation attachée au mot avec des vérifications d'index strictes
     final matchStart = RegExp(r'^[^a-zA-ZÀ-ÿ]+').firstMatch(word);
     final matchEnd = RegExp(r'[^a-zA-ZÀ-ÿ]+$').firstMatch(word);
     
@@ -52,14 +51,9 @@ List<TextSpan> _parseWordToDyslexiaSpans(String word, TextStyle baseDysStyle, Co
     
     String cleanWord = word;
     
-    // Sécurité : On ne découpe que si les tailles calculées sont cohérentes
     if (prefix.length + suffix.length < word.length) {
-      cleanWord = word.substring(
-        prefix.length, 
-        word.length - suffix.length
-      );
+      cleanWord = word.substring(prefix.length, word.length - suffix.length);
     } else {
-      // Si le mot n'est fait QUE de caractères spéciaux (ex: "...", "—")
       return [TextSpan(text: word, style: baseDysStyle.copyWith(color: defaultTextColor))];
     }
 
@@ -67,7 +61,6 @@ List<TextSpan> _parseWordToDyslexiaSpans(String word, TextStyle baseDysStyle, Co
       return [TextSpan(text: word, style: baseDysStyle.copyWith(color: defaultTextColor))];
     }
 
-    // 2. Détecter les lettres muettes ou caduques
     String silentLetters = '';
     final silentMatch = RegExp(r'(ts|ds|es|[stdxega])$', caseSensitive: false).firstMatch(cleanWord);
     
@@ -85,7 +78,6 @@ List<TextSpan> _parseWordToDyslexiaSpans(String word, TextStyle baseDysStyle, Co
       wordSpans.add(TextSpan(text: prefix, style: baseDysStyle.copyWith(color: defaultTextColor)));
     }
 
-    // 3. Découpage syllabique
     List<String> syllables = [];
     if (cleanWord.length <= 3) {
       syllables.add(cleanWord);
@@ -105,7 +97,6 @@ List<TextSpan> _parseWordToDyslexiaSpans(String word, TextStyle baseDysStyle, Co
       }
     }
 
-    // 4. Assembler les syllabes (Bleu / Rouge)
     for (int i = 0; i < syllables.length; i++) {
       if (syllables[i].isEmpty) continue;
       wordSpans.add(TextSpan(
@@ -116,7 +107,6 @@ List<TextSpan> _parseWordToDyslexiaSpans(String word, TextStyle baseDysStyle, Co
       ));
     }
 
-    // 5. Ajouter les lettres muettes
     if (silentLetters.isNotEmpty) {
       wordSpans.add(TextSpan(
         text: silentLetters,
@@ -135,7 +125,6 @@ List<TextSpan> _parseWordToDyslexiaSpans(String word, TextStyle baseDysStyle, Co
     return wordSpans;
   }
 
-  // Fonction maîtresse appelée par le RichText
   TextSpan _buildColorizedText({
     required String text,
     required double baseFontSize,
@@ -149,7 +138,6 @@ List<TextSpan> _parseWordToDyslexiaSpans(String word, TextStyle baseDysStyle, Co
       );
     }
 
-    // Configuration des constantes du Mode Dyslexie demandé
     final double dysFontSize = baseFontSize + 4;
     const double dysLetterSpacing = 1.8;
     const double dysLineHeight = 1.6;
@@ -166,8 +154,6 @@ List<TextSpan> _parseWordToDyslexiaSpans(String word, TextStyle baseDysStyle, Co
 
     for (int i = 0; i < words.length; i++) {
       allSpans.addAll(_parseWordToDyslexiaSpans(words[i], baseDysStyle, defaultTextColor));
-      
-      // Ajouter l'espace entre les mots
       if (i < words.length - 1) {
         allSpans.add(TextSpan(text: ' ', style: baseDysStyle));
       }
@@ -217,12 +203,11 @@ List<TextSpan> _parseWordToDyslexiaSpans(String word, TextStyle baseDysStyle, Co
           final double fontSize = (settingsData['fontSize'] ?? 16).toDouble();
           final String currentTheme = settingsData['theme'] ?? 'light';
 
-          // Le mode Dyslexie force le fond crème papier
           Color previewBg;
           Color previewText;
 
           if (dyslexia) {
-            previewBg = const Color(0xFFF5EFE6);
+            previewBg = Colors.white;
             previewText = const Color(0xFF2B261F);
           } else if (currentTheme == 'dark') {
             previewBg = const Color(0xFF1C1C1E);
@@ -268,107 +253,105 @@ List<TextSpan> _parseWordToDyslexiaSpans(String word, TextStyle baseDysStyle, Co
               const SizedBox(height: 8),
 
               // Taille de la police Card
-// === REMPLACE TOUTE LA CARD "TAILLE DE LA POLICE" PAR CE BLOC ===
-
-// 1. Calcule le pourcentage propre avant le widget (à mettre juste ici)
-Card(
-  color: Colors.white,
-  elevation: 0,
-  shape: RoundedRectangleBorder(
-    borderRadius: BorderRadius.circular(12),
-    side: BorderSide(color: Colors.grey.shade200),
-  ),
-  child: Padding(
-    padding: const EdgeInsets.all(16.0),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const Text(
-              'Taille du texte',
-              style: TextStyle(color: Colors.black, fontWeight: FontWeight.w500),
-            ),
-            Text(
-              '${(((fontSize / 16) * 10).round() * 10).clamp(80, 200)} %', // Calcul direct ici
-              style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.deepPurple),
-            ),
-          ],
-        ),
-        Slider(
-          value: ((fontSize / 16) * 100).round().toDouble(), // Calcul direct ici
-          min: 80,   
-          max: 200,  
-          divisions: 12, 
-          activeColor: Colors.deepPurple,
-          inactiveColor: Colors.grey.shade200,
-          onChanged: (double percentageValue) {
-            double calculatedPixels = (percentageValue / 100) * 16;
-            _updateSetting(docId, 'fontSize', calculatedPixels.round());
-          },
-        ),
-        const SizedBox(height: 10),
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: previewBg,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.grey.shade300),
-          ),
-          child: RichText(
-            textAlign: TextAlign.left,
-            text: _buildColorizedText(
-              text: 'Je ne puis pas jouer avec toi, dit le renard. Les hommes chassent. C\'est bien gênant !',
-              baseFontSize: fontSize,
-              defaultTextColor: previewText,
-              isDyslexiaEnabled: dyslexia,
-            ),
-          ),
-        )
-      ],
-    ),
-  ),
-),
-
-              const SizedBox(height: 24),
-              _buildSectionTitle('Thème de lecture'),
-              const SizedBox(height: 12),
-
-              // Sélecteur de Thème
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  _buildThemeOption(
-                    label: 'Clair',
-                    themeKey: 'light',
-                    currentTheme: currentTheme,
-                    bgColor: Colors.white,
-                    textColor: Colors.black,
-                    borderColor: Colors.grey.shade300,
-                    docId: docId,
+              Card(
+                color: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  side: BorderSide(color: Colors.grey.shade200),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'Taille du texte',
+                            style: TextStyle(color: Colors.black, fontWeight: FontWeight.w500),
+                          ),
+                          Text(
+                            '${(((fontSize / 16) * 10).round() * 10).clamp(80, 200)} %',
+                            style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.deepPurple),
+                          ),
+                        ],
+                      ),
+                      Slider(
+                        value: (((fontSize / 16) * 10).round() * 10).clamp(80, 200).toDouble(),
+                        min: 80,   
+                        max: 200,  
+                        divisions: 12, 
+                        activeColor: Colors.deepPurple,
+                        inactiveColor: Colors.grey.shade200,
+                        onChanged: (double percentageValue) {
+                          double calculatedPixels = (percentageValue / 100) * 16;
+                          _updateSetting(docId, 'fontSize', calculatedPixels.round());
+                        },
+                      ),
+                      const SizedBox(height: 10),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: previewBg,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.grey.shade300),
+                        ),
+                        child: RichText(
+                          textAlign: TextAlign.left,
+                          text: _buildColorizedText(
+                            text: 'Je ne puis pas jouer avec toi, dit le renard. Les hommes chassent. C\'est bien gênant !',
+                            baseFontSize: fontSize,
+                            defaultTextColor: previewText,
+                            isDyslexiaEnabled: dyslexia,
+                          ),
+                        ),
+                      )
+                    ],
                   ),
-                  _buildThemeOption(
-                    label: 'Sombre',
-                    themeKey: 'dark',
-                    currentTheme: currentTheme,
-                    bgColor: const Color(0xFF1C1C1E),
-                    textColor: Colors.white,
-                    borderColor: Colors.transparent,
-                    docId: docId,
-                  ),
-                  _buildThemeOption(
-                    label: 'Naturel',
-                    themeKey: 'naturel',
-                    currentTheme: currentTheme,
-                    bgColor: const Color(0xFFF5EFE6),
-                    textColor: const Color(0xFF2B261F),
-                    borderColor: Colors.transparent,
-                    docId: docId,
-                  ),
-                ],
+                ),
               ),
+
+              // 🌟 ICI : Condition de masquage des thèmes si le mode dyslexie est activé
+              if (!dyslexia) ...[
+                const SizedBox(height: 24),
+                _buildSectionTitle('Thème de lecture'),
+                const SizedBox(height: 12),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    _buildThemeOption(
+                      label: 'Clair',
+                      themeKey: 'light',
+                      currentTheme: currentTheme,
+                      bgColor: Colors.white,
+                      textColor: Colors.black,
+                      borderColor: Colors.grey.shade300,
+                      docId: docId,
+                    ),
+                    _buildThemeOption(
+                      label: 'Sombre',
+                      themeKey: 'dark',
+                      currentTheme: currentTheme,
+                      bgColor: const Color(0xFF1C1C1E),
+                      textColor: Colors.white,
+                      borderColor: Colors.transparent,
+                      docId: docId,
+                    ),
+                    _buildThemeOption(
+                      label: 'Naturel',
+                      themeKey: 'naturel',
+                      currentTheme: currentTheme,
+                      bgColor: const Color(0xFFF5EFE6),
+                      textColor: const Color(0xFF2B261F),
+                      borderColor: Colors.transparent,
+                      docId: docId,
+                    ),
+                  ],
+                ),
+              ],
             ],
           );
         },
