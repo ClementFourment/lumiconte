@@ -10,6 +10,7 @@ import 'package:lumiconte/pages/home_page.dart';
 import 'package:lumiconte/pages/profile_page.dart';
 import 'package:lumiconte/pages/library_page.dart';
 import 'package:lumiconte/pages/favorites_page.dart';
+//import 'package:lumiconte/pages/categories_page.dart';
 
 class BottomNav extends StatefulWidget {
   const BottomNav({super.key});
@@ -94,7 +95,8 @@ class _BottomNavState extends State<BottomNav> {
 
         final pages = [
           HomePage(profile: profile, categories: categories, stories: stories),
-          const LibraryPage(),
+          //CategoriesPage(categories: categories, stories: stories), 
+          LibraryPage(profileId: profile.id,categories: categories, stories: stories),
           const FavoritesPage(),
           const ProfilePage(),
         ];
