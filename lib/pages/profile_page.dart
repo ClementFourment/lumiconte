@@ -5,7 +5,6 @@ import 'package:lumiconte/services/auth_service.dart';
 import 'package:lumiconte/pages/settings_page.dart';
 import 'package:lumiconte/main.dart'; 
 
-// Imports de tes pages connectées
 import 'package:lumiconte/pages/manage_profiles_page.dart';
 import 'package:lumiconte/pages/rewards_page.dart';
 import 'package:lumiconte/pages/feedback_page.dart';
@@ -27,7 +26,7 @@ class ProfilePage extends StatefulWidget {
 class _ProfilePageState extends State<ProfilePage> {
   static const _gold = Color(0xFFFDB833);
   static const _purpleBg = Color(0xFFE8E5F7);
-  static const _darkPurpleBg = Color(0xFF231F32); // Version sombre pour l'en-tête du profil
+  static const _darkPurpleBg = Color(0xFF231F32);
 
   final AuthService _authService = AuthService();
   final String _uid = FirebaseAuth.instance.currentUser!.uid;
@@ -69,6 +68,31 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
+  // Analyse le flux en direct de la collection Firestore
+  void _manageReadingReminders(List<QueryDocumentSnapshot> docs) {
+    if (!appSettings.isNotificationsEnabled) {
+      appSettings.cancelReadingReminder();
+      return;
+    }
+
+    bool hasUnfinishedStory = false;
+    for (var doc in docs) {
+      final data = doc.data() as Map<String, dynamic>;
+      final int progress = (data['progress'] as num?)?.toInt() ?? 0;
+      
+      if (progress < 100) {
+        hasUnfinishedStory = true;
+        break;
+      }
+    }
+
+    if (hasUnfinishedStory) {
+      appSettings.scheduleReadingReminder(widget.profileId);
+    } else {
+      appSettings.cancelReadingReminder();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = appSettings.isDarkMode;
@@ -97,6 +121,11 @@ class _ProfilePageState extends State<ProfilePage> {
                     int storiesReadCount = 0;
                     if (progressSnapshot.hasData) {
                       storiesReadCount = progressSnapshot.data!.docs.length;
+
+                      // Déclenchement automatique de la vérification à chaque mise à jour Firestore
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        _manageReadingReminders(progressSnapshot.data!.docs);
+                      });
                     }
 
                     return StreamBuilder<QuerySnapshot>(
@@ -155,7 +184,6 @@ class _ProfilePageState extends State<ProfilePage> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  // 1. En-tête Profil Dynamique (S'adapte au mode nuit)
                                   Container(
                                     width: double.infinity,
                                     padding: const EdgeInsets.only(top: 60, bottom: 30, left: 24, right: 24),
@@ -205,7 +233,6 @@ class _ProfilePageState extends State<ProfilePage> {
                                     child: Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
-                                        // 2. Section Statistiques Dynamique
                                         _buildSectionTitle('Statistiques'),
                                         const SizedBox(height: 12),
                                         Row(
@@ -218,8 +245,6 @@ class _ProfilePageState extends State<ProfilePage> {
                                         ),
 
                                         const SizedBox(height: 28),
-
-                                        // 3. Section Préférences avec Dropdown de Langue et Switchs interactifs
                                         _buildSectionTitle('Préférences'),
                                         const SizedBox(height: 8),
                                         Card(
@@ -290,8 +315,6 @@ class _ProfilePageState extends State<ProfilePage> {
                                         ),
 
                                         const SizedBox(height: 24),
-
-                                        // 4. Section Mon Compte
                                         _buildSectionTitle('Mon Compte'),
                                         const SizedBox(height: 8),
                                         Card(
@@ -339,8 +362,6 @@ class _ProfilePageState extends State<ProfilePage> {
                                         ),
 
                                         const SizedBox(height: 24),
-
-                                        // 5. Section Légal & Support
                                         _buildSectionTitle('Assistance et Informations'),
                                         const SizedBox(height: 8),
                                         Card(
@@ -386,8 +407,6 @@ class _ProfilePageState extends State<ProfilePage> {
                                         ),
 
                                         const SizedBox(height: 32),
-
-                                        // 6. Bouton Déconnexion
                                         SizedBox(
                                           width: double.infinity,
                                           height: 52,
@@ -407,7 +426,6 @@ class _ProfilePageState extends State<ProfilePage> {
                                           ),
                                         ),
 
-                                        // 7. Version de l'application
                                         const SizedBox(height: 24),
                                         Center(
                                           child: Text(
@@ -552,16 +570,16 @@ class _LoadingIndicator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    return const Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        const CircularProgressIndicator(
+        CircularProgressIndicator(
           valueColor: AlwaysStoppedAnimation<Color>(
             _ProfilePageState._gold,
           ),
         ),
-        const SizedBox(height: 16),
-        const Text(
+        SizedBox(height: 16),
+        Text(
           "Déconnexion en cours...",
           style: TextStyle(
             color: Colors.black54,
