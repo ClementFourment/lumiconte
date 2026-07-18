@@ -4,7 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:lumiconte/services/auth_service.dart';
 import 'package:lumiconte/pages/settings_page.dart';
 import 'package:lumiconte/main.dart'; 
-import 'dart:async'; // Ajouté pour utiliser Timer
+import 'dart:async';
 
 import 'package:lumiconte/pages/manage_profiles_page.dart';
 import 'package:lumiconte/pages/rewards_page.dart';
@@ -37,7 +37,6 @@ class _ProfilePageState extends State<ProfilePage> {
   late final CollectionReference _settingsCollection;
   bool _isLoading = false;
   
-  // Timer pour gérer le rappel de 18h
   Timer? _dailyReminderTimer;
 
   @override
@@ -55,7 +54,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
   @override
   void dispose() {
-    _dailyReminderTimer?.cancel(); // Nettoyage du timer quand on quitte la page
+    _dailyReminderTimer?.cancel();
     super.dispose();
   }
 
@@ -82,7 +81,7 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
-void _manageReadingReminders(List<QueryDocumentSnapshot> docs) {
+  void _manageReadingReminders(List<QueryDocumentSnapshot> docs) {
     _dailyReminderTimer?.cancel();
 
     if (!appSettings.isNotificationsEnabled) {
@@ -102,12 +101,8 @@ void _manageReadingReminders(List<QueryDocumentSnapshot> docs) {
     }
 
     if (hasUnfinishedStory) {
-      // 1. On informe/programme le téléphone IMMÉDIATEMENT pour 18h
-      // C'est ce qui va déclencher ton PRINT instantanément dans la console !
       appSettings.scheduleReadingReminder(widget.profileId);
 
-      // 2. On calcule le temps restant jusqu'à 18h uniquement pour rafraîchir
-      // la logique de l'application en arrière-plan une fois l'heure passée
       final now = DateTime.now();
       var scheduledTime = DateTime(now.year, now.month, now.day, 18, 0, 0);
 
@@ -118,7 +113,6 @@ void _manageReadingReminders(List<QueryDocumentSnapshot> docs) {
       final durationUntil18h = scheduledTime.difference(now);
 
       _dailyReminderTimer = Timer(durationUntil18h, () {
-        // Au déclenchement à 18h, on relance juste la vérification pour le lendemain
         _manageReadingReminders(docs);
       });
     } else {
@@ -299,27 +293,27 @@ void _manageReadingReminders(List<QueryDocumentSnapshot> docs) {
                                                       ),
                                                     ),
                                                     DropdownButtonHideUnderline(
-  child: DropdownButton<String>(
-    value: currentLangCode,
-    icon: const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey),
-    style: TextStyle(
-      fontSize: 14,
-      color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
-      fontWeight: FontWeight.w500,
-    ),
-    dropdownColor: currentCardColor,
-    onChanged: (String? newValue) {
-      if (newValue != null && settingsDocId.isNotEmpty) {
-        _updateSetting(settingsDocId, 'langage', newValue);
-      }
-    },
-    items: const [
-      DropdownMenuItem(value: 'fr', child: Text('Français  ')),
-      DropdownMenuItem(value: 'en', child: Text('English  ')),
-      DropdownMenuItem(value: 'es', child: Text('Español  ')),
-    ],
-  ),
-)
+                                                      child: DropdownButton<String>(
+                                                        value: currentLangCode,
+                                                        icon: const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey),
+                                                        style: TextStyle(
+                                                          fontSize: 14,
+                                                          color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+                                                          fontWeight: FontWeight.w500,
+                                                        ),
+                                                        dropdownColor: currentCardColor,
+                                                        onChanged: (String? newValue) {
+                                                          if (newValue != null && settingsDocId.isNotEmpty) {
+                                                            _updateSetting(settingsDocId, 'langage', newValue);
+                                                          }
+                                                        },
+                                                        items: const [
+                                                          DropdownMenuItem(value: 'fr', child: Text('Français  ')),
+                                                          DropdownMenuItem(value: 'en', child: Text('English  ')),
+                                                          DropdownMenuItem(value: 'es', child: Text('Español  ')),
+                                                        ],
+                                                      ),
+                                                    )
                                                   ],
                                                 ),
                                               ),
@@ -370,7 +364,12 @@ void _manageReadingReminders(List<QueryDocumentSnapshot> docs) {
                                                 icon: Icons.emoji_events_outlined,
                                                 onTap: () {
                                                   Navigator.of(context).push(
-                                                    MaterialPageRoute(builder: (context) => const RewardsPage()),
+                                                    MaterialPageRoute(
+                                                      builder: (context) => RewardsPage(
+                                                        userId: FirebaseAuth.instance.currentUser?.uid ?? '',
+                                                        profileId: widget.profileId,
+                                                      ),
+                                                    ),
                                                   );
                                                 },
                                               ),
