@@ -36,9 +36,9 @@ class AppSettings extends ChangeNotifier {
       iOS: initializationSettingsDarwin,
     );
     
-    await _notificationsPlugin.initialize(
-      settings: initializationSettings,
-    );
+await _notificationsPlugin.initialize(
+  settings: initializationSettings,
+);
 
     final androidPlugin = _notificationsPlugin.resolvePlatformSpecificImplementation<
         AndroidFlutterLocalNotificationsPlugin>();
@@ -104,23 +104,23 @@ class AppSettings extends ChangeNotifier {
 
 /// Annule explicitement les rappels de lecture
   Future<void> cancelReadingReminder() async {
-    await _notificationsPlugin.cancel(id: 0); // Ajout du paramètre nommé 'id'
+    await _notificationsPlugin.cancel(id: 0); //  Ajout de 'id:'
     print("🔕 Notification annulée (Toutes les histoires sont finies ou switch désactivé).");
   }
 
-  /// Planifie une notification uniquement s'il y a une lecture en cours non terminée
+  /// Planifie une notification journalière à 18h s'il y a une lecture en cours non terminée
   Future<void> scheduleReadingReminder(String profileId) async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
 
     try {
-final progressSnapshot = await FirebaseFirestore.instance
-    .collection('users')
-    .doc(uid)
-    .collection('profiles')
-    .doc(profileId)
-    .collection('readingProgress')
-    .get(const GetOptions(source: Source.serverAndCache)); // Utilise le cache si pas d'internet !
+      final progressSnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .collection('profiles')
+          .doc(profileId)
+          .collection('readingProgress')
+          .get(const GetOptions(source: Source.serverAndCache));
 
       bool hasUnfinishedStory = progressSnapshot.docs.any((doc) {
         final data = doc.data();
@@ -143,19 +143,32 @@ final progressSnapshot = await FirebaseFirestore.instance
       );
       const NotificationDetails platformDetails = NotificationDetails(android: androidDetails);
 
-      // Configuré sur 5 secondes pour vos tests. Passez à Duration(days: 1) en production.
-      final scheduledTime = tz.TZDateTime.now(tz.local).add(const Duration(seconds: 10));
-
-      await _notificationsPlugin.zonedSchedule(
-        id: 0,
-        title: 'Lumiconte 📖',
-        body: 'Tu n\'as pas fini ta lecture ! Viens vite découvrir la suite de ton histoire.',
-        scheduledDate: scheduledTime,
-        notificationDetails: platformDetails,
-        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-        //androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      // Calcul de l'heure cible : 18h00 aujourd'hui heure locale
+      final tz.TZDateTime now = tz.TZDateTime.now(tz.local);
+      tz.TZDateTime scheduledTime = tz.TZDateTime(
+        tz.local,
+        now.year,
+        now.month,
+        now.day,
+        18, // 18 heures
+        0,  // 00 minutes
       );
-      print("🔔 Notification de rappel programmée avec succès (une histoire est à < 100%).");
+
+      // Si 18h est déjà passé aujourd'hui, on reporte à demain 18h
+      if (scheduledTime.isBefore(now)) {
+        scheduledTime = scheduledTime.add(const Duration(days: 1));
+      }
+
+await _notificationsPlugin.zonedSchedule(
+  id: 0,
+  title: 'Lumiconte 📖',
+  body: 'Tu n\'as pas fini ta lecture ! Viens vite découvrir la suite de ton histoire.',
+  scheduledDate: scheduledTime,
+  notificationDetails: platformDetails,
+  androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+  matchDateTimeComponents: DateTimeComponents.time, // Répète la notification tous les jours à 18h
+);
+      print("🔔 Rappel quotidien programmé à 18h00 avec succès (prochaine occurrence : $scheduledTime).");
       
     } catch (e) {
       print("Erreur lors de la vérification des lectures : $e");

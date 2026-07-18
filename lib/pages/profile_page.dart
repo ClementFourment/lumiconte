@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:lumiconte/services/auth_service.dart';
 import 'package:lumiconte/pages/settings_page.dart';
 import 'package:lumiconte/main.dart'; 
+import 'dart:async'; // Ajouté pour utiliser Timer
 
 import 'package:lumiconte/pages/manage_profiles_page.dart';
 import 'package:lumiconte/pages/rewards_page.dart';
@@ -35,6 +36,9 @@ class _ProfilePageState extends State<ProfilePage> {
   late final CollectionReference _readingProgressCollection;
   late final CollectionReference _settingsCollection;
   bool _isLoading = false;
+  
+  // Timer pour gérer le rappel de 18h
+  Timer? _dailyReminderTimer;
 
   @override
   void initState() {
@@ -49,8 +53,18 @@ class _ProfilePageState extends State<ProfilePage> {
     _settingsCollection = _profileDoc.collection('settings');
   }
 
+  @override
+  void dispose() {
+    _dailyReminderTimer?.cancel(); // Nettoyage du timer quand on quitte la page
+    super.dispose();
+  }
+
   Future<void> _updateSetting(String docId, String key, dynamic value) async {
-    await _settingsCollection.doc(docId).update({key: value});
+    try {
+      await _settingsCollection.doc(docId).update({key: value});
+    } catch (e) {
+      debugPrint("Erreur lors de la mise à jour du setting: $e");
+    }
   }
 
   Future<void> _handleSignOut() async {
@@ -68,8 +82,9 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
-  // Analyse le flux en direct de la collection Firestore
-  void _manageReadingReminders(List<QueryDocumentSnapshot> docs) {
+void _manageReadingReminders(List<QueryDocumentSnapshot> docs) {
+    _dailyReminderTimer?.cancel();
+
     if (!appSettings.isNotificationsEnabled) {
       appSettings.cancelReadingReminder();
       return;
@@ -87,7 +102,25 @@ class _ProfilePageState extends State<ProfilePage> {
     }
 
     if (hasUnfinishedStory) {
+      // 1. On informe/programme le téléphone IMMÉDIATEMENT pour 18h
+      // C'est ce qui va déclencher ton PRINT instantanément dans la console !
       appSettings.scheduleReadingReminder(widget.profileId);
+
+      // 2. On calcule le temps restant jusqu'à 18h uniquement pour rafraîchir
+      // la logique de l'application en arrière-plan une fois l'heure passée
+      final now = DateTime.now();
+      var scheduledTime = DateTime(now.year, now.month, now.day, 18, 0, 0);
+
+      if (now.isAfter(scheduledTime)) {
+        scheduledTime = scheduledTime.add(const Duration(days: 1));
+      }
+
+      final durationUntil18h = scheduledTime.difference(now);
+
+      _dailyReminderTimer = Timer(durationUntil18h, () {
+        // Au déclenchement à 18h, on relance juste la vérification pour le lendemain
+        _manageReadingReminders(docs);
+      });
     } else {
       appSettings.cancelReadingReminder();
     }
@@ -99,14 +132,13 @@ class _ProfilePageState extends State<ProfilePage> {
 
     return Scaffold(
       body: _isLoading
-          ? const Center(child: _LoadingIndicator())
+          ? const Center(child: CircularProgressIndicator())
           : StreamBuilder<DocumentSnapshot>(
               stream: _profileDoc.snapshots(),
               builder: (context, profileSnapshot) {
                 if (profileSnapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
                 }
-
                 if (!profileSnapshot.hasData || !profileSnapshot.data!.exists) {
                   return const Center(child: Text('Profil introuvable.'));
                 }
@@ -122,7 +154,6 @@ class _ProfilePageState extends State<ProfilePage> {
                     if (progressSnapshot.hasData) {
                       storiesReadCount = progressSnapshot.data!.docs.length;
 
-                      // Déclenchement automatique de la vérification à chaque mise à jour Firestore
                       WidgetsBinding.instance.addPostFrameCallback((_) {
                         _manageReadingReminders(progressSnapshot.data!.docs);
                       });
@@ -143,7 +174,6 @@ class _ProfilePageState extends State<ProfilePage> {
                           currentLangCode = settingsData['langage'] ?? 'fr';
 
                           final int totalMinutes = settingsData['totalReadingTime'] ?? 0;
-
                           if (totalMinutes < 60) {
                             timeDisplay = '$totalMinutes min';
                           } else {
@@ -158,7 +188,6 @@ class _ProfilePageState extends State<ProfilePage> {
                           if (stopRead != null) {
                             final DateTime lastReadDate = stopRead.toDate();
                             final DateTime now = DateTime.now();
-
                             final DateTime today = DateTime(now.year, now.month, now.day);
                             final DateTime lastReadDay = DateTime(lastReadDate.year, lastReadDate.month, lastReadDate.day);
                             final int daysDifference = today.difference(lastReadDay).inDays;
@@ -240,7 +269,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                           children: [
                                             _buildStatCard('Histoires\nlues', '$storiesReadCount'),
                                             _buildStatCard('Temps de\nlecture', timeDisplay),
-                                            _buildStatCard('Série en\ncours', streakDisplay, highlight: true),
+                                            _buildStatCard('Série en\ncours', streakDisplay),
                                           ],
                                         ),
 
@@ -270,27 +299,27 @@ class _ProfilePageState extends State<ProfilePage> {
                                                       ),
                                                     ),
                                                     DropdownButtonHideUnderline(
-                                                      child: DropdownButton<String>(
-                                                        value: currentLangCode,
-                                                        icon: const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey),
-                                                        style: TextStyle(
-                                                          fontSize: 14,
-                                                          color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
-                                                          fontWeight: FontWeight.w500,
-                                                        ),
-                                                        dropdownColor: currentCardColor,
-                                                        onChanged: (String? newValue) {
-                                                          if (newValue != null && settingsDocId.isNotEmpty) {
-                                                            _updateSetting(settingsDocId, 'langage', newValue);
-                                                          }
-                                                        },
-                                                        items: const [
-                                                          DropdownMenuItem(value: 'fr', child: Text('Français  ')),
-                                                          DropdownMenuItem(value: 'en', child: Text('English  ')),
-                                                          DropdownMenuItem(value: 'es', child: Text('Español  ')),
-                                                        ],
-                                                      ),
-                                                    ),
+  child: DropdownButton<String>(
+    value: currentLangCode,
+    icon: const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey),
+    style: TextStyle(
+      fontSize: 14,
+      color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+      fontWeight: FontWeight.w500,
+    ),
+    dropdownColor: currentCardColor,
+    onChanged: (String? newValue) {
+      if (newValue != null && settingsDocId.isNotEmpty) {
+        _updateSetting(settingsDocId, 'langage', newValue);
+      }
+    },
+    items: const [
+      DropdownMenuItem(value: 'fr', child: Text('Français  ')),
+      DropdownMenuItem(value: 'en', child: Text('English  ')),
+      DropdownMenuItem(value: 'es', child: Text('Español  ')),
+    ],
+  ),
+)
                                                   ],
                                                 ),
                                               ),
@@ -384,7 +413,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                               ),
                                               Divider(height: 1, indent: 16, endIndent: 16, color: dividerColor),
                                               _buildListTile(
-                                                'Conditions Générales d\'Utilisation',
+                                                "Conditions Générales d'Utilisation",
                                                 icon: Icons.description_outlined,
                                                 onTap: () {
                                                   Navigator.of(context).push(
@@ -455,138 +484,44 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Widget _buildSectionTitle(String title) {
-    final isDark = appSettings.isDarkMode;
     return Text(
       title,
-      style: TextStyle(
-        fontSize: 15,
-        fontWeight: FontWeight.bold,
-        color: isDark ? Colors.white : Colors.black87,
-      ),
+      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
     );
   }
 
   Widget _buildStatCard(String title, String value, {bool highlight = false}) {
-    final isDark = appSettings.isDarkMode;
-    return Container(
-      width: (MediaQuery.of(context).size.width - 64) / 3,
-      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: highlight 
-              ? Colors.orange.shade400 
-              : (isDark ? Colors.grey.shade800 : Colors.grey.shade100),
-          width: highlight ? 1.5 : 1,
+    return Expanded(
+      child: Card(
+        color: highlight ? _gold.withOpacity(0.2) : null,
+        child: Padding(
+          padding: const EdgeInsets.all(12.0),
+          child: Column(
+            children: [
+              Text(value, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: highlight ? _gold : null)),
+              const SizedBox(height: 4),
+              Text(title, textAlign: TextAlign.center, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+            ],
+          ),
         ),
-      ),
-      child: Column(
-        children: [
-          Text(
-            title,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 11,
-              color: highlight 
-                  ? (isDark ? Colors.orange.shade300 : Colors.orange.shade700) 
-                  : (isDark ? Colors.grey.shade400 : Colors.grey.shade500),
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: highlight 
-                  ? (isDark ? Colors.orange.shade400 : Colors.orange.shade800) 
-                  : (isDark ? Colors.white : Colors.black),
-            ),
-          ),
-        ],
       ),
     );
   }
 
-  Widget _buildListTile(String title, {String? trailingText, IconData? icon, VoidCallback? onTap}) {
-    final isDark = appSettings.isDarkMode;
+  Widget _buildListTile(String title, {required IconData icon, required VoidCallback onTap}) {
     return ListTile(
+      leading: Icon(icon),
+      title: Text(title, style: const TextStyle(fontSize: 14)),
+      trailing: const Icon(Icons.arrow_forward_ios, size: 14),
       onTap: onTap,
-      leading: icon != null ? Icon(icon, color: isDark ? Colors.white60 : Colors.black54, size: 22) : null,
-      title: Text(
-        title,
-        style: TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w500,
-          color: isDark ? Colors.white70 : Colors.black87,
-        ),
-      ),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (trailingText != null)
-            Text(
-              trailingText,
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey.shade500,
-              ),
-            ),
-          const SizedBox(width: 4),
-          Icon(
-            Icons.arrow_forward_ios,
-            size: 14,
-            color: Colors.grey.shade400,
-          ),
-        ],
-      ),
     );
   }
 
   Widget _buildListTileWithSwitch(String title, {required bool value, required ValueChanged<bool> onChanged}) {
-    final isDark = appSettings.isDarkMode;
-    return ListTile(
-      title: Text(
-        title,
-        style: TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w500,
-          color: isDark ? Colors.white70 : Colors.black87,
-        ),
-      ),
-      trailing: Switch(
-        value: value,
-        activeColor: _gold,
-        onChanged: onChanged,
-      ),
-    );
-  }
-}
-
-class _LoadingIndicator extends StatelessWidget {
-  const _LoadingIndicator();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        CircularProgressIndicator(
-          valueColor: AlwaysStoppedAnimation<Color>(
-            _ProfilePageState._gold,
-          ),
-        ),
-        SizedBox(height: 16),
-        Text(
-          "Déconnexion en cours...",
-          style: TextStyle(
-            color: Colors.black54,
-            fontSize: 14,
-          ),
-        ),
-      ],
+    return SwitchListTile(
+      title: Text(title, style: const TextStyle(fontSize: 14)),
+      value: value,
+      onChanged: onChanged,
     );
   }
 }
