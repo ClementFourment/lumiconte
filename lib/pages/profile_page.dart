@@ -406,7 +406,9 @@ class _ProfilePageState extends State<ProfilePage> {
                                                 icon: Icons.chat_bubble_outline,
                                                 onTap: () {
                                                   Navigator.of(context).push(
-                                                    MaterialPageRoute(builder: (context) => const FeedbackPage()),
+                                                    MaterialPageRoute(builder: (context) => FeedbackPage( 
+                                                      profileId: widget.profileId,
+                                                    )),
                                                   );
                                                 },
                                               ),
