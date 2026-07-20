@@ -1,5 +1,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.example.lumiconte">
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+<!-- Cette permission permet à l'alarme exacte de fonctionner sans restriction sur Android 13/14 -->
+<uses-permission android:name="android.permission.USE_EXACT_ALARM" />
    <application
         android:label="lumiconte"
         android:name="${applicationName}"
