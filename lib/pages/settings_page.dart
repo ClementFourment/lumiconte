@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:lumiconte/models/settings_model.dart';
 
 class SettingsPage extends StatefulWidget {
   final String profileId;
@@ -15,12 +16,13 @@ class SettingsPage extends StatefulWidget {
 }
 
 class _SettingsPageState extends State<SettingsPage> {
-  final String _uid = FirebaseAuth.instance.currentUser!.uid;
+  late final String _uid;
   late final CollectionReference _settingsCollection;
 
   @override
   void initState() {
     super.initState();
+    _uid = FirebaseAuth.instance.currentUser!.uid;
     _settingsCollection = FirebaseFirestore.instance
         .collection('users')
         .doc(_uid)
@@ -29,60 +31,83 @@ class _SettingsPageState extends State<SettingsPage> {
         .collection('settings');
   }
 
+  /// Met à jour un seul champ du document settings
   Future<void> _updateSetting(String docId, String key, dynamic value) async {
     await _settingsCollection.doc(docId).update({key: value});
   }
 
   // 🧪 Algorithme de découpage en syllabes et détection des lettres muettes
-  List<TextSpan> _parseWordToDyslexiaSpans(String word, TextStyle baseDysStyle, Color defaultTextColor) {
+  List<TextSpan> _parseWordToDyslexiaSpans(
+    String word,
+    TextStyle baseDysStyle,
+    Color defaultTextColor,
+  ) {
     final Color colorRed = Colors.red.shade700;
     final Color colorBlue = Colors.blue.shade700;
     final Color colorSilent = defaultTextColor.withOpacity(0.35);
 
     if (word.trim().isEmpty) {
-      return [TextSpan(text: word, style: baseDysStyle.copyWith(color: defaultTextColor))];
+      return [
+        TextSpan(
+            text: word, style: baseDysStyle.copyWith(color: defaultTextColor))
+      ];
     }
 
     final matchStart = RegExp(r'^[^a-zA-ZÀ-ÿ]+').firstMatch(word);
     final matchEnd = RegExp(r'[^a-zA-ZÀ-ÿ]+$').firstMatch(word);
-    
+
     String prefix = matchStart?.group(0) ?? '';
     String suffix = matchEnd?.group(0) ?? '';
-    
+
     String cleanWord = word;
-    
+
     if (prefix.length + suffix.length < word.length) {
       cleanWord = word.substring(prefix.length, word.length - suffix.length);
     } else {
-      return [TextSpan(text: word, style: baseDysStyle.copyWith(color: defaultTextColor))];
+      return [
+        TextSpan(
+            text: word, style: baseDysStyle.copyWith(color: defaultTextColor))
+      ];
     }
 
     if (cleanWord.isEmpty) {
-      return [TextSpan(text: word, style: baseDysStyle.copyWith(color: defaultTextColor))];
+      return [
+        TextSpan(
+            text: word, style: baseDysStyle.copyWith(color: defaultTextColor))
+      ];
     }
 
     String silentLetters = '';
-    final silentMatch = RegExp(r'(ts|ds|es|[stdxega])$', caseSensitive: false).firstMatch(cleanWord);
-    
-    if (silentMatch != null && cleanWord.length > 2 && !['les', 'des', 'mes', 'tes', 'ses', 'est'].contains(cleanWord.toLowerCase())) {
+    final silentMatch = RegExp(r'(ts|ds|es|[stdxega])$', caseSensitive: false)
+        .firstMatch(cleanWord);
+
+    if (silentMatch != null &&
+        cleanWord.length > 2 &&
+        !['les', 'des', 'mes', 'tes', 'ses', 'est']
+            .contains(cleanWord.toLowerCase())) {
       String potentialSilent = silentMatch.group(0) ?? '';
       if (cleanWord.length > potentialSilent.length) {
         silentLetters = potentialSilent;
-        cleanWord = cleanWord.substring(0, cleanWord.length - silentLetters.length);
+        cleanWord =
+            cleanWord.substring(0, cleanWord.length - silentLetters.length);
       }
     }
 
     List<TextSpan> wordSpans = [];
-    
+
     if (prefix.isNotEmpty) {
-      wordSpans.add(TextSpan(text: prefix, style: baseDysStyle.copyWith(color: defaultTextColor)));
+      wordSpans.add(TextSpan(
+          text: prefix, style: baseDysStyle.copyWith(color: defaultTextColor)));
     }
 
     List<String> syllables = [];
     if (cleanWord.length <= 3) {
       syllables.add(cleanWord);
     } else {
-      final regex = RegExp(r'[^aeiouyéèàùûâîôœüéèêë]*[aeiouyéèàùûâîôœüéèêë]+(?:[^aeiouyéèàùûâîôœüéèêë](?![aeiouyéèàùûâîôœüéèêë]))*', caseSensitive: false);
+      final regex = RegExp(
+        r'[^aeiouyéèàùûâîôœüéèêë]*[aeiouyéèàùûâîôœüéèêë]+(?:[^aeiouyéèàùûâîôœüéèêë](?![aeiouyéèàùûâîôœüéèêë]))*',
+        caseSensitive: false,
+      );
       final matches = regex.allMatches(cleanWord);
       if (matches.isEmpty) {
         syllables.add(cleanWord);
@@ -119,7 +144,8 @@ class _SettingsPageState extends State<SettingsPage> {
     }
 
     if (suffix.isNotEmpty) {
-      wordSpans.add(TextSpan(text: suffix, style: baseDysStyle.copyWith(color: defaultTextColor)));
+      wordSpans.add(TextSpan(
+          text: suffix, style: baseDysStyle.copyWith(color: defaultTextColor)));
     }
 
     return wordSpans;
@@ -153,13 +179,43 @@ class _SettingsPageState extends State<SettingsPage> {
     List<String> words = text.split(' ');
 
     for (int i = 0; i < words.length; i++) {
-      allSpans.addAll(_parseWordToDyslexiaSpans(words[i], baseDysStyle, defaultTextColor));
+      allSpans.addAll(
+          _parseWordToDyslexiaSpans(words[i], baseDysStyle, defaultTextColor));
       if (i < words.length - 1) {
         allSpans.add(TextSpan(text: ' ', style: baseDysStyle));
       }
     }
 
     return TextSpan(children: allSpans);
+  }
+
+  /// Retourne les couleurs d'aperçu selon le thème et mode dyslexie
+  _PreviewColors _getPreviewColors(SettingsModel settings) {
+    if (settings.dyslexia) {
+      return _PreviewColors(
+        backgroundColor: Colors.white,
+        textColor: const Color(0xFF2B261F),
+      );
+    }
+
+    switch (settings.theme) {
+      case 'dark':
+        return _PreviewColors(
+          backgroundColor: const Color(0xFF1C1C1E),
+          textColor: Colors.white,
+        );
+      case 'naturel':
+        return _PreviewColors(
+          backgroundColor: const Color(0xFFF5EFE6),
+          textColor: const Color(0xFF2B261F),
+        );
+      case 'light':
+      default:
+        return _PreviewColors(
+          backgroundColor: Colors.white,
+          textColor: Colors.black,
+        );
+    }
   }
 
   @override
@@ -196,29 +252,12 @@ class _SettingsPageState extends State<SettingsPage> {
           }
 
           final settingsDoc = snapshot.data!.docs.first;
-          final settingsData = settingsDoc.data() as Map<String, dynamic>;
-          final String docId = settingsDoc.id;
+          final settings = SettingsModel.fromMap(
+            settingsDoc.data() as Map<String, dynamic>,
+            settingsDoc.id,
+          );
 
-          final bool dyslexia = settingsData['dyslexia'] ?? false;
-          final double fontSize = (settingsData['fontSize'] ?? 16).toDouble();
-          final String currentTheme = settingsData['theme'] ?? 'light';
-
-          Color previewBg;
-          Color previewText;
-
-          if (dyslexia) {
-            previewBg = Colors.white;
-            previewText = const Color(0xFF2B261F);
-          } else if (currentTheme == 'dark') {
-            previewBg = const Color(0xFF1C1C1E);
-            previewText = Colors.white;
-          } else if (currentTheme == 'naturel') {
-            previewBg = const Color(0xFFF5EFE6);
-            previewText = const Color(0xFF2B261F);
-          } else {
-            previewBg = Colors.white;
-            previewText = Colors.black;
-          }
+          final previewColors = _getPreviewColors(settings);
 
           return ListView(
             padding: const EdgeInsets.all(20),
@@ -237,13 +276,15 @@ class _SettingsPageState extends State<SettingsPage> {
                 child: SwitchListTile(
                   title: const Text(
                     'Mode Dyslexie',
-                    style: TextStyle(color: Colors.black, fontWeight: FontWeight.w500),
+                    style: TextStyle(
+                        color: Colors.black, fontWeight: FontWeight.w500),
                   ),
-                  subtitle: const Text('Adapte les couleurs, l\'espacement et la taille'),
-                  value: dyslexia,
+                  subtitle: const Text(
+                      'Adapte les couleurs, l\'espacement et la taille'),
+                  value: settings.dyslexia,
                   activeColor: Colors.deepPurple,
                   onChanged: (bool value) {
-                    _updateSetting(docId, 'dyslexia', value);
+                    _updateSetting(settings.id, 'dyslexia', value);
                   },
                 ),
               ),
@@ -270,24 +311,37 @@ class _SettingsPageState extends State<SettingsPage> {
                         children: [
                           const Text(
                             'Taille du texte',
-                            style: TextStyle(color: Colors.black, fontWeight: FontWeight.w500),
+                            style: TextStyle(
+                              color: Colors.black,
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
                           Text(
-                            '${(((fontSize / 16) * 10).round() * 10).clamp(80, 200)} %',
-                            style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.deepPurple),
+                            '${(((settings.fontSize / 16) * 10).round() * 10).clamp(80, 200)} %',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.deepPurple,
+                            ),
                           ),
                         ],
                       ),
                       Slider(
-                        value: (((fontSize / 16) * 10).round() * 10).clamp(80, 200).toDouble(),
-                        min: 80,   
-                        max: 200,  
-                        divisions: 12, 
+                        value: (((settings.fontSize / 16) * 10).round() * 10)
+                            .clamp(80, 200)
+                            .toDouble(),
+                        min: 80,
+                        max: 200,
+                        divisions: 12,
                         activeColor: Colors.deepPurple,
                         inactiveColor: Colors.grey.shade200,
                         onChanged: (double percentageValue) {
-                          double calculatedPixels = (percentageValue / 100) * 16;
-                          _updateSetting(docId, 'fontSize', calculatedPixels.round());
+                          double calculatedPixels =
+                              (percentageValue / 100) * 16;
+                          _updateSetting(
+                            settings.id,
+                            'fontSize',
+                            calculatedPixels.round(),
+                          );
                         },
                       ),
                       const SizedBox(height: 10),
@@ -295,27 +349,28 @@ class _SettingsPageState extends State<SettingsPage> {
                         width: double.infinity,
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: previewBg,
+                          color: previewColors.backgroundColor,
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(color: Colors.grey.shade300),
                         ),
                         child: RichText(
                           textAlign: TextAlign.left,
                           text: _buildColorizedText(
-                            text: 'Je ne puis pas jouer avec toi, dit le renard. Les hommes chassent. C\'est bien gênant !',
-                            baseFontSize: fontSize,
-                            defaultTextColor: previewText,
-                            isDyslexiaEnabled: dyslexia,
+                            text:
+                                'Je ne puis pas jouer avec toi, dit le renard. Les hommes chassent. C\'est bien gênant !',
+                            baseFontSize: settings.fontSize.toDouble(),
+                            defaultTextColor: previewColors.textColor,
+                            isDyslexiaEnabled: settings.dyslexia,
                           ),
                         ),
-                      )
+                      ),
                     ],
                   ),
                 ),
               ),
 
-              // 🌟 ICI : Condition de masquage des thèmes si le mode dyslexie est activé
-              if (!dyslexia) ...[
+              // 🌟 Les thèmes sont masqués si le mode dyslexie est activé
+              if (!settings.dyslexia) ...[
                 const SizedBox(height: 24),
                 _buildSectionTitle('Thème de lecture'),
                 const SizedBox(height: 12),
@@ -325,29 +380,29 @@ class _SettingsPageState extends State<SettingsPage> {
                     _buildThemeOption(
                       label: 'Clair',
                       themeKey: 'light',
-                      currentTheme: currentTheme,
+                      currentTheme: settings.theme,
                       bgColor: Colors.white,
                       textColor: Colors.black,
                       borderColor: Colors.grey.shade300,
-                      docId: docId,
+                      settingsId: settings.id,
                     ),
                     _buildThemeOption(
                       label: 'Sombre',
                       themeKey: 'dark',
-                      currentTheme: currentTheme,
+                      currentTheme: settings.theme,
                       bgColor: const Color(0xFF1C1C1E),
                       textColor: Colors.white,
                       borderColor: Colors.transparent,
-                      docId: docId,
+                      settingsId: settings.id,
                     ),
                     _buildThemeOption(
                       label: 'Naturel',
                       themeKey: 'naturel',
-                      currentTheme: currentTheme,
+                      currentTheme: settings.theme,
                       bgColor: const Color(0xFFF5EFE6),
                       textColor: const Color(0xFF2B261F),
                       borderColor: Colors.transparent,
-                      docId: docId,
+                      settingsId: settings.id,
                     ),
                   ],
                 ),
@@ -377,12 +432,12 @@ class _SettingsPageState extends State<SettingsPage> {
     required Color bgColor,
     required Color textColor,
     required Color borderColor,
-    required String docId,
+    required String settingsId,
   }) {
     final bool isSelected = currentTheme == themeKey;
 
     return GestureDetector(
-      onTap: () => _updateSetting(docId, 'theme', themeKey),
+      onTap: () => _updateSetting(settingsId, 'theme', themeKey),
       child: Column(
         children: [
           Container(
@@ -420,4 +475,15 @@ class _SettingsPageState extends State<SettingsPage> {
       ),
     );
   }
+}
+
+/// Classe helper pour les couleurs d'aperçu
+class _PreviewColors {
+  final Color backgroundColor;
+  final Color textColor;
+
+  _PreviewColors({
+    required this.backgroundColor,
+    required this.textColor,
+  });
 }
