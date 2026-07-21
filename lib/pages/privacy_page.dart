@@ -7,12 +7,13 @@ class PrivacyPolicyPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = appSettings.isDarkMode;
-    
-    final backgroundColor = isDark ? const Color(0xFF1E1B29) : const Color(0xFFF8F9FA);
+
+    final backgroundColor =
+        isDark ? const Color(0xFF1E1B29) : const Color(0xFFF8F9FA);
     final cardColor = isDark ? const Color(0xFF2D283E) : Colors.white;
     final textColor = isDark ? Colors.white70 : Colors.black87;
     final titleColor = isDark ? Colors.white : Colors.black87;
-    final accentColor = const Color(0xFFFDB833); // Doré Lumiconte
+    const accentColor = Color(0xFFFDB833); // Doré Lumiconte
 
     return Scaffold(
       backgroundColor: backgroundColor,
@@ -48,55 +49,54 @@ class PrivacyPolicyPage extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 20),
-            
             _buildSection(
               title: '1. Collecte des Données (Compte Parent)',
-              content: 'Lors de la création de votre compte, nous collectons uniquement les informations nécessaires à l\'authentification et à la sécurisation de votre accès :\n• Votre adresse e-mail.\n• Un mot de passe (crypté et invisible pour nous).\n\nCes données permettent de synchroniser vos profils et abonnements sur vos différents appareils.',
+              content:
+                  'Lors de la création de votre compte, nous collectons uniquement les informations nécessaires à l\'authentification et à la sécurisation de votre accès :\n• Votre adresse e-mail.\n• Un mot de passe (crypté et invisible pour nous).\n\nCes données permettent de synchroniser vos profils et abonnements sur vos différents appareils.',
               cardColor: cardColor,
               titleColor: accentColor,
               textColor: textColor,
             ),
-            
             _buildSection(
               title: '2. Protection des Profils Enfants',
-              content: 'Lumiconte est conçu pour préserver l\'anonymat complet des enfants. Pour créer un profil enfant, nous demandons uniquement :\n• Un prénom ou un pseudonyme (au choix du parent).\n• Un âge (pour suggérer du contenu adapté).\n\nNous ne collectons aucune donnée d\'identité réelle, aucune donnée de géolocalisation, et aucun identifiant publicitaire sur les profils enfants.',
+              content:
+                  'Lumiconte est conçu pour préserver l\'anonymat complet des enfants. Pour créer un profil enfant, nous demandons uniquement :\n• Un prénom ou un pseudonyme (au choix du parent).\n• Un âge (pour suggérer du contenu adapté).\n\nNous ne collectons aucune donnée d\'identité réelle, aucune donnée de géolocalisation, et aucun identifiant publicitaire sur les profils enfants.',
               cardColor: cardColor,
               titleColor: accentColor,
               textColor: textColor,
             ),
-            
             _buildSection(
               title: '3. Données de Progression (Firestore)',
-              content: 'Pour offrir une expérience de lecture continue, l\'application enregistre l\'historique d\'utilisation des profils (histoires lues, temps de lecture, badges obtenus, séries en cours). Ces données sont stockées de manière sécurisée sur les serveurs de notre hébergeur (Firebase/Google Cloud) situé au sein de l\'Union Européenne.',
+              content:
+                  'Pour offrir une expérience de lecture continue, l\'application enregistre l\'historique d\'utilisation des profils (histoires lues, temps de lecture, badges obtenus, séries en cours). Ces données sont stockées de manière sécurisée sur les serveurs de notre hébergeur (Firebase/Google Cloud) situé au sein de l\'Union Européenne.',
               cardColor: cardColor,
               titleColor: accentColor,
               textColor: textColor,
             ),
-
             _buildSection(
               title: '4. Non-partage et Tiers',
-              content: 'La règle est simple : nous ne vendons, n\'échangeons et ne transférons aucune donnée personnelle à des sociétés tierces.\n\nL\'application n\'intègre aucune régie publicitaire commerciale, évitant ainsi tout traçage publicitaire comportemental de vos enfants.',
+              content:
+                  'La règle est simple : nous ne vendons, n\'échangeons et ne transférons aucune donnée personnelle à des sociétés tierces.\n\nL\'application n\'intègre aucune régie publicitaire commerciale, évitant ainsi tout traçage publicitaire comportemental de vos enfants.',
               cardColor: cardColor,
               titleColor: accentColor,
               textColor: textColor,
             ),
-
             _buildSection(
               title: '5. Vos Droits (RGPD)',
-              content: 'Conformément à la réglementation européenne (RGPD), vous disposez d\'un droit d\'accès, de rectification et d\'effacement complet de vos données personnelles. Vous pouvez demander la suppression définitive de votre compte et de l\'ensemble des profils associés à tout moment, directement depuis les réglages de l\'application ou en contactant notre support.',
+              content:
+                  'Conformément à la réglementation européenne (RGPD), vous disposez d\'un droit d\'accès, de rectification et d\'effacement complet de vos données personnelles. Vous pouvez demander la suppression définitive de votre compte et de l\'ensemble des profils associés à tout moment, directement depuis les réglages de l\'application ou en contactant notre support.',
               cardColor: cardColor,
               titleColor: accentColor,
               textColor: textColor,
             ),
-
             _buildSection(
               title: '6. Sécurité des Données',
-              content: 'Nous appliquons des mesures de sécurité strictes (protocoles de cryptage de flux, règles d\'accès Firestore restrictives) pour protéger vos données contre tout accès, modification ou divulgation non autorisés.',
+              content:
+                  'Nous appliquons des mesures de sécurité strictes (protocoles de cryptage de flux, règles d\'accès Firestore restrictives) pour protéger vos données contre tout accès, modification ou divulgation non autorisés.',
               cardColor: cardColor,
               titleColor: accentColor,
               textColor: textColor,
             ),
-
             const SizedBox(height: 20),
             Center(
               child: Text(

@@ -7,6 +7,7 @@ import 'package:lumiconte/pages/onboarding_page.dart';
 import 'package:lumiconte/pages/login_page.dart';
 import 'package:lumiconte/navigation/bottom_nav.dart';
 import 'package:lumiconte/pages/profile_creation_page.dart';
+import 'package:lumiconte/pages/manage_profiles_page.dart'; // Importez votre page de gestion des profils
 import 'package:lumiconte/pages/story_page.dart';
 import 'package:lumiconte/services/profile_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -26,7 +27,7 @@ final GoRouter appRouter = GoRouter(
     final isLogin = location == '/login';
     final isProfileCreation = location == '/create-profile';
 
-    // 1. Si pas vu onboarding → afficher onboarding
+    // 1. Si pas vu l'onboarding → afficher onboarding
     if (!hasSeenOnboarding) {
       if (!isOnboarding) return '/';
       return null;
@@ -38,8 +39,7 @@ final GoRouter appRouter = GoRouter(
       return null;
     }
 
-    // 3. Si connecté mais pas de profil → créer profil
-    // if (user != null) {
+    // 3. Si connecté mais aucun profil créé → forcer la création de profil
     final profileService = ProfileService();
     final profiles = await profileService.getUserProfiles(user.uid);
 
@@ -48,28 +48,39 @@ final GoRouter appRouter = GoRouter(
       return null;
     }
 
-    // 4. Si tout est bon → home
+    // 4. Si connecté avec un profil et tente d'aller sur les pages de démarrage → rediriger vers /home
     if (isOnboarding || isLogin || isProfileCreation) {
       return '/home';
     }
-    // }
 
     return null;
   },
   routes: [
-    GoRoute(path: '/', builder: (context, state) => const OnboardingPage()),
-    GoRoute(path: '/login', builder: (context, state) => const LoginPage()),
+    GoRoute(
+      path: '/',
+      builder: (context, state) => const OnboardingPage(),
+    ),
+    GoRoute(
+      path: '/login',
+      builder: (context, state) => const LoginPage(),
+    ),
     GoRoute(
       path: '/create-profile',
       builder: (context, state) => const ProfileCreationPage(),
     ),
-    GoRoute(path: '/home', builder: (context, state) => const BottomNav()),
+    GoRoute(
+      path: '/manage-profiles',
+      builder: (context, state) => const ManageProfilesPage(),
+    ),
+    GoRoute(
+      path: '/home',
+      builder: (context, state) => const BottomNav(),
+    ),
     GoRoute(
       path: '/story',
       builder: (context, state) {
         final story = state.extra as StoryModel?;
         if (story == null) {
-          // sécurité si on arrive sur /story sans données (deep link, etc.)
           return const BottomNav();
         }
         return StoryPage(story: story);

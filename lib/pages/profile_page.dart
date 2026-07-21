@@ -12,6 +12,11 @@ import 'package:lumiconte/pages/feedback_page.dart';
 import 'package:lumiconte/pages/terms_page.dart';
 import 'package:lumiconte/pages/privacy_page.dart';
 
+// Imports des modèles de données
+import 'package:lumiconte/models/profile_model.dart';
+import 'package:lumiconte/models/settings_model.dart';
+import 'package:lumiconte/models/reading_progress_model.dart';
+
 class ProfilePage extends StatefulWidget {
   final String profileId;
 
@@ -29,7 +34,7 @@ class _ProfilePageState extends State<ProfilePage> {
   static const _darkPurpleBg = Color(0xFF231F32);
 
   final AuthService _authService = AuthService();
-  final String _uid = FirebaseAuth.instance.currentUser!.uid;
+  final String? _uid = FirebaseAuth.instance.currentUser?.uid;
   
   late final DocumentReference _profileDoc;
   late final CollectionReference _readingProgressCollection;
@@ -42,21 +47,23 @@ class _ProfilePageState extends State<ProfilePage> {
   @override
   void initState() {
     super.initState();
-    _profileDoc = FirebaseFirestore.instance
-        .collection('users')
-        .doc(_uid)
-        .collection('profiles')
-        .doc(widget.profileId);
 
-    _readingProgressCollection = _profileDoc.collection('readingProgress');
-    _settingsCollection = _profileDoc.collection('settings');
+    if (_uid != null) {
+      _profileDoc = FirebaseFirestore.instance
+          .collection('users')
+          .doc(_uid)
+          .collection('profiles')
+          .doc(widget.profileId);
 
-    // On écoute le progrès en dehors du build pour gérer les rappels de manière safe
-    _progressSubscription = _readingProgressCollection.snapshots().listen((snapshot) {
-      if (mounted) {
-        _manageReadingReminders(snapshot.docs);
-      }
-    });
+      _readingProgressCollection = _profileDoc.collection('readingProgress');
+      _settingsCollection = _profileDoc.collection('settings');
+
+      _progressSubscription = _readingProgressCollection.snapshots().listen((snapshot) {
+        if (mounted) {
+          _manageReadingReminders(snapshot.docs);
+        }
+      });
+    }
   }
 
   @override
@@ -99,10 +106,11 @@ class _ProfilePageState extends State<ProfilePage> {
 
     bool hasUnfinishedStory = false;
     for (var doc in docs) {
-      final data = doc.data() as Map<String, dynamic>;
-      final int progress = (data['progress'] as num?)?.toInt() ?? 0;
-      
-      if (progress < 100) {
+      final progressModel = ReadingProgressModel.fromMap(
+        doc.data() as Map<String, dynamic>,
+        doc.id,
+      );
+      if (progressModel.progress < 100) {
         hasUnfinishedStory = true;
         break;
       }
@@ -132,6 +140,12 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget build(BuildContext context) {
     final isDark = appSettings.isDarkMode;
 
+    if (_uid == null) {
+      return const Scaffold(
+        body: Center(child: Text('Utilisateur non connecté.')),
+      );
+    }
+
     if (_isLoading) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
@@ -143,13 +157,16 @@ class _ProfilePageState extends State<ProfilePage> {
           if (profileSnapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
+          if (profileSnapshot.hasError) {
+            return Center(child: Text('Erreur : ${profileSnapshot.error}'));
+          }
           if (!profileSnapshot.hasData || !profileSnapshot.data!.exists) {
             return const Center(child: Text('Profil introuvable.'));
           }
 
-          final profileData = profileSnapshot.data!.data() as Map<String, dynamic>;
-          final String name = profileData['name'] ?? 'Inconnu';
-          final int age = profileData['age'] ?? 0;
+          // Utilisation du modèle ProfileModel avec les données Firestore en temps réel
+          final profileData = profileSnapshot.data!.data() as Map<String, dynamic>? ?? {};
+          final profile = ProfileModel.fromMap(profileData, profileSnapshot.data!.id, _uid!);
 
           return StreamBuilder<QuerySnapshot>(
             stream: _readingProgressCollection.snapshots(),
@@ -167,10 +184,14 @@ class _ProfilePageState extends State<ProfilePage> {
                   if (settingsSnapshot.hasData && settingsSnapshot.data!.docs.isNotEmpty) {
                     final settingsDoc = settingsSnapshot.data!.docs.first;
                     settingsDocId = settingsDoc.id;
-                    final settingsData = settingsDoc.data() as Map<String, dynamic>;
-                    currentLangCode = settingsData['langage'] ?? 'fr';
 
-                    final int totalMinutes = settingsData['totalReadingTime'] ?? 0;
+                    final settings = SettingsModel.fromMap(
+                      settingsDoc.data() as Map<String, dynamic>? ?? {},
+                      settingsDoc.id,
+                    );
+                    currentLangCode = settings.langage;
+
+                    final int totalMinutes = settings.totalReadingTime;
                     if (totalMinutes < 60) {
                       timeDisplay = '$totalMinutes min';
                     } else {
@@ -179,11 +200,8 @@ class _ProfilePageState extends State<ProfilePage> {
                       timeDisplay = minutes > 0 ? '${hours}h $minutes' : '${hours}h';
                     }
 
-                    final Timestamp? stopRead = settingsData['stopread'] as Timestamp?;
-                    final int savedStreak = settingsData['streak'] ?? 0;
-
-                    if (stopRead != null) {
-                      final DateTime lastReadDate = stopRead.toDate();
+                    if (settings.stopRead != null) {
+                      final DateTime lastReadDate = settings.stopRead!;
                       final DateTime now = DateTime.now();
                       final DateTime today = DateTime(now.year, now.month, now.day);
                       final DateTime lastReadDay = DateTime(lastReadDate.year, lastReadDate.month, lastReadDate.day);
@@ -191,12 +209,11 @@ class _ProfilePageState extends State<ProfilePage> {
 
                       if (daysDifference > 1) {
                         streakDisplay = '0 jour';
-                        if (savedStreak != 0) {
-                          // Exécuté de manière asynchrone après le build pour éviter les collisions d'état
+                        if (settings.streak != 0) {
                           Future.microtask(() => _updateSetting(settingsDocId, 'streak', 0));
                         }
                       } else {
-                        streakDisplay = '$savedStreak ${savedStreak > 1 ? 'jours' : 'jour'}';
+                        streakDisplay = '${settings.streak} ${settings.streak > 1 ? 'jours' : 'jour'}';
                       }
                     }
                   }
@@ -235,7 +252,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
                                       Text(
-                                        name,
+                                        profile.name,
                                         style: TextStyle(
                                           fontSize: 22,
                                           fontWeight: FontWeight.bold,
@@ -243,7 +260,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                         ),
                                       ),
                                       Text(
-                                        '$age ans',
+                                        '${profile.age} ans',
                                         style: TextStyle(
                                           fontSize: 14,
                                           color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
@@ -410,9 +427,11 @@ class _ProfilePageState extends State<ProfilePage> {
                                           icon: Icons.chat_bubble_outline,
                                           onTap: () {
                                             Navigator.of(context).push(
-                                              MaterialPageRoute(builder: (context) => FeedbackPage( 
-                                                profileId: widget.profileId,
-                                              )),
+                                              MaterialPageRoute(
+                                                builder: (context) => FeedbackPage(
+                                                  profileId: widget.profileId,
+                                                ),
+                                              ),
                                             );
                                           },
                                         ),
@@ -488,8 +507,6 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  // --- WIDGETS D'AFFICHAGE AJOUTÉS POUR CORRIGER LES ERREURS ---
-
   Widget _buildSectionTitle(String title) {
     return Text(
       title,
@@ -509,8 +526,8 @@ class _ProfilePageState extends State<ProfilePage> {
         color: isDark ? Colors.grey.shade900 : Colors.grey.shade50,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-        color: isDark ? Colors.grey.shade800 : Colors.grey.shade200,
-      ),
+          color: isDark ? Colors.grey.shade800 : Colors.grey.shade200,
+        ),
       ),
       child: Column(
         children: [

@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:lumiconte/models/category_model.dart';
 import 'package:lumiconte/models/story_model.dart';
+import 'package:lumiconte/models/reading_progress_model.dart';
 import 'package:lumiconte/widget/b2_image.dart';
 import 'package:go_router/go_router.dart';
 
@@ -25,7 +26,8 @@ class LibraryPage extends StatefulWidget {
 class _LibraryPageState extends State<LibraryPage> {
   String _selectedFilter = 'tous';
 
-  // Fonction pour combiner les streams sans dépendance externe 'async'
+  /// Combine en temps réel la progression de lecture (ReadingProgressModel)
+  /// et la sous-collection des favoris du profil
   Stream<List<QuerySnapshot>> _combineStreams(DocumentReference profileRef) {
     Stream<QuerySnapshot> s1 = profileRef.collection('readingProgress').snapshots();
     Stream<QuerySnapshot> s2 = profileRef.collection('favoris').snapshots();
@@ -52,10 +54,22 @@ class _LibraryPageState extends State<LibraryPage> {
 
   @override
   Widget build(BuildContext context) {
-    final uid = FirebaseAuth.instance.currentUser!.uid;
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) {
+      return const Scaffold(
+        backgroundColor: Color(0xFF140E17),
+        body: Center(
+          child: Text(
+            'Utilisateur non connecté',
+            style: TextStyle(color: Color(0xFFD1C4E9)),
+          ),
+        ),
+      );
+    }
+
     final profileRef = FirebaseFirestore.instance
         .collection('users')
-        .doc(uid)
+        .doc(currentUser.uid)
         .collection('profiles')
         .doc(widget.profileId);
 
@@ -66,20 +80,24 @@ class _LibraryPageState extends State<LibraryPage> {
         List<String> favoriteStoryIds = [];
 
         if (snapshot.hasData && snapshot.data!.length == 2) {
+          // Parse ReadingProgress via ReadingProgressModel
           final progressDocs = snapshot.data![0].docs;
           for (var doc in progressDocs) {
-            final data = doc.data() as Map<String, dynamic>;
-            final String? storyId = data['storyId'];
-            final num? progressNum = data['progress'];
-            if (storyId != null && progressNum != null) {
-              activeProfileReadProgress[storyId] = progressNum.toDouble() / 100.0;
+            try {
+              final progressModel = ReadingProgressModel.fromMap(doc.data() as Map<String, dynamic>, doc.id);
+              // Standardisation à un ratio 0.0 - 1.0 pour l'affichage de la barre
+              activeProfileReadProgress[progressModel.storyId] =
+                  (progressModel.progress / 100.0).clamp(0.0, 1.0);
+            } catch (_) {
+              // Ignore les documents mal structurés si nécessaire
             }
           }
 
+          // Parse Favoris
           final favoriteDocs = snapshot.data![1].docs;
           for (var doc in favoriteDocs) {
-            final data = doc.data() as Map<String, dynamic>;
-            final String? storyId = data['storyId'] ?? doc.id;
+            final data = doc.data() as Map<String, dynamic>?;
+            final String? storyId = data?['storyId'] ?? doc.id;
             if (storyId != null) {
               favoriteStoryIds.add(storyId);
             }
@@ -111,31 +129,38 @@ class _LibraryPageState extends State<LibraryPage> {
                   padding: const EdgeInsets.only(top: 10, bottom: 30),
                   itemBuilder: (context, index) {
                     final category = widget.categories[index];
-                    
+
+                    // Filtrage des histoires associées à cette catégorie
                     List<StoryModel> categoryStories = widget.stories
                         .where((story) => story.categoryIds.contains(category.id))
                         .toList();
 
+                    // Application des filtres utilisateur
                     if (_selectedFilter == 'favoris') {
                       categoryStories = categoryStories
                           .where((story) => favoriteStoryIds.contains(story.id))
                           .toList();
                     } else if (_selectedFilter == 'en_cours') {
-                      categoryStories = categoryStories
-                          .where((story) {
-                            final p = activeProfileReadProgress[story.id] ?? 0.0;
-                            return p > 0.0 && p < 1.0;
-                          })
-                          .toList();
+                      categoryStories = categoryStories.where((story) {
+                        final p = activeProfileReadProgress[story.id] ?? 0.0;
+                        return p > 0.0 && p < 1.0;
+                      }).toList();
                     } else if (_selectedFilter == 'non_lu') {
                       categoryStories = categoryStories
-                          .where((story) => !activeProfileReadProgress.containsKey(story.id) || activeProfileReadProgress[story.id] == 0.0)
+                          .where((story) =>
+                              !activeProfileReadProgress.containsKey(story.id) ||
+                              activeProfileReadProgress[story.id] == 0.0)
                           .toList();
                     }
 
                     if (categoryStories.isEmpty) return const SizedBox.shrink();
 
-                    return _buildShelf(context, category, categoryStories, activeProfileReadProgress);
+                    return _buildShelf(
+                      context,
+                      category,
+                      categoryStories,
+                      activeProfileReadProgress,
+                    );
                   },
                 ),
               ),
@@ -154,7 +179,7 @@ class _LibraryPageState extends State<LibraryPage> {
       {'id': 'non_lu', 'label': 'Non lu'},
     ];
 
-return Container(
+    return Container(
       height: 40,
       margin: const EdgeInsets.symmetric(vertical: 10),
       child: ListView.builder(
@@ -171,7 +196,9 @@ return Container(
               label: Text(
                 filter['label']!,
                 style: TextStyle(
-                  color: isSelected ? Colors.white : const Color(0xFFD1C4E9).withOpacity(0.6),
+                  color: isSelected
+                      ? Colors.white
+                      : const Color(0xFFD1C4E9).withOpacity(0.6),
                   fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                 ),
               ),
@@ -179,13 +206,12 @@ return Container(
               selectedColor: const Color(0xFF4A3780),
               backgroundColor: const Color(0xFF261C2C),
               showCheckmark: false,
-              // 🛠️ Remplacement ici : on utilise 'side' à la place de 'border'
               side: BorderSide(
                 color: isSelected ? const Color(0xFF6A4FB3) : Colors.transparent,
                 width: isSelected ? 1 : 0,
               ),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20), // Donne une belle forme ovale/arrondie aux filtres
+                borderRadius: BorderRadius.circular(20),
               ),
               onSelected: (bool selected) {
                 if (selected) {
@@ -202,8 +228,8 @@ return Container(
   }
 
   Widget _buildShelf(
-    BuildContext context, 
-    CategoryModel category, 
+    BuildContext context,
+    CategoryModel category,
     List<StoryModel> categoryStories,
     Map<String, double> activeProfileReadProgress,
   ) {
@@ -230,7 +256,6 @@ return Container(
                 borderRadius: BorderRadius.circular(4),
               ),
             ),
-
             Container(
               height: 225,
               padding: const EdgeInsets.only(bottom: 24),
@@ -244,7 +269,6 @@ return Container(
                 },
               ),
             ),
-
             Container(
               height: 32,
               margin: const EdgeInsets.symmetric(horizontal: 6),
@@ -255,7 +279,9 @@ return Container(
                   end: Alignment.bottomCenter,
                   colors: [Color(0xFF3C2A4D), Color(0xFF21152B)],
                 ),
-                borderRadius: const BorderRadius.vertical(bottom: Radius.circular(4)),
+                borderRadius: const BorderRadius.vertical(
+                  bottom: Radius.circular(4),
+                ),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withOpacity(0.7),
@@ -268,7 +294,10 @@ return Container(
                 mainAxisAlignment: MainAxisAlignment.start,
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 3,
+                    ),
                     decoration: BoxDecoration(
                       color: const Color(0xFF4A3780),
                       borderRadius: BorderRadius.circular(3),
@@ -279,7 +308,10 @@ return Container(
                           offset: const Offset(0, 1),
                         ),
                       ],
-                      border: Border.all(color: const Color(0xFF6A4FB3), width: 1),
+                      border: Border.all(
+                        color: const Color(0xFF6A4FB3),
+                        width: 1,
+                      ),
                     ),
                     child: Text(
                       category.name.toUpperCase(),
@@ -302,7 +334,7 @@ return Container(
   }
 
   Widget _buildBook(
-    BuildContext context, 
+    BuildContext context,
     StoryModel story,
     Map<String, double> activeProfileReadProgress,
   ) {
@@ -328,8 +360,8 @@ return Container(
           child: Stack(
             fit: StackFit.expand,
             children: [
+              // Utilisation de story.coverImage au lieu de story.image
               B2Image(objectKey: story.image, fit: BoxFit.cover),
-              
               Positioned(
                 left: 0,
                 top: 0,
@@ -340,12 +372,14 @@ return Container(
                     gradient: LinearGradient(
                       begin: Alignment.centerLeft,
                       end: Alignment.centerRight,
-                      colors: [Colors.black.withOpacity(0.5), Colors.transparent],
+                      colors: [
+                        Colors.black.withOpacity(0.5),
+                        Colors.transparent,
+                      ],
                     ),
                   ),
                 ),
               ),
-
               if (progress > 0.0)
                 Positioned(
                   right: 0,
@@ -356,7 +390,7 @@ return Container(
                     color: const Color(0x33000000),
                     alignment: Alignment.bottomCenter,
                     child: FractionallySizedBox(
-                      heightFactor: progress.clamp(0.0, 1.0),
+                      heightFactor: progress,
                       child: Container(
                         decoration: BoxDecoration(
                           gradient: const LinearGradient(
@@ -381,24 +415,30 @@ return Container(
                     ),
                   ),
                 ),
-
               Container(
                 decoration: const BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.bottomCenter,
                     end: Alignment.topCenter,
-                    colors: [Colors.black87, Colors.black38, Colors.transparent],
+                    colors: [
+                      Colors.black87,
+                      Colors.black38,
+                      Colors.transparent,
+                    ],
                     stops: [0.0, 0.7, 1.0],
                   ),
                 ),
               ),
-              
               Align(
                 alignment: Alignment.bottomLeft,
                 child: Padding(
-                  padding: const EdgeInsets.only(left: 10.0, right: 15.0, bottom: 10.0),
+                  padding: const EdgeInsets.only(
+                    left: 10.0,
+                    right: 15.0,
+                    bottom: 10.0,
+                  ),
                   child: Text(
-                    story.name,
+                    story.name, // 'title' au lieu de 'name'
                     maxLines: 3,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(

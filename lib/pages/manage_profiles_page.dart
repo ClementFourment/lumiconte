@@ -94,10 +94,10 @@ class _ManageProfilesPageState extends State<ManageProfilesPage> {
     );
   }
 
-  // Supprime un profil après confirmation
+  // Supprime un profil et toutes ses sous-collections après confirmation
   Future<void> _deleteProfile(String profileId, String profileName) async {
     final isDark = appSettings.isDarkMode;
-    
+
     final bool? confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -121,18 +121,14 @@ class _ManageProfilesPageState extends State<ManageProfilesPage> {
       ),
     );
 
-    if (confirm == true) {
+    if (confirm == true && _uid != null) {
       try {
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(_uid)
-            .collection('profiles')
-            .doc(profileId)
-            .delete();
+        // Utilisation de la méthode de suppression complète
+        await _profileService.deleteProfile(_uid!, profileId);
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Profil supprimé'), backgroundColor: Colors.orange),
+            const SnackBar(content: Text('Profil et données supprimés'), backgroundColor: Colors.orange),
           );
         }
       } catch (e) {
@@ -145,12 +141,27 @@ class _ManageProfilesPageState extends State<ManageProfilesPage> {
     }
   }
 
-  // Simule le changement de profil actif de l'application
-  void _selectProfile(String profileId, String name) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Profil actif : $name'), backgroundColor: Colors.indigo),
-    );
-    context.go('/home');
+  // Change le profil actif de l'application
+  Future<void> _selectProfile(String profileId, String name) async {
+    if (_uid != null) {
+      try {
+        // Enregistre le profil actif avant de naviguer
+        await _profileService.setActiveProfile(_uid!, profileId);
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Profil actif : $name'), backgroundColor: Colors.indigo),
+          );
+          context.go('/home');
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Erreur lors du changement de profil : $e'), backgroundColor: Colors.red),
+          );
+        }
+      }
+    }
   }
 
   @override
@@ -189,11 +200,10 @@ class _ManageProfilesPageState extends State<ManageProfilesPage> {
               crossAxisCount: 2,
               crossAxisSpacing: 16,
               mainAxisSpacing: 16,
-              childAspectRatio: 0.75, // Ajusté pour accueillir les deux boutons
+              childAspectRatio: 0.75,
             ),
             itemCount: docs.length + 1,
             itemBuilder: (context, index) {
-              // Bouton de création
               if (index == docs.length) {
                 return InkWell(
                   onTap: () {
@@ -223,7 +233,6 @@ class _ManageProfilesPageState extends State<ManageProfilesPage> {
                 );
               }
 
-              // Profil existant
               final profile = docs[index];
               final data = profile.data() as Map<String, dynamic>;
               final String name = data['name'] ?? 'Aventurier';
@@ -272,7 +281,6 @@ class _ManageProfilesPageState extends State<ManageProfilesPage> {
                               style: const TextStyle(color: Colors.grey, fontSize: 13),
                             ),
                             const Spacer(),
-                            // Ligne de boutons : Modifier et Supprimer
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                               children: [

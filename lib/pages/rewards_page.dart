@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lumiconte/main.dart';
+import 'package:lumiconte/models/rewards_model.dart';
+
 
 class RewardsPage extends StatelessWidget {
   final String userId;
@@ -12,14 +14,14 @@ class RewardsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = appSettings.isDarkMode;
-    final goldColor = const Color(0xFFF1C40F);
+    const goldColor = Color(0xFFF1C40F);
 
     return Scaffold(
       backgroundColor: isDark ? const Color(0xFF121212) : const Color(0xFFF8F9FA),
       appBar: AppBar(
         title: Text(
           'Mes Récompenses', 
-          style: GoogleFonts.nunito(fontWeight: FontWeight.bold, fontSize: 22)
+          style: GoogleFonts.nunito(fontWeight: FontWeight.bold, fontSize: 22),
         ),
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -32,7 +34,6 @@ class RewardsPage extends StatelessWidget {
             .collection('profiles').doc(profileId)
             .collection('badges').snapshots(),
         builder: (context, userBadgesSnapshot) {
-          
           return StreamBuilder<QuerySnapshot>(
             stream: FirebaseFirestore.instance.collection('badges').snapshots(),
             builder: (context, allBadgesSnapshot) {
@@ -41,37 +42,22 @@ class RewardsPage extends StatelessWidget {
                 return const Center(child: CircularProgressIndicator());
               }
 
-              // EXTRACTION DES IDS OBTENUS + PRINTS
-              final List<String> earnedBadgeIds = [];
-              
-              print("========================================");
-              print("👉 DEBUT DE LA LECTURE DES BADGES DU PROFIL");
-              
-              if (userBadgesSnapshot.hasData && userBadgesSnapshot.data != null) {
-                print("Nombre de docs trouvés dans le profil : ${userBadgesSnapshot.data!.docs.length}");
-                
-                for (var doc in userBadgesSnapshot.data!.docs) {
-                  final data = doc.data() as Map<String, dynamic>?;
-                  
-                  if (data != null && data.containsKey('badges_lectures')) {
-                    final badgeRef = data['badges_lectures'].toString().trim().toLowerCase();
-                    
-                    // 🔎 PRINT DU BADGE LU CHEZ L'USER
-                    print("🔎 ID lu dans le profil (champ badges_lectures) : '$badgeRef'");
-                    
-                    if (badgeRef.isNotEmpty) {
-                      earnedBadgeIds.add(badgeRef);
-                    }
-                  } else {
-                    print("⚠️ Un document existe dans le profil, mais le champ 'badges_lectures' est introuvable ou mal orthographié !");
-                  }
-                }
-              }
+              // --- CONVERSION TYPÉE : MAPPING DE LA SOUS-COLLECTION UTILISATEUR ---
+              final List<BadgeModel> userBadges = (userBadgesSnapshot.data?.docs ?? []).map((doc) {
+                final data = doc.data() as Map<String, dynamic>? ?? {};
+                return BadgeModel.fromMap(data, doc.id);
+              }).toList();
 
-              final allBadges = allBadgesSnapshot.data!.docs;
+              final Set<String> earnedBadgeIds = userBadges.map((b) => b.name.trim().toLowerCase()).toSet();
+
+              // --- CONVERSION TYPÉE : MAPPING DE LA COLLECTION GLOBALE DE BADGES ---
+              final List<BadgeModel> allBadges = (allBadgesSnapshot.data?.docs ?? []).map((doc) {
+                final data = doc.data() as Map<String, dynamic>? ?? {};
+                return BadgeModel.fromMap(data, doc.id);
+              }).toList();
+
               final int totalBadges = allBadges.length;
-              
-              final int earnedCount = allBadges.where((b) => earnedBadgeIds.contains(b.id.trim().toLowerCase())).length;
+              final int earnedCount = allBadges.where((b) => earnedBadgeIds.contains(b.id)).length;
               final double progressPercent = totalBadges > 0 ? (earnedCount / totalBadges) : 0.0;
 
               return Column(
@@ -147,24 +133,10 @@ class RewardsPage extends StatelessWidget {
                       ),
                       itemCount: totalBadges,
                       itemBuilder: (context, index) {
-                        final badgeData = allBadges[index].data() as Map<String, dynamic>;
-                        final String badgeId = allBadges[index].id.trim().toLowerCase();
-                        
-                        final bool isEarned = earnedBadgeIds.contains(badgeId);
+                        final BadgeModel badge = allBadges[index];
+                        final bool isEarned = earnedBadgeIds.contains(badge.id);
 
-                        // 🟢 / ❌ PRINT DE COMPARAISON POUR CHAQUE BADGE DE LA GRILLE
-                        if (isEarned) {
-                          print("🟢 MATCH ! Le badge global '$badgeId' est possédé par l'enfant.");
-                        } else {
-                          print("❌ PAS DE MATCH. Le badge global '$badgeId' n'est pas dans la liste : $earnedBadgeIds");
-                        }
-
-                        // Juste avant la fin du chargement complet de l'écran, on ferme proprement le log
-                        if (index == totalBadges - 1) {
-                          print("========================================");
-                        }
-
-                        return _buildBadgeCard(badgeData, isDark, goldColor, isEarned);
+                        return _buildBadgeCard(badge, isDark, goldColor, isEarned);
                       },
                     ),
                   ),
@@ -177,7 +149,7 @@ class RewardsPage extends StatelessWidget {
     );
   }
 
-  Widget _buildBadgeCard(Map<String, dynamic> data, bool isDark, Color gold, bool isEarned) {
+  Widget _buildBadgeCard(BadgeModel badge, bool isDark, Color gold, bool isEarned) {
     final cardBgLight = isEarned ? Colors.white : const Color(0xFFF7F2FA);
     final cardBgDark = isEarned ? const Color(0xFF1E1E1E) : const Color(0xFF252525);
 
@@ -217,7 +189,7 @@ class RewardsPage extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8.0),
               child: Text(
-                data['series_lectures'] ?? 'Badge',
+                badge.name,
                 textAlign: TextAlign.center,
                 style: GoogleFonts.nunito(
                   fontWeight: FontWeight.bold,

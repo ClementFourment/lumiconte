@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:go_router/go_router.dart';
+import 'package:lumiconte/models/profile_model.dart';
+import 'package:lumiconte/models/settings_model.dart';
 import 'package:lumiconte/services/profile_service.dart';
 import 'package:lumiconte/services/settings_service.dart';
 
@@ -34,17 +36,18 @@ class _ProfileCreationPageState extends State<ProfileCreationPage> {
     super.dispose();
   }
 
-  Future<void> _createProfile({bool customizeNow = false}) async {
-    if (_nameController.text.isEmpty) {
+Future<void> _createProfile({bool customizeNow = false}) async {
+    if (_nameController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Entrez un nom')),
       );
       return;
     }
 
-    if (_ageController.text.isEmpty) {
+    final parsedAge = int.tryParse(_ageController.text.trim());
+    if (_ageController.text.trim().isEmpty || parsedAge == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Entrez un âge')),
+        const SnackBar(content: Text('Entrez un âge valide')),
       );
       return;
     }
@@ -55,15 +58,17 @@ class _ProfileCreationPageState extends State<ProfileCreationPage> {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) throw Exception("Pas d'utilisateur");
 
-      _selectedAge = int.parse(_ageController.text);
+      _selectedAge = parsedAge;
 
-      final profileId = await _profileService.createProfile(
+      // 1. Ton ProfileService renvoie un Future<String> (le profileId)
+      final String profileId = await _profileService.createProfile(
         user.uid,
-        name: _nameController.text,
+        name: _nameController.text.trim(),
         age: _selectedAge,
       );
 
-      await _settingsService.createSettings(
+      // 2. On passe directement ce profileId pour créer les paramètres
+      await _settingsService.createOrInitSettings(
         user.uid,
         profileId,
       );
@@ -72,11 +77,15 @@ class _ProfileCreationPageState extends State<ProfileCreationPage> {
         context.go('/home');
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erreur: $e')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erreur: $e')),
+        );
+      }
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 

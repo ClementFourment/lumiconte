@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:lumiconte/main.dart'; // Pour appSettings
+import 'package:lumiconte/models/feedback_model.dart';
 
 class FeedbackPage extends StatefulWidget {
-  final String profileId; // Reçoit l'ID du profil actuel
+  final String profileId; // ID du profil actif (ProfileModel.id)
 
   const FeedbackPage({
     super.key,
@@ -19,7 +20,7 @@ class _FeedbackPageState extends State<FeedbackPage> {
   final TextEditingController _feedbackController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   bool _isSending = false;
-  
+
   static const int _maxCharacters = 500;
   int _currentLength = 0;
 
@@ -46,10 +47,9 @@ class _FeedbackPageState extends State<FeedbackPage> {
 
     try {
       final user = FirebaseAuth.instance.currentUser;
-      if (user == null) throw 'Utilisateur non connecté';
+      if (user == null) throw Exception('Utilisateur non connecté');
 
       final String uid = user.uid;
-      final now = Timestamp.now();
 
       final profileFeedbackCollection = FirebaseFirestore.instance
           .collection('users')
@@ -58,69 +58,80 @@ class _FeedbackPageState extends State<FeedbackPage> {
           .doc(widget.profileId)
           .collection('feedbacks');
 
-      // --- SÉCURIÉ ANTI-SPAM (TRI EN DART) ---
+      // --- SÉCURITÉ ANTI-SPAM VIA FeedbackModel ---
       final allFeedbacksSnapshot = await profileFeedbackCollection.get(
         const GetOptions(source: Source.server),
       );
 
       if (allFeedbacksSnapshot.docs.isNotEmpty) {
-        final timestamps = allFeedbacksSnapshot.docs
-            .map((doc) => doc.data()['createdAt'] as Timestamp?)
-            .where((t) => t != null)
-            .map((t) => t!.toDate())
+        // Instanciation de FeedbackModel pour chaque document
+        final feedbacks = allFeedbacksSnapshot.docs
+            .map((doc) => FeedbackModel.fromMap(doc.data(), doc.id))
             .toList();
 
-        if (timestamps.isNotEmpty) {
-          timestamps.sort((a, b) => b.compareTo(a));
-          final DateTime lastFeedbackDate = timestamps.first;
-          final difference = DateTime.now().difference(lastFeedbackDate);
+        // Tri par date du plus récent au plus ancien
+        feedbacks.sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
-          if (difference.inMinutes >= 0 && difference.inMinutes < 5) {
-            setState(() => _isSending = false);
-            
-            if (mounted) {
-              showDialog(
-                context: context,
-                barrierDismissible: false,
-                builder: (BuildContext context) {
-                  final isDark = appSettings.isDarkMode;
-                  return AlertDialog(
-                    backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                    title: const Text('Action bloquée'),
-                    content: const Text('Pour éviter les abus, vous devez attendre 5 minutes entre chaque commentaire.'),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.of(context).pop(),
-                        child: const Text('D\'accord'),
-                      ),
-                    ],
-                  );
-                },
-              );
-            }
-            return;
+        final DateTime lastFeedbackDate = feedbacks.first.createdAt;
+        final difference = DateTime.now().difference(lastFeedbackDate);
+
+        if (difference.inMinutes >= 0 && difference.inMinutes < 5) {
+          setState(() => _isSending = false);
+
+          if (mounted) {
+            showDialog(
+              context: context,
+              barrierDismissible: false,
+              builder: (BuildContext context) {
+                final isDark = appSettings.isDarkMode;
+                return AlertDialog(
+                  backgroundColor:
+                      isDark ? const Color(0xFF1E1E1E) : Colors.white,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16)),
+                  title: const Text('Action bloquée'),
+                  content: const Text(
+                      'Pour éviter les abus, vous devez attendre 5 minutes entre chaque commentaire.'),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: const Text('D\'accord'),
+                    ),
+                  ],
+                );
+              },
+            );
           }
+          return;
         }
       }
 
-      // --- ENVOI DU COMMENTAIRE ---
-      await profileFeedbackCollection.add({
-        'message': _feedbackController.text.trim(),
-        'createdAt': now,
-        'platform': 'Android/iOS',
-      });
+      // --- CRÉATION ET ENVOI DU FEEDBACK VIA LE MODÈLE ---
+      final newFeedback = FeedbackModel(
+        id: '', // L'id sera généré par Firestore
+        message: _feedbackController.text.trim(),
+        createdAt: DateTime.now(),
+        platform: 'Android/iOS',
+      );
+
+      await profileFeedbackCollection.add(newFeedback.toMap());
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Merci ! Votre commentaire a bien été envoyé.'), backgroundColor: Colors.green),
+          const SnackBar(
+            content: Text('Merci ! Votre commentaire a bien été envoyé.'),
+            backgroundColor: Colors.green,
+          ),
         );
         Navigator.of(context).pop();
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erreur lors de l\'envoi : $e'), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text('Erreur lors de l\'envoi : $e'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     } finally {
@@ -135,9 +146,14 @@ class _FeedbackPageState extends State<FeedbackPage> {
     final cardColor = Theme.of(context).cardColor;
 
     return Scaffold(
-      backgroundColor: isDark ? Theme.of(context).scaffoldBackgroundColor : const Color(0xFFF8F9FA),
+      backgroundColor: isDark
+          ? Theme.of(context).scaffoldBackgroundColor
+          : const Color(0xFFF8F9FA),
       appBar: AppBar(
-        title: const Text('Envoyer un commentaire', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        title: const Text(
+          'Envoyer un commentaire',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
         backgroundColor: Colors.transparent,
         elevation: 0,
         foregroundColor: primaryTextColor,
@@ -153,12 +169,21 @@ class _FeedbackPageState extends State<FeedbackPage> {
                   children: [
                     Text(
                       'Votre avis nous intéresse !',
-                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: primaryTextColor),
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: primaryTextColor,
+                      ),
                     ),
                     const SizedBox(height: 8),
                     Text(
                       'Une idée, un bug ou une suggestion ? Écrivez-nous ci-dessous. Nous lisons tous vos messages.',
-                      style: TextStyle(fontSize: 14, color: isDark ? Colors.grey.shade400 : Colors.grey.shade600),
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: isDark
+                            ? Colors.grey.shade400
+                            : Colors.grey.shade600,
+                      ),
                     ),
                     const SizedBox(height: 24),
                     TextFormField(
@@ -168,22 +193,41 @@ class _FeedbackPageState extends State<FeedbackPage> {
                       style: TextStyle(color: primaryTextColor),
                       decoration: InputDecoration(
                         hintText: 'Écrivez votre message ici...',
-                        hintStyle: TextStyle(color: isDark ? Colors.grey.shade600 : Colors.grey.shade400),
+                        hintStyle: TextStyle(
+                          color: isDark
+                              ? Colors.grey.shade600
+                              : Colors.grey.shade400,
+                        ),
                         fillColor: cardColor,
                         filled: true,
                         counterText: '$_currentLength / $_maxCharacters',
-                        counterStyle: TextStyle(color: isDark ? Colors.grey.shade500 : Colors.grey.shade600),
+                        counterStyle: TextStyle(
+                          color: isDark
+                              ? Colors.grey.shade500
+                              : Colors.grey.shade600,
+                        ),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: isDark ? Colors.grey.shade800 : Colors.grey.shade300),
+                          borderSide: BorderSide(
+                            color: isDark
+                                ? Colors.grey.shade800
+                                : Colors.grey.shade300,
+                          ),
                         ),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: isDark ? Colors.grey.shade800 : Colors.grey.shade200),
+                          borderSide: BorderSide(
+                            color: isDark
+                                ? Colors.grey.shade800
+                                : Colors.grey.shade200,
+                          ),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: Theme.of(context).primaryColor, width: 2),
+                          borderSide: BorderSide(
+                            color: Theme.of(context).primaryColor,
+                            width: 2,
+                          ),
                         ),
                       ),
                       validator: (value) {
@@ -204,13 +248,18 @@ class _FeedbackPageState extends State<FeedbackPage> {
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFFFDB833),
                           foregroundColor: Colors.black,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                           elevation: 0,
                         ),
                         onPressed: _submitFeedback,
                         child: const Text(
                           'Envoyer',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                     ),

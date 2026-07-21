@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
 
 class FavoritesPage extends StatelessWidget {
-  const FavoritesPage({super.key});
+  final String? profileId;
+
+  const FavoritesPage({
+    super.key,
+    this.profileId,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
+    return const Stack(
       children: [],
     );
   }

@@ -189,7 +189,7 @@ class _SettingsPageState extends State<SettingsPage> {
     return TextSpan(children: allSpans);
   }
 
-  /// Retourne les couleurs d'aperçu selon le thème et mode dyslexie
+  /// Retourne les couleurs d'aperçu selon le thème DE LECTURE et mode dyslexie
   _PreviewColors _getPreviewColors(SettingsModel settings) {
     if (settings.dyslexia) {
       return _PreviewColors(
@@ -198,7 +198,8 @@ class _SettingsPageState extends State<SettingsPage> {
       );
     }
 
-    switch (settings.theme) {
+    // 👈 Utilisation de settings.readTheme au lieu de settings.theme
+    switch (settings.readTheme) {
       case 'dark':
         return _PreviewColors(
           backgroundColor: const Color(0xFF1C1C1E),
@@ -380,7 +381,7 @@ class _SettingsPageState extends State<SettingsPage> {
                     _buildThemeOption(
                       label: 'Clair',
                       themeKey: 'light',
-                      currentTheme: settings.theme,
+                      currentTheme: settings.readTheme, // 👈 Utilise readTheme
                       bgColor: Colors.white,
                       textColor: Colors.black,
                       borderColor: Colors.grey.shade300,
@@ -389,7 +390,7 @@ class _SettingsPageState extends State<SettingsPage> {
                     _buildThemeOption(
                       label: 'Sombre',
                       themeKey: 'dark',
-                      currentTheme: settings.theme,
+                      currentTheme: settings.readTheme, // 👈 Utilise readTheme
                       bgColor: const Color(0xFF1C1C1E),
                       textColor: Colors.white,
                       borderColor: Colors.transparent,
@@ -398,7 +399,7 @@ class _SettingsPageState extends State<SettingsPage> {
                     _buildThemeOption(
                       label: 'Naturel',
                       themeKey: 'naturel',
-                      currentTheme: settings.theme,
+                      currentTheme: settings.readTheme, // 👈 Utilise readTheme
                       bgColor: const Color(0xFFF5EFE6),
                       textColor: const Color(0xFF2B261F),
                       borderColor: Colors.transparent,
@@ -437,7 +438,8 @@ class _SettingsPageState extends State<SettingsPage> {
     final bool isSelected = currentTheme == themeKey;
 
     return GestureDetector(
-      onTap: () => _updateSetting(settingsId, 'theme', themeKey),
+      // 👈 Met à jour la clé 'read_theme' dans Firestore
+      onTap: () => _updateSetting(settingsId, 'read_theme', themeKey),
       child: Column(
         children: [
           Container(
