@@ -1,6 +1,14 @@
 .env
+<<<<<<< HEAD
 **/generated_plugin_registrant.*
 **/generated_plugins.cmake
+=======
+**/linux/flutter/generated_plugin_registrant.*
+**/linux/flutter/generated_plugins.cmake
+**/macos/Flutter/GeneratedPluginRegistrant.swift
+**/windows/flutter/generated_plugin_registrant.*
+**/windows/flutter/generated_plugins.cmake
+>>>>>>> e0e5971 (ignore generated plugin files)
 
 # Miscellaneous
 *.class
