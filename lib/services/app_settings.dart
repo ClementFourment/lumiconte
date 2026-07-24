@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
+import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:lumiconte/models/settings_model.dart';
 import 'package:lumiconte/models/reading_progress_model.dart';
 
@@ -26,6 +27,17 @@ class AppSettings extends ChangeNotifier {
 
   Future<void> _initNotifications() async {
     tz.initializeTimeZones();
+
+    // Configuration de la timezone réelle de l'appareil
+    try {
+      final dynamic timezoneInfo = await FlutterTimezone.getLocalTimezone();
+      // On convertit proprement en String quelle que soit la version de flutter_timezone
+      final String timeZoneName = timezoneInfo.toString();
+      tz.setLocalLocation(tz.getLocation(timeZoneName));
+    } catch (e) {
+      debugPrint("Impossible de récupérer la timezone locale, fallback sur Europe/Paris : $e");
+      tz.setLocalLocation(tz.getLocation('Europe/Paris'));
+    }
 
     const AndroidInitializationSettings initializationSettingsAndroid =
         AndroidInitializationSettings('@mipmap/ic_launcher');
@@ -52,6 +64,7 @@ class AppSettings extends ChangeNotifier {
             AndroidFlutterLocalNotificationsPlugin>();
     if (androidPlugin != null) {
       await androidPlugin.requestNotificationsPermission();
+      await androidPlugin.requestExactAlarmsPermission();
     }
   }
 
@@ -96,7 +109,7 @@ class AppSettings extends ChangeNotifier {
       notifyListeners();
     }
     
-    // On s'assure de recharger l'état global des notifications stocké sur le user
+    // Recharge l'état global des notifications stocké sur l'utilisateur
     await _loadGlobalSettings();
   }
 
@@ -122,12 +135,14 @@ class AppSettings extends ChangeNotifier {
     if (uid == null) return;
 
     try {
-      // Sauvegarde globale au niveau du document user
+      // Sauvegarde globale dans Firestore
       await FirebaseFirestore.instance.collection('users').doc(uid).set({
         'notificationsEnabled': value,
       }, SetOptions(merge: true));
 
       if (value) {
+        // Envoie une notification de test rapide (10s) + planifie le rappel de 18h
+        await scheduleTestNotification();
         await scheduleReadingReminder();
       } else {
         await cancelReadingReminder();
@@ -156,19 +171,45 @@ class AppSettings extends ChangeNotifier {
     }
   }
 
-  /// Annule explicitement les rappels de lecture
+  /// Annule toutes les notifications
   Future<void> cancelReadingReminder() async {
-    await _notificationsPlugin.cancel(id: 0);
-    debugPrint("🔕 Notification annulée (Toutes les histoires sont finies ou switch désactivé).");
+    await _notificationsPlugin.cancelAll();
+    debugPrint("🔕 Toutes les notifications ont été annulées.");
   }
 
-  /// Planifie une notification journalière à 18h en inspectant TOUS les profils et leurs lectures
+  /// Notification de test déclenchée 10 secondes après activation
+  Future<void> scheduleTestNotification() async {
+    const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+      'reading_reminder_channel',
+      'Rappels de lecture',
+      channelDescription: 'Notifications pour rappeler de finir son histoire',
+      importance: Importance.max,
+      priority: Priority.high,
+      playSound: true,
+    );
+    const NotificationDetails platformDetails = NotificationDetails(android: androidDetails);
+
+    final tz.TZDateTime scheduledTime = tz.TZDateTime.now(tz.local).add(const Duration(seconds: 10));
+
+    await _notificationsPlugin.zonedSchedule(
+      id: 99, // ID distinct pour ne pas impacter le rappel quotidien (ID 0)
+      title: 'Lumiconte - Test ⏱️',
+      body: 'Ceci est une notification de test envoyée 10 secondes après activation !',
+      scheduledDate: scheduledTime,
+      notificationDetails: platformDetails,
+      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+    );
+
+    debugPrint("⚡ Notification de test programmée pour : $scheduledTime (${tz.local.name})");
+  }
+
+  /// Planifie une notification journalière à 18h00 en inspectant TOUS les profils
   Future<void> scheduleReadingReminder() async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
 
     try {
-      // 1. Récupérer tous les profils de l'utilisateur
+      // 1. Récupération de tous les profils
       final profilesSnapshot = await FirebaseFirestore.instance
           .collection('users')
           .doc(uid)
@@ -177,7 +218,7 @@ class AppSettings extends ChangeNotifier {
 
       bool hasUnfinishedStoryAnywhere = false;
 
-      // 2. Parcourir chaque profil pour vérifier ses lectures en cours
+      // 2. Vérification des lectures non terminées
       for (var profileDoc in profilesSnapshot.docs) {
         final progressSnapshot = await profileDoc.reference
             .collection('readingProgress')
@@ -190,7 +231,7 @@ class AppSettings extends ChangeNotifier {
 
         if (hasUnfinishedInThisProfile) {
           hasUnfinishedStoryAnywhere = true;
-          break; // Sortie anticipée dès qu'une histoire non finie est trouvée n'importe où
+          break;
         }
       }
 
@@ -199,8 +240,7 @@ class AppSettings extends ChangeNotifier {
         return;
       }
 
-      const AndroidNotificationDetails androidDetails =
-          AndroidNotificationDetails(
+      const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
         'reading_reminder_channel',
         'Rappels de lecture',
         channelDescription: 'Notifications pour rappeler de finir son histoire',
@@ -208,18 +248,17 @@ class AppSettings extends ChangeNotifier {
         priority: Priority.high,
         playSound: true,
       );
-      const NotificationDetails platformDetails =
-          NotificationDetails(android: androidDetails);
+      const NotificationDetails platformDetails = NotificationDetails(android: androidDetails);
 
-      // Calcul de l'heure cible : 18h00 aujourd'hui heure locale
+      // Calcul de l'heure locale : 18h00 pile
       final tz.TZDateTime now = tz.TZDateTime.now(tz.local);
       tz.TZDateTime scheduledTime = tz.TZDateTime(
         tz.local,
         now.year,
         now.month,
         now.day,
-        18, // 18 heures
-        0,  // 00 minutes
+        16, // 18 heures
+        40,  // 00 minutes
       );
 
       if (scheduledTime.isBefore(now)) {
@@ -229,17 +268,16 @@ class AppSettings extends ChangeNotifier {
       await _notificationsPlugin.zonedSchedule(
         id: 0,
         title: 'Lumiconte 📖',
-        body:
-            'Tu n\'as pas fini ta lecture ! Viens vite découvrir la suite de ton histoire.',
+        body: 'Tu n\'as pas fini ta lecture ! Viens vite découvrir la suite de ton histoire.',
         scheduledDate: scheduledTime,
         notificationDetails: platformDetails,
-        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
         matchDateTimeComponents: DateTimeComponents.time,
       );
-      debugPrint(
-          "🔔 Rappel quotidien programmé à 18h00 avec succès (prochaine occurrence : $scheduledTime).");
+
+      debugPrint("🔔 Rappel quotidien programmé à 18h00 locale (Prochaine occurrence : $scheduledTime - ${tz.local.name}).");
     } catch (e) {
-      debugPrint("Erreur lors de la vérification globale des lectures : $e");
+      debugPrint("Erreur lors de la programmation du rappel : $e");
     }
   }
 }
