@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:lumiconte/main.dart';
 import 'package:lumiconte/models/rewards_model.dart';
-
+import 'package:lumiconte/theme/app_theme.dart';
 
 class RewardsPage extends StatelessWidget {
   final String userId;
@@ -13,20 +12,29 @@ class RewardsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = appSettings.isDarkMode;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final backgroundColor = isDark ? AppTheme.darkBg : AppTheme.lightBg;
+    final cardColor = AppTheme.getCardColor(context);
+    final primaryTextColor = isDark ? Colors.white : const Color(0xFF1E1E1E);
+    final secondaryTextColor = isDark ? Colors.grey.shade400 : const Color(0xFF2C3E50);
+
     const goldColor = Color(0xFFF1C40F);
 
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF121212) : const Color(0xFFF8F9FA),
+      backgroundColor: backgroundColor,
       appBar: AppBar(
         title: Text(
           'Mes Récompenses', 
-          style: GoogleFonts.nunito(fontWeight: FontWeight.bold, fontSize: 22),
+          style: GoogleFonts.nunito(
+            fontWeight: FontWeight.bold, 
+            fontSize: 22,
+            color: primaryTextColor,
+          ),
         ),
         backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
-        foregroundColor: isDark ? Colors.white : const Color(0xFF1E1E1E),
+        foregroundColor: primaryTextColor,
       ),
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
@@ -39,7 +47,11 @@ class RewardsPage extends StatelessWidget {
             builder: (context, allBadgesSnapshot) {
               if (userBadgesSnapshot.connectionState == ConnectionState.waiting ||
                   !allBadgesSnapshot.hasData) {
-                return const Center(child: CircularProgressIndicator());
+                return const Center(
+                  child: CircularProgressIndicator(
+                    color: AppTheme.accentColor,
+                  ),
+                );
               }
 
               // --- CONVERSION TYPÉE : MAPPING DE LA SOUS-COLLECTION UTILISATEUR ---
@@ -67,7 +79,7 @@ class RewardsPage extends StatelessWidget {
                     margin: const EdgeInsets.all(20),
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+                      color: cardColor,
                       borderRadius: BorderRadius.circular(24),
                       boxShadow: !isDark ? [
                         BoxShadow(
@@ -87,13 +99,13 @@ class RewardsPage extends StatelessWidget {
                               style: GoogleFonts.nunito(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 16,
-                                color: isDark ? Colors.grey.shade300 : const Color(0xFF2C3E50),
+                                color: secondaryTextColor,
                               ),
                             ),
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                               decoration: BoxDecoration(
-                                color: Colors.indigo.withOpacity(0.1),
+                                color: AppTheme.accentColor.withOpacity(0.12),
                                 borderRadius: BorderRadius.circular(30),
                               ),
                               child: Text(
@@ -101,7 +113,7 @@ class RewardsPage extends StatelessWidget {
                                 style: GoogleFonts.nunito(
                                   fontWeight: FontWeight.w900,
                                   fontSize: 14,
-                                  color: Colors.indigo,
+                                  color: AppTheme.accentColor,
                                 ),
                               ),
                             ),
@@ -113,8 +125,8 @@ class RewardsPage extends StatelessWidget {
                           child: LinearProgressIndicator(
                             value: progressPercent,
                             minHeight: 12,
-                            backgroundColor: isDark ? Colors.grey.shade800 : const Color(0xFFF7F2FA),
-                            valueColor: const AlwaysStoppedAnimation<Color>(Colors.indigo),
+                            backgroundColor: isDark ? Colors.white10 : const Color(0xFFF7F2FA),
+                            valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.accentColor),
                           ),
                         ),
                       ],
@@ -136,7 +148,13 @@ class RewardsPage extends StatelessWidget {
                         final BadgeModel badge = allBadges[index];
                         final bool isEarned = earnedBadgeIds.contains(badge.id);
 
-                        return _buildBadgeCard(badge, isDark, goldColor, isEarned);
+                        return _buildBadgeCard(
+                          badge: badge, 
+                          isDark: isDark, 
+                          gold: goldColor, 
+                          isEarned: isEarned,
+                          cardBg: cardColor,
+                        );
                       },
                     ),
                   ),
@@ -149,15 +167,21 @@ class RewardsPage extends StatelessWidget {
     );
   }
 
-  Widget _buildBadgeCard(BadgeModel badge, bool isDark, Color gold, bool isEarned) {
-    final cardBgLight = isEarned ? Colors.white : const Color(0xFFF7F2FA);
-    final cardBgDark = isEarned ? const Color(0xFF1E1E1E) : const Color(0xFF252525);
+  Widget _buildBadgeCard({
+    required BadgeModel badge, 
+    required bool isDark, 
+    required Color gold, 
+    required bool isEarned,
+    required Color cardBg,
+  }) {
+    final unearnedBgLight = const Color(0xFFF7F2FA);
+    final unearnedBgDark = cardBg.withOpacity(0.5);
 
     return Opacity(
       opacity: isEarned ? 1.0 : 0.45, 
       child: Container(
         decoration: BoxDecoration(
-          color: isDark ? cardBgDark : cardBgLight,
+          color: isEarned ? cardBg : (isDark ? unearnedBgDark : unearnedBgLight),
           borderRadius: BorderRadius.circular(20),
           boxShadow: isEarned && !isDark ? [
             BoxShadow(

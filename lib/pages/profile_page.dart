@@ -1,21 +1,19 @@
-import 'package:flutter/material.dart';
+import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:lumiconte/services/auth_service.dart';
-import 'package:lumiconte/pages/settings_page.dart';
-import 'package:lumiconte/main.dart'; 
-import 'dart:async';
+import 'package:flutter/material.dart';
 
-import 'package:lumiconte/pages/manage_profiles_page.dart';
-import 'package:lumiconte/pages/rewards_page.dart';
-import 'package:lumiconte/pages/feedback_page.dart';
-import 'package:lumiconte/pages/terms_page.dart';
-import 'package:lumiconte/pages/privacy_page.dart';
-
-// Imports des modèles de données
+import 'package:lumiconte/main.dart';
 import 'package:lumiconte/models/profile_model.dart';
 import 'package:lumiconte/models/settings_model.dart';
-import 'package:lumiconte/models/reading_progress_model.dart';
+import 'package:lumiconte/pages/feedback_page.dart';
+import 'package:lumiconte/pages/manage_profiles_page.dart';
+import 'package:lumiconte/pages/privacy_page.dart';
+import 'package:lumiconte/pages/rewards_page.dart';
+import 'package:lumiconte/pages/settings_page.dart';
+import 'package:lumiconte/pages/terms_page.dart';
+import 'package:lumiconte/services/auth_service.dart';
+import 'package:lumiconte/theme/app_theme.dart';
 
 class ProfilePage extends StatefulWidget {
   final String profileId;
@@ -30,19 +28,16 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends State<ProfilePage> {
-  static const _purpleBg = Color(0xFFE8E5F7);
-  static const _darkPurpleBg = Color(0xFF231F32);
-
   final AuthService _authService = AuthService();
   final String? _uid = FirebaseAuth.instance.currentUser?.uid;
-  
+
   late final DocumentReference _profileDoc;
   late final CollectionReference _readingProgressCollection;
   late final CollectionReference _settingsCollection;
-  
+
   StreamSubscription? _progressSubscription;
+  StreamSubscription? _settingsSubscription;
   bool _isLoading = false;
-  Timer? _dailyReminderTimer;
 
   @override
   void initState() {
@@ -58,9 +53,28 @@ class _ProfilePageState extends State<ProfilePage> {
       _readingProgressCollection = _profileDoc.collection('readingProgress');
       _settingsCollection = _profileDoc.collection('settings');
 
-      _progressSubscription = _readingProgressCollection.snapshots().listen((snapshot) {
-        if (mounted) {
-          _manageReadingReminders(snapshot.docs);
+      // À chaque changement de progression dans ce profil, on redemande à appSettings
+      // de re-vérifier globalement la planification des rappels
+      _progressSubscription =
+          _readingProgressCollection.snapshots().listen((_) {
+        if (mounted && appSettings.isNotificationsEnabled) {
+          appSettings.scheduleReadingReminder();
+        }
+      });
+
+      // Sync du mode sombre du profil avec appSettings
+      _settingsSubscription =
+          _settingsCollection.snapshots().listen((snapshot) {
+        if (mounted && snapshot.docs.isNotEmpty) {
+          final rawData =
+              snapshot.docs.first.data() as Map<String, dynamic>? ?? {};
+          final isDark = rawData['isDarkMode'] ??
+              rawData['darkMode'] ??
+              appSettings.isDarkMode;
+
+          if (appSettings.isDarkMode != isDark) {
+            appSettings.toggleDarkMode(widget.profileId, isDark);
+          }
         }
       });
     }
@@ -69,7 +83,7 @@ class _ProfilePageState extends State<ProfilePage> {
   @override
   void dispose() {
     _progressSubscription?.cancel();
-    _dailyReminderTimer?.cancel();
+    _settingsSubscription?.cancel();
     super.dispose();
   }
 
@@ -96,58 +110,25 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
-  void _manageReadingReminders(List<QueryDocumentSnapshot> docs) {
-    _dailyReminderTimer?.cancel();
-
-    if (!appSettings.isNotificationsEnabled) {
-      appSettings.cancelReadingReminder();
-      return;
-    }
-
-    bool hasUnfinishedStory = false;
-    for (var doc in docs) {
-      final progressModel = ReadingProgressModel.fromMap(
-        doc.data() as Map<String, dynamic>,
-        doc.id,
-      );
-      if (progressModel.progress < 100) {
-        hasUnfinishedStory = true;
-        break;
-      }
-    }
-
-    if (hasUnfinishedStory) {
-      appSettings.scheduleReadingReminder(widget.profileId);
-
-      final now = DateTime.now();
-      var scheduledTime = DateTime(now.year, now.month, now.day, 18, 0, 0);
-
-      if (now.isAfter(scheduledTime)) {
-        scheduledTime = scheduledTime.add(const Duration(days: 1));
-      }
-
-      final durationUntil18h = scheduledTime.difference(now);
-
-      _dailyReminderTimer = Timer(durationUntil18h, () {
-        _manageReadingReminders(docs);
-      });
-    } else {
-      appSettings.cancelReadingReminder();
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    final isDark = appSettings.isDarkMode;
+    final theme = Theme.of(context);
 
     if (_uid == null) {
-      return const Scaffold(
-        body: Center(child: Text('Utilisateur non connecté.')),
+      return Scaffold(
+        body: Center(
+          child: Text('Utilisateur non connecté.',
+              style: TextStyle(color: theme.colorScheme.onSurface)),
+        ),
       );
     }
 
     if (_isLoading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(color: theme.colorScheme.primary),
+        ),
+      );
     }
 
     return Scaffold(
@@ -155,23 +136,31 @@ class _ProfilePageState extends State<ProfilePage> {
         stream: _profileDoc.snapshots(),
         builder: (context, profileSnapshot) {
           if (profileSnapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
+            return Center(
+                child: CircularProgressIndicator(
+                    color: theme.colorScheme.primary));
           }
           if (profileSnapshot.hasError) {
-            return Center(child: Text('Erreur : ${profileSnapshot.error}'));
+            return Center(
+                child: Text('Erreur : ${profileSnapshot.error}',
+                    style: TextStyle(color: theme.colorScheme.onSurface)));
           }
           if (!profileSnapshot.hasData || !profileSnapshot.data!.exists) {
-            return const Center(child: Text('Profil introuvable.'));
+            return Center(
+                child: Text('Profil introuvable.',
+                    style: TextStyle(color: theme.colorScheme.onSurface)));
           }
 
-          // Utilisation du modèle ProfileModel avec les données Firestore en temps réel
-          final profileData = profileSnapshot.data!.data() as Map<String, dynamic>? ?? {};
-          final profile = ProfileModel.fromMap(profileData, profileSnapshot.data!.id, _uid!);
+          final profileData =
+              profileSnapshot.data!.data() as Map<String, dynamic>? ?? {};
+          final profile = ProfileModel.fromMap(
+              profileData, profileSnapshot.data!.id, _uid!);
 
           return StreamBuilder<QuerySnapshot>(
             stream: _readingProgressCollection.snapshots(),
             builder: (context, progressSnapshot) {
-              int storiesReadCount = progressSnapshot.hasData ? progressSnapshot.data!.docs.length : 0;
+              final int storiesReadCount =
+                  progressSnapshot.hasData ? progressSnapshot.data!.docs.length : 0;
 
               return StreamBuilder<QuerySnapshot>(
                 stream: _settingsCollection.snapshots(),
@@ -181,7 +170,8 @@ class _ProfilePageState extends State<ProfilePage> {
                   String timeDisplay = '0 min';
                   String streakDisplay = '0 jour';
 
-                  if (settingsSnapshot.hasData && settingsSnapshot.data!.docs.isNotEmpty) {
+                  if (settingsSnapshot.hasData &&
+                      settingsSnapshot.data!.docs.isNotEmpty) {
                     final settingsDoc = settingsSnapshot.data!.docs.first;
                     settingsDocId = settingsDoc.id;
 
@@ -189,31 +179,42 @@ class _ProfilePageState extends State<ProfilePage> {
                       settingsDoc.data() as Map<String, dynamic>? ?? {},
                       settingsDoc.id,
                     );
+
                     currentLangCode = settings.langage;
 
+                    // Calcul du temps de lecture
                     final int totalMinutes = settings.totalReadingTime;
                     if (totalMinutes < 60) {
                       timeDisplay = '$totalMinutes min';
                     } else {
                       final hours = totalMinutes ~/ 60;
                       final minutes = totalMinutes % 60;
-                      timeDisplay = minutes > 0 ? '${hours}h $minutes' : '${hours}h';
+                      timeDisplay =
+                          minutes > 0 ? '${hours}h $minutes' : '${hours}h';
                     }
 
+                    // Calcul de la série de jours (Streak)
                     if (settings.stopRead != null) {
                       final DateTime lastReadDate = settings.stopRead!;
                       final DateTime now = DateTime.now();
-                      final DateTime today = DateTime(now.year, now.month, now.day);
-                      final DateTime lastReadDay = DateTime(lastReadDate.year, lastReadDate.month, lastReadDate.day);
-                      final int daysDifference = today.difference(lastReadDay).inDays;
+                      final DateTime today =
+                          DateTime(now.year, now.month, now.day);
+                      final DateTime lastReadDay = DateTime(
+                          lastReadDate.year,
+                          lastReadDate.month,
+                          lastReadDate.day);
+                      final int daysDifference =
+                          today.difference(lastReadDay).inDays;
 
                       if (daysDifference > 1) {
-                        streakDisplay = '0 jour';
                         if (settings.streak != 0) {
-                          Future.microtask(() => _updateSetting(settingsDocId, 'streak', 0));
+                          Future.microtask(() =>
+                              _updateSetting(settingsDocId, 'streak', 0));
                         }
+                        streakDisplay = '0 jour';
                       } else {
-                        streakDisplay = '${settings.streak} ${settings.streak > 1 ? 'jours' : 'jour'}';
+                        streakDisplay =
+                            '${settings.streak} ${settings.streak > 1 ? 'jours' : 'jour'}';
                       }
                     }
                   }
@@ -221,49 +222,59 @@ class _ProfilePageState extends State<ProfilePage> {
                   return ListenableBuilder(
                     listenable: appSettings,
                     builder: (context, child) {
-                      final currentCardColor = Theme.of(context).cardColor;
-                      final dividerColor = isDark ? Colors.grey.shade800 : Colors.grey.shade100;
-
                       return SingleChildScrollView(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
+                            // Header Profil
                             Container(
                               width: double.infinity,
-                              padding: const EdgeInsets.only(top: 60, bottom: 30, left: 24, right: 24),
+                              padding: const EdgeInsets.only(
+                                  top: 60, bottom: 24, left: 24, right: 24),
                               decoration: BoxDecoration(
                                 gradient: LinearGradient(
-                                  colors: isDark 
-                                      ? [_darkPurpleBg, Theme.of(context).scaffoldBackgroundColor] 
-                                      : [_purpleBg, Colors.white],
+                                  colors: theme.brightness == Brightness.dark
+                                      ? [
+                                          AppTheme.darkCard,
+                                          theme.scaffoldBackgroundColor
+                                        ]
+                                      : [
+                                          AppTheme.accentColor
+                                              .withValues(alpha: 0.15),
+                                          theme.scaffoldBackgroundColor
+                                        ],
                                   begin: Alignment.topCenter,
                                   end: Alignment.bottomCenter,
                                 ),
                               ),
                               child: Row(
                                 children: [
-                                  const CircleAvatar(
+                                  CircleAvatar(
                                     radius: 40,
-                                    backgroundColor: Colors.transparent,
-                                    backgroundImage: AssetImage('assets/images/boy.png'),
+                                    backgroundColor: theme.colorScheme.primary
+                                        .withValues(alpha: 0.2),
+                                    backgroundImage: const AssetImage(
+                                        'assets/images/boy.png'),
                                   ),
                                   const SizedBox(width: 20),
                                   Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         profile.name,
                                         style: TextStyle(
                                           fontSize: 22,
                                           fontWeight: FontWeight.bold,
-                                          color: isDark ? Colors.white : Colors.black,
+                                          color: theme.colorScheme.onSurface,
                                         ),
                                       ),
                                       Text(
                                         '${profile.age} ans',
                                         style: TextStyle(
                                           fontSize: 14,
-                                          color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+                                          color: theme.colorScheme.onSurface
+                                              .withValues(alpha: 0.6),
                                         ),
                                       ),
                                     ],
@@ -271,137 +282,249 @@ class _ProfilePageState extends State<ProfilePage> {
                                 ],
                               ),
                             ),
-
                             Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 20),
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 20),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  _buildSectionTitle('Statistiques'),
+                                  // Section Statistiques
+                                  Text(
+                                    'Statistiques',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: theme.colorScheme.onSurface,
+                                    ),
+                                  ),
                                   const SizedBox(height: 12),
                                   Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
                                     children: [
-                                      _buildStatCard('Histoires\nlues', '$storiesReadCount', context),
-                                      _buildStatCard('Temps de\nlecture', timeDisplay, context),
-                                      _buildStatCard('Série en\ncours', streakDisplay, context),
+                                      _buildStatCard(
+                                          context,
+                                          'Histoires\nlues',
+                                          '$storiesReadCount'),
+                                      _buildStatCard(context,
+                                          'Temps de\nlecture', timeDisplay),
+                                      _buildStatCard(context,
+                                          'Série en\ncours', streakDisplay),
                                     ],
                                   ),
-
                                   const SizedBox(height: 28),
-                                  _buildSectionTitle('Préférences'),
-                                  const SizedBox(height: 8),
-                                  Card(
-                                    color: currentCardColor,
-                                    elevation: 0,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                      side: BorderSide(color: dividerColor),
+
+                                  // Section Préférences
+                                  Text(
+                                    'Préférences',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: theme.colorScheme.onSurface,
                                     ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Material(
+                                    color: AppTheme.getCardColor(context),
+                                    borderRadius: BorderRadius.circular(16),
+                                    clipBehavior: Clip.antiAlias,
                                     child: Column(
                                       children: [
+                                        // Langue
                                         Padding(
-                                          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 16.0, vertical: 4.0),
                                           child: Row(
-                                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.spaceBetween,
                                             children: [
                                               Text(
                                                 'Langue',
                                                 style: TextStyle(
-                                                  fontSize: 14,
+                                                  fontSize: 15,
                                                   fontWeight: FontWeight.w500,
-                                                  color: isDark ? Colors.white70 : Colors.black87,
+                                                  color: theme
+                                                      .colorScheme.onSurface,
                                                 ),
                                               ),
                                               DropdownButtonHideUnderline(
                                                 child: DropdownButton<String>(
                                                   value: currentLangCode,
-                                                  icon: const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey),
+                                                  icon: Icon(
+                                                    Icons.arrow_forward_ios,
+                                                    size: 14,
+                                                    color: theme
+                                                        .colorScheme.onSurface
+                                                        .withValues(
+                                                            alpha: 0.4),
+                                                  ),
                                                   style: TextStyle(
                                                     fontSize: 14,
-                                                    color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
-                                                    fontWeight: FontWeight.w500,
+                                                    color: theme
+                                                        .colorScheme.onSurface,
                                                   ),
-                                                  dropdownColor: currentCardColor,
-                                                  onChanged: (String? newValue) {
-                                                    if (newValue != null && settingsDocId.isNotEmpty) {
-                                                      _updateSetting(settingsDocId, 'langage', newValue);
+                                                  dropdownColor:
+                                                      AppTheme.getCardColor(
+                                                          context),
+                                                  onChanged:
+                                                      (String? newValue) {
+                                                    if (newValue != null &&
+                                                        settingsDocId
+                                                            .isNotEmpty) {
+                                                      _updateSetting(
+                                                          settingsDocId,
+                                                          'langage',
+                                                          newValue);
                                                     }
                                                   },
                                                   items: const [
-                                                    DropdownMenuItem(value: 'fr', child: Text('Français  ')),
-                                                    DropdownMenuItem(value: 'en', child: Text('English  ')),
-                                                    DropdownMenuItem(value: 'es', child: Text('Español  ')),
+                                                    DropdownMenuItem(
+                                                        value: 'fr',
+                                                        child: Text(
+                                                            'Français  ')),
+                                                    DropdownMenuItem(
+                                                        value: 'en',
+                                                        child:
+                                                            Text('English  ')),
+                                                    DropdownMenuItem(
+                                                        value: 'es',
+                                                        child:
+                                                            Text('Español  ')),
                                                   ],
                                                 ),
                                               )
                                             ],
                                           ),
                                         ),
-                                        Divider(height: 1, indent: 16, endIndent: 16, color: dividerColor),
-                                        _buildListTileWithSwitch(
-                                          'Rappels de lecture',
-                                          value: appSettings.isNotificationsEnabled,
-                                          onChanged: (bool newValue) {
-                                            appSettings.toggleNotifications(widget.profileId, newValue);
-                                          },
+                                        Divider(
+                                          height: 1,
+                                          indent: 16,
+                                          endIndent: 16,
+                                          color: theme.colorScheme.onSurface
+                                              .withValues(alpha: 0.08),
                                         ),
-                                        Divider(height: 1, indent: 16, endIndent: 16, color: dividerColor),
-                                        _buildListTileWithSwitch(
-                                          'Mode nuit',
+                                        // Rappels de lecture (Branché sur le toggleNotifications(bool) global)
+                                        SwitchListTile(
+                                          title: Text(
+                                            'Rappels de lecture',
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w500,
+                                              color:
+                                                  theme.colorScheme.onSurface,
+                                            ),
+                                          ),
+                                          value:
+                                              appSettings.isNotificationsEnabled,
+                                          onChanged: (bool newValue) {
+                                            appSettings
+                                                .toggleNotifications(newValue);
+                                          },
+                                          activeColor: AppTheme.accentColor,
+                                        ),
+                                        Divider(
+                                          height: 1,
+                                          indent: 16,
+                                          endIndent: 16,
+                                          color: theme.colorScheme.onSurface
+                                              .withValues(alpha: 0.08),
+                                        ),
+                                        // Mode Nuit (Inchangé : prend le profileId + la valeur bool)
+                                        SwitchListTile(
+                                          title: Text(
+                                            'Mode nuit',
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w500,
+                                              color:
+                                                  theme.colorScheme.onSurface,
+                                            ),
+                                          ),
                                           value: appSettings.isDarkMode,
                                           onChanged: (bool newValue) {
-                                            appSettings.toggleDarkMode(widget.profileId, newValue);
+                                            appSettings.toggleDarkMode(
+                                                widget.profileId, newValue);
+                                            if (settingsDocId.isNotEmpty) {
+                                              _updateSetting(settingsDocId,
+                                                  'isDarkMode', newValue);
+                                            }
                                           },
+                                          activeColor: AppTheme.accentColor,
                                         ),
                                       ],
                                     ),
                                   ),
-
                                   const SizedBox(height: 24),
-                                  _buildSectionTitle('Mon Compte'),
-                                  const SizedBox(height: 8),
-                                  Card(
-                                    color: currentCardColor,
-                                    elevation: 0,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                      side: BorderSide(color: dividerColor),
+
+                                  // Section Mon Compte
+                                  Text(
+                                    'Mon Compte',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: theme.colorScheme.onSurface,
                                     ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Material(
+                                    color: AppTheme.getCardColor(context),
+                                    borderRadius: BorderRadius.circular(16),
+                                    clipBehavior: Clip.antiAlias,
                                     child: Column(
                                       children: [
                                         _buildListTile(
+                                          context,
                                           'Gérer mes profils',
                                           icon: Icons.people_outline,
                                           onTap: () {
                                             Navigator.of(context).push(
-                                              MaterialPageRoute(builder: (context) => const ManageProfilesPage()),
+                                              MaterialPageRoute(
+                                                  builder: (context) =>
+                                                      const ManageProfilesPage()),
                                             );
                                           },
                                         ),
-                                        Divider(height: 1, indent: 16, endIndent: 16, color: dividerColor),
+                                        Divider(
+                                          height: 1,
+                                          indent: 16,
+                                          endIndent: 16,
+                                          color: theme.colorScheme.onSurface
+                                              .withValues(alpha: 0.08),
+                                        ),
                                         _buildListTile(
+                                          context,
                                           'Mes Récompenses',
                                           icon: Icons.emoji_events_outlined,
                                           onTap: () {
                                             Navigator.of(context).push(
                                               MaterialPageRoute(
-                                                builder: (context) => RewardsPage(
-                                                  userId: FirebaseAuth.instance.currentUser?.uid ?? '',
+                                                builder: (context) =>
+                                                    RewardsPage(
+                                                  userId: _uid ?? '',
                                                   profileId: widget.profileId,
                                                 ),
                                               ),
                                             );
                                           },
                                         ),
-                                        Divider(height: 1, indent: 16, endIndent: 16, color: dividerColor),
+                                        Divider(
+                                          height: 1,
+                                          indent: 16,
+                                          endIndent: 16,
+                                          color: theme.colorScheme.onSurface
+                                              .withValues(alpha: 0.08),
+                                        ),
                                         _buildListTile(
+                                          context,
                                           'Paramètres de lecture',
                                           icon: Icons.menu_book_outlined,
                                           onTap: () {
                                             Navigator.of(context).push(
                                               MaterialPageRoute(
-                                                builder: (context) => SettingsPage(profileId: widget.profileId),
+                                                builder: (context) =>
+                                                    SettingsPage(
+                                                        profileId:
+                                                            widget.profileId),
                                               ),
                                             );
                                           },
@@ -409,83 +532,106 @@ class _ProfilePageState extends State<ProfilePage> {
                                       ],
                                     ),
                                   ),
-
                                   const SizedBox(height: 24),
-                                  _buildSectionTitle('Assistance et Informations'),
-                                  const SizedBox(height: 8),
-                                  Card(
-                                    color: currentCardColor,
-                                    elevation: 0,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                      side: BorderSide(color: dividerColor),
+
+                                  // Section Assistance
+                                  Text(
+                                    'Assistance et Informations',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: theme.colorScheme.onSurface,
                                     ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Material(
+                                    color: AppTheme.getCardColor(context),
+                                    borderRadius: BorderRadius.circular(16),
+                                    clipBehavior: Clip.antiAlias,
                                     child: Column(
                                       children: [
                                         _buildListTile(
+                                          context,
                                           'Envoyer un commentaire',
                                           icon: Icons.chat_bubble_outline,
                                           onTap: () {
                                             Navigator.of(context).push(
                                               MaterialPageRoute(
-                                                builder: (context) => FeedbackPage(
-                                                  profileId: widget.profileId,
-                                                ),
+                                                builder: (context) =>
+                                                    FeedbackPage(
+                                                        profileId:
+                                                            widget.profileId),
                                               ),
                                             );
                                           },
                                         ),
-                                        Divider(height: 1, indent: 16, endIndent: 16, color: dividerColor),
+                                        Divider(
+                                          height: 1,
+                                          indent: 16,
+                                          endIndent: 16,
+                                          color: theme.colorScheme.onSurface
+                                              .withValues(alpha: 0.08),
+                                        ),
                                         _buildListTile(
+                                          context,
                                           "Conditions Générales d'Utilisation",
                                           icon: Icons.description_outlined,
                                           onTap: () {
                                             Navigator.of(context).push(
-                                              MaterialPageRoute(builder: (context) => const TermsOfServicePage()),
+                                              MaterialPageRoute(
+                                                  builder: (context) =>
+                                                      const TermsOfServicePage()),
                                             );
                                           },
                                         ),
-                                        Divider(height: 1, indent: 16, endIndent: 16, color: dividerColor),
+                                        Divider(
+                                          height: 1,
+                                          indent: 16,
+                                          endIndent: 16,
+                                          color: theme.colorScheme.onSurface
+                                              .withValues(alpha: 0.08),
+                                        ),
                                         _buildListTile(
+                                          context,
                                           'Politique de Confidentialité',
                                           icon: Icons.lock_outline,
                                           onTap: () {
                                             Navigator.of(context).push(
-                                              MaterialPageRoute(builder: (context) => const PrivacyPolicyPage()),
+                                              MaterialPageRoute(
+                                                  builder: (context) =>
+                                                      const PrivacyPolicyPage()),
                                             );
                                           },
                                         ),
                                       ],
                                     ),
                                   ),
-
                                   const SizedBox(height: 32),
+
+                                  // Bouton Déconnexion
                                   SizedBox(
                                     width: double.infinity,
-                                    height: 52,
-                                    child: TextButton.icon(
-                                      style: TextButton.styleFrom(
-                                        foregroundColor: Colors.red.shade600,
+                                    child: OutlinedButton.icon(
+                                      style: OutlinedButton.styleFrom(
+                                        side: BorderSide(
+                                            color: Colors.red.shade400),
+                                        padding: const EdgeInsets.symmetric(
+                                            vertical: 14),
                                         shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(12),
+                                          borderRadius:
+                                              BorderRadius.circular(12),
                                         ),
                                       ),
                                       onPressed: _handleSignOut,
-                                      icon: const Icon(Icons.logout),
-                                      label: const Text(
+                                      icon: Icon(Icons.logout,
+                                          color: Colors.red.shade400, size: 20),
+                                      label: Text(
                                         'Se déconnecter',
-                                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                                      ),
-                                    ),
-                                  ),
-
-                                  const SizedBox(height: 24),
-                                  Center(
-                                    child: Text(
-                                      'Version 1.0.0',
-                                      style: TextStyle(
-                                        color: Colors.grey.shade500,
-                                        fontSize: 12,
+                                        style: TextStyle(
+                                          color: Colors.red.shade400,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 15,
+                                        ),
                                       ),
                                     ),
                                   ),
@@ -507,62 +653,63 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  Widget _buildSectionTitle(String title) {
-    return Text(
-      title,
-      style: const TextStyle(
-        fontSize: 16,
-        fontWeight: FontWeight.bold,
-      ),
-    );
-  }
-
-  Widget _buildStatCard(String title, String value, BuildContext context) {
-    final isDark = appSettings.isDarkMode;
-    return Container(
-      width: (MediaQuery.of(context).size.width - 56) / 3,
-      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
-      decoration: BoxDecoration(
-        color: isDark ? Colors.grey.shade900 : Colors.grey.shade50,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isDark ? Colors.grey.shade800 : Colors.grey.shade200,
+  Widget _buildStatCard(BuildContext context, String label, String value) {
+    final theme = Theme.of(context);
+    return Expanded(
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 4),
+        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+        decoration: BoxDecoration(
+          color: AppTheme.getCardColor(context),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Column(
+          children: [
+            Text(
+              value,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: AppTheme.accentColor,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
         ),
       ),
-      child: Column(
-        children: [
-          Text(
-            value,
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 6),
-          Text(
-            title,
-            style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
     );
   }
 
-  Widget _buildListTileWithSwitch(String title, {required bool value, required ValueChanged<bool> onChanged}) {
-    return SwitchListTile(
-      title: Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
-      value: value,
-      onChanged: onChanged,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-    );
-  }
-
-  Widget _buildListTile(String title, {required IconData icon, required VoidCallback onTap}) {
+  Widget _buildListTile(BuildContext context, String title,
+      {required IconData icon, required VoidCallback onTap}) {
+    final theme = Theme.of(context);
     return ListTile(
-      leading: Icon(icon, size: 22),
-      title: Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
-      trailing: const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey),
+      hoverColor: theme.colorScheme.primary.withValues(alpha: 0.05),
+      leading: Icon(icon,
+          size: 22, color: theme.colorScheme.onSurface.withValues(alpha: 0.8)),
+      title: Text(
+        title,
+        style: TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w500,
+          color: theme.colorScheme.onSurface,
+        ),
+      ),
+      trailing: Icon(
+        Icons.arrow_forward_ios,
+        size: 14,
+        color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
+      ),
       onTap: onTap,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16),
     );
   }
 }

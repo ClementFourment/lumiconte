@@ -21,6 +21,7 @@ class AppSettings extends ChangeNotifier {
 
   AppSettings() {
     _initNotifications();
+    _loadGlobalSettings();
   }
 
   Future<void> _initNotifications() async {
@@ -54,7 +55,26 @@ class AppSettings extends ChangeNotifier {
     }
   }
 
-  /// Charge les paramètres Firestore et les mappe dans un SettingsModel
+  /// Charge les paramètres globaux au niveau du document user
+  Future<void> _loadGlobalSettings() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+
+    try {
+      final userDoc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
+      if (userDoc.exists) {
+        final data = userDoc.data();
+        if (data != null) {
+          _isNotificationsEnabled = data['notificationsEnabled'] ?? false;
+          notifyListeners();
+        }
+      }
+    } catch (e) {
+      debugPrint("Erreur lors du chargement des paramètres globaux : $e");
+    }
+  }
+
+  /// Charge les paramètres Firestore spécifiques au profil (ex: langue, thème du profil)
   Future<void> loadSettingsFromFirestore(String profileId) async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
@@ -71,15 +91,16 @@ class AppSettings extends ChangeNotifier {
       final doc = snapshot.docs.first;
       _currentSettings = SettingsModel.fromMap(doc.data(), doc.id);
       
-      // Adaptation selon la propriété 'theme' du SettingsModel
       _isDarkMode = _currentSettings?.theme == 'dark';
-      _isNotificationsEnabled = snapshot.docs.first.data()['notificationsEnabled'] ?? false;
       
       notifyListeners();
     }
+    
+    // On s'assure de recharger l'état global des notifications stocké sur le user
+    await _loadGlobalSettings();
   }
 
-  /// Alterne le mode sombre et met à jour le SettingsModel
+  /// Alterne le mode sombre et met à jour le SettingsModel du profil
   Future<void> toggleDarkMode(String profileId, bool value) async {
     _isDarkMode = value;
     final newTheme = value ? 'dark' : 'light';
@@ -92,20 +113,31 @@ class AppSettings extends ChangeNotifier {
     await _updateSettingsInFirestore(profileId, {'theme': newTheme, 'darkMode': value});
   }
 
-  /// Alterne les notifications et planifie/annule le rappel
-  Future<void> toggleNotifications(String profileId, bool value) async {
+  /// Alterne les notifications de manière globale au niveau de l'utilisateur (`users/{uid}`)
+  Future<void> toggleNotifications(bool value) async {
     _isNotificationsEnabled = value;
     notifyListeners();
-    await _updateSettingsInFirestore(profileId, {'notificationsEnabled': value});
 
-    if (value) {
-      await scheduleReadingReminder(profileId);
-    } else {
-      await cancelReadingReminder();
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+
+    try {
+      // Sauvegarde globale au niveau du document user
+      await FirebaseFirestore.instance.collection('users').doc(uid).set({
+        'notificationsEnabled': value,
+      }, SetOptions(merge: true));
+
+      if (value) {
+        await scheduleReadingReminder();
+      } else {
+        await cancelReadingReminder();
+      }
+    } catch (e) {
+      debugPrint("Erreur lors de la mise à jour globale des notifications : $e");
     }
   }
 
-  /// Met à jour les champs de la collection settings
+  /// Met à jour les champs de la collection settings du profil
   Future<void> _updateSettingsInFirestore(
       String profileId, Map<String, dynamic> updates) async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
@@ -127,30 +159,42 @@ class AppSettings extends ChangeNotifier {
   /// Annule explicitement les rappels de lecture
   Future<void> cancelReadingReminder() async {
     await _notificationsPlugin.cancel(id: 0);
-    print("🔕 Notification annulée (Toutes les histoires sont finies ou switch désactivé).");
+    debugPrint("🔕 Notification annulée (Toutes les histoires sont finies ou switch désactivé).");
   }
 
-  /// Planifie une notification journalière à 18h en inspectant ReadingProgressModel
-  Future<void> scheduleReadingReminder(String profileId) async {
+  /// Planifie une notification journalière à 18h en inspectant TOUS les profils et leurs lectures
+  Future<void> scheduleReadingReminder() async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
 
     try {
-      final progressSnapshot = await FirebaseFirestore.instance
+      // 1. Récupérer tous les profils de l'utilisateur
+      final profilesSnapshot = await FirebaseFirestore.instance
           .collection('users')
           .doc(uid)
           .collection('profiles')
-          .doc(profileId)
-          .collection('readingProgress')
-          .get(const GetOptions(source: Source.serverAndCache));
+          .get();
 
-      // Utilisation de ReadingProgressModel.fromMap pour évaluer la progression
-      bool hasUnfinishedStory = progressSnapshot.docs.any((doc) {
-        final progressModel = ReadingProgressModel.fromMap(doc.data(), doc.id);
-        return progressModel.progress < 100;
-      });
+      bool hasUnfinishedStoryAnywhere = false;
 
-      if (!hasUnfinishedStory) {
+      // 2. Parcourir chaque profil pour vérifier ses lectures en cours
+      for (var profileDoc in profilesSnapshot.docs) {
+        final progressSnapshot = await profileDoc.reference
+            .collection('readingProgress')
+            .get(const GetOptions(source: Source.serverAndCache));
+
+        bool hasUnfinishedInThisProfile = progressSnapshot.docs.any((doc) {
+          final progressModel = ReadingProgressModel.fromMap(doc.data(), doc.id);
+          return progressModel.progress < 100;
+        });
+
+        if (hasUnfinishedInThisProfile) {
+          hasUnfinishedStoryAnywhere = true;
+          break; // Sortie anticipée dès qu'une histoire non finie est trouvée n'importe où
+        }
+      }
+
+      if (!hasUnfinishedStoryAnywhere) {
         await cancelReadingReminder();
         return;
       }
@@ -192,10 +236,10 @@ class AppSettings extends ChangeNotifier {
         androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
         matchDateTimeComponents: DateTimeComponents.time,
       );
-      print(
+      debugPrint(
           "🔔 Rappel quotidien programmé à 18h00 avec succès (prochaine occurrence : $scheduledTime).");
     } catch (e) {
-      print("Erreur lors de la vérification des lectures : $e");
+      debugPrint("Erreur lors de la vérification globale des lectures : $e");
     }
   }
 }

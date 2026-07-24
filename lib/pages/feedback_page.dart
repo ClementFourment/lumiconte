@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:lumiconte/main.dart'; // Pour appSettings
 import 'package:lumiconte/models/feedback_model.dart';
+import 'package:lumiconte/theme/app_theme.dart';
 
 class FeedbackPage extends StatefulWidget {
   final String profileId; // ID du profil actif (ProfileModel.id)
@@ -64,12 +64,10 @@ class _FeedbackPageState extends State<FeedbackPage> {
       );
 
       if (allFeedbacksSnapshot.docs.isNotEmpty) {
-        // Instanciation de FeedbackModel pour chaque document
         final feedbacks = allFeedbacksSnapshot.docs
             .map((doc) => FeedbackModel.fromMap(doc.data(), doc.id))
             .toList();
 
-        // Tri par date du plus récent au plus ancien
         feedbacks.sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
         final DateTime lastFeedbackDate = feedbacks.first.createdAt;
@@ -79,23 +77,40 @@ class _FeedbackPageState extends State<FeedbackPage> {
           setState(() => _isSending = false);
 
           if (mounted) {
+            final cardBg = AppTheme.getCardColor(context);
+            final isDark = Theme.of(context).brightness == Brightness.dark;
+
             showDialog(
               context: context,
               barrierDismissible: false,
               builder: (BuildContext context) {
-                final isDark = appSettings.isDarkMode;
                 return AlertDialog(
-                  backgroundColor:
-                      isDark ? const Color(0xFF1E1E1E) : Colors.white,
+                  backgroundColor: cardBg,
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16)),
-                  title: const Text('Action bloquée'),
-                  content: const Text(
-                      'Pour éviter les abus, vous devez attendre 5 minutes entre chaque commentaire.'),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  title: Text(
+                    'Action bloquée',
+                    style: TextStyle(
+                      color: isDark ? Colors.white : Colors.black87,
+                    ),
+                  ),
+                  content: Text(
+                    'Pour éviter les abus, vous devez attendre 5 minutes entre chaque commentaire.',
+                    style: TextStyle(
+                      color: isDark ? Colors.white70 : Colors.black87,
+                    ),
+                  ),
                   actions: [
                     TextButton(
                       onPressed: () => Navigator.of(context).pop(),
-                      child: const Text('D\'accord'),
+                      child: const Text(
+                        'D\'accord',
+                        style: TextStyle(
+                          color: AppTheme.accentColor,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
                   ],
                 );
@@ -108,7 +123,7 @@ class _FeedbackPageState extends State<FeedbackPage> {
 
       // --- CRÉATION ET ENVOI DU FEEDBACK VIA LE MODÈLE ---
       final newFeedback = FeedbackModel(
-        id: '', // L'id sera généré par Firestore
+        id: '',
         message: _feedbackController.text.trim(),
         createdAt: DateTime.now(),
         platform: 'Android/iOS',
@@ -141,25 +156,41 @@ class _FeedbackPageState extends State<FeedbackPage> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = appSettings.isDarkMode;
-    final primaryTextColor = isDark ? Colors.white : Colors.black;
-    final cardColor = Theme.of(context).cardColor;
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    final primaryTextColor = isDark ? Colors.white : Colors.black87;
+    final cardColor = AppTheme.getCardColor(context);
+    final backgroundColor = theme.scaffoldBackgroundColor; // 🟣 Prend le violet darkBg (0xFF1E1B29)
 
     return Scaffold(
-      backgroundColor: isDark
-          ? Theme.of(context).scaffoldBackgroundColor
-          : const Color(0xFFF8F9FA),
+      backgroundColor: backgroundColor, // 🔴 Force le fond général
       appBar: AppBar(
-        title: const Text(
-          'Envoyer un commentaire',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-        backgroundColor: Colors.transparent,
+        backgroundColor: backgroundColor, // 🔴 Assure que l'AppBar n'a pas de fond noir
+        surfaceTintColor: Colors.transparent, // Désactive l'effet de surface Material 3
         elevation: 0,
-        foregroundColor: primaryTextColor,
+        leading: IconButton(
+          icon: Icon(
+            Icons.arrow_back,
+            color: primaryTextColor,
+          ),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: Text(
+          'Envoyer un commentaire',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: primaryTextColor,
+          ),
+        ),
       ),
       body: _isSending
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(
+              child: CircularProgressIndicator(
+                color: AppTheme.accentColor,
+              ),
+            )
           : SingleChildScrollView(
               padding: const EdgeInsets.all(24.0),
               child: Form(
@@ -180,9 +211,7 @@ class _FeedbackPageState extends State<FeedbackPage> {
                       'Une idée, un bug ou une suggestion ? Écrivez-nous ci-dessous. Nous lisons tous vos messages.',
                       style: TextStyle(
                         fontSize: 14,
-                        color: isDark
-                            ? Colors.grey.shade400
-                            : Colors.grey.shade600,
+                        color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
                       ),
                     ),
                     const SizedBox(height: 24),
@@ -207,25 +236,21 @@ class _FeedbackPageState extends State<FeedbackPage> {
                               : Colors.grey.shade600,
                         ),
                         border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(
-                            color: isDark
-                                ? Colors.grey.shade800
-                                : Colors.grey.shade300,
-                          ),
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide.none,
                         ),
                         enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(16),
                           borderSide: BorderSide(
                             color: isDark
-                                ? Colors.grey.shade800
+                                ? Colors.white.withOpacity(0.05)
                                 : Colors.grey.shade200,
                           ),
                         ),
                         focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(
-                            color: Theme.of(context).primaryColor,
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: const BorderSide(
+                            color: AppTheme.accentColor,
                             width: 2,
                           ),
                         ),
@@ -246,10 +271,10 @@ class _FeedbackPageState extends State<FeedbackPage> {
                       height: 52,
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFFDB833),
+                          backgroundColor: AppTheme.accentColor,
                           foregroundColor: Colors.black,
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(14),
                           ),
                           elevation: 0,
                         ),

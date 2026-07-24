@@ -1,9 +1,11 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 class ProfileModel {
   final String id;
   final String userId;
   final String name;
   final int age;
-  final String? avatarPath; // Nouveau : chemin ou URL de l'avatar
+  final String? avatarPath;
   final List<String> interestIds;
   final DateTime createdAt;
 
@@ -17,29 +19,46 @@ class ProfileModel {
     required this.createdAt,
   });
 
+  /// Factory pour lire un document Firestore
   factory ProfileModel.fromMap(
-      Map<String, dynamic> data, String docId, String userId) {
+    Map<String, dynamic>? data,
+    String docId,
+    String userId,
+  ) {
+    final map = data ?? {};
+
     return ProfileModel(
       id: docId,
       userId: userId,
-      name: data['name'] ?? '',
-      age: data['age'] ?? 0,
-      avatarPath: data['avatarPath'],
-      interestIds: List<String>.from(data['interests'] ?? []),
-      createdAt: data['createdAt']?.toDate() ?? DateTime.now(),
+      name: map['name'] ?? '',
+      age: map['age'] ?? 0,
+      avatarPath: map['avatarPath'], // null si non encore renseigné
+      interestIds: List<String>.from(map['interests'] ?? []),
+      createdAt: (map['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
     );
   }
 
+  /// Map pour l'écriture dans Firestore (Création / Mise à jour)
   Map<String, dynamic> toMap() {
-    return {
+    final map = <String, dynamic>{
       'name': name,
       'age': age,
-      if (avatarPath != null) 'avatarPath': avatarPath,
-      'interests': interestIds,
-      'createdAt': createdAt,
+      'createdAt': FieldValue.serverTimestamp(),
     };
+
+    // On n'ajoute ces champs à Firestore QUE s'ils contiennent de l'information
+    if (avatarPath != null && avatarPath!.isNotEmpty) {
+      map['avatarPath'] = avatarPath;
+    }
+
+    if (interestIds.isNotEmpty) {
+      map['interests'] = interestIds;
+    }
+
+    return map;
   }
 
+  /// Pratique pour modifier un champ du profil sans devoir tout réécrire
   ProfileModel copyWith({
     String? id,
     String? userId,

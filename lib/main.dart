@@ -6,6 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:lumiconte/services/app_settings.dart';
+import 'package:lumiconte/theme/app_theme.dart'; // 🟣 Import de ton AppTheme
 
 final appSettings = AppSettings();
 
@@ -33,7 +34,6 @@ class LumiconteApp extends StatelessWidget {
     return ListenableBuilder(
       listenable: appSettings,
       builder: (context, child) {
-        // On récupère le style de base propre à chaque mode pour éviter le conflit d'interpolation
         final lightTextTheme = Typography.material2021(platform: TargetPlatform.android).black;
         final darkTextTheme = Typography.material2021(platform: TargetPlatform.android).white;
 
@@ -43,12 +43,8 @@ class LumiconteApp extends StatelessWidget {
           debugShowCheckedModeBanner: false,
           themeMode: appSettings.isDarkMode ? ThemeMode.dark : ThemeMode.light,
 
-          // ☀️ THÈME CLAIR
-          theme: ThemeData(
-            brightness: Brightness.light,
-            primarySwatch: Colors.indigo,
-            scaffoldBackgroundColor: const Color(0xFFF8F9FA),
-            cardColor: Colors.white,
+          // ☀️ THÈME CLAIR (AppTheme + tes polices Google)
+          theme: AppTheme.lightTheme.copyWith(
             textTheme: GoogleFonts.nunitoTextTheme(lightTextTheme).copyWith(
               titleLarge: GoogleFonts.aBeeZee(
                 fontSize: 48,
@@ -60,12 +56,8 @@ class LumiconteApp extends StatelessWidget {
             ),
           ),
           
-          // 🌙 THÈME SOMBRE
-          darkTheme: ThemeData(
-            brightness: Brightness.dark,
-            primarySwatch: Colors.indigo,
-            scaffoldBackgroundColor: const Color(0xFF121212), 
-            cardColor: const Color(0xFF1E1E1E), 
+          // 🌙 THÈME SOMBRE (AppTheme avec 0xFF1E1B29 / 0xFF2D283E + tes polices Google)
+          darkTheme: AppTheme.darkTheme.copyWith(
             textTheme: GoogleFonts.nunitoTextTheme(darkTextTheme).copyWith(
               titleLarge: GoogleFonts.aBeeZee(
                 fontSize: 48,

@@ -1,0 +1,18 @@
+**Patch 1 : **
+- Passage par les models et ajout des nouvelles données dans les anciens models
+- Correction du theme dark qui modifié le theme de lecture, dissociation par un "read_theme"
+- Correction suppression des profiles et des documents/collections filles
+- Correction du chargement des settings entre les profiles
+- Correction des chargements et création de profiles aecc redirections sur home
+- Problèmes entre les models et la facon de crée/remplir un nouveau profil correctement lazy
+j'ai remis a un minimum de création juste des settings,age,createdAt,name en utilisant les modeles
+- Limiter le nombre de profils ( seulement en code pas de changeemnt des regles, flm)
+- Couleur nuit ( création d'un fichier app_theme réutiliser partout dans l'app pour le mode nuit)
+- Notification modifié, peu etre encore bug
+
+**Bug connu ou ajout : **
+
+
+** Amelioration a faire**
+- Visuel (police,taille,disposition,..)
+- Comme pour couleur nuit créer un fichier de theme applicable a l'app ?

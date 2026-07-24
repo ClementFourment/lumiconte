@@ -44,31 +44,59 @@ class ProfileService extends FirebaseService {
   // CREATION & LECTURE
   // ---------------------------------------------------------------------------
 
-  /// Créer un nouveau profil enfant
+  /// Créer un nouveau profil enfant (Lazy Creation)
   Future<String> createProfile(
     String userId, {
     required String name,
     required int age,
-    String? avatarUrl,
-    String? avatarColor,
+    String? avatarPath,
     List<String> interestIds = const [],
   }) async {
     try {
-      final docRef = await _getProfilesRef(userId).add({
-        'name': name,
-        'age': age,
-        'avatarUrl': avatarUrl ?? '',
-        'avatarColor': avatarColor ?? '#4A90E2',
-        'interests': interestIds,
-        'completedStoryIds': [],
-        'unlockedBadgeIds': [],
-        'readingTimeMinutes': 0,
-        'storyProgress': {},
-        'createdAt': FieldValue.serverTimestamp(),
-      });
+      // 1. Instanciation du modèle avec les valeurs minimales
+      final newProfile = ProfileModel(
+        id: '', // Firestore génère l'ID
+        userId: userId,
+        name: name,
+        age: age,
+        avatarPath: avatarPath,
+        interestIds: interestIds,
+        createdAt: DateTime.now(),
+      );
+
+      // 2. Écriture via toMap() nettoyé (seulement les champs fournis)
+      final docRef = await _getProfilesRef(userId).add(newProfile.toMap());
       return docRef.id;
     } catch (e) {
       debugPrint('Erreur création profil: $e');
+      rethrow;
+    }
+  }
+
+  /// NOUVEAU : Créer un nouveau profil ET le définir directement comme profil actif
+  Future<String> createAndSetActiveProfile(
+    String userId, {
+    required String name,
+    required int age,
+    String? avatarPath,
+    List<String> interestIds = const [],
+  }) async {
+    try {
+      // 1. Création du profil dans Firestore
+      final newProfileId = await createProfile(
+        userId,
+        name: name,
+        age: age,
+        avatarPath: avatarPath,
+        interestIds: interestIds,
+      );
+
+      // 2. Définir automatiquement ce nouveau profil comme actif
+      await setActiveProfile(userId, newProfileId);
+
+      return newProfileId;
+    } catch (e) {
+      debugPrint('Erreur création et activation profil: $e');
       rethrow;
     }
   }
@@ -130,22 +158,20 @@ class ProfileService extends FirebaseService {
   // MISE A JOUR DES INFORMATIONS DE BASE
   // ---------------------------------------------------------------------------
 
-  /// Mettre à jour les informations de base du profil
+  /// Mettre à jour les informations de base d'un profil existant
   Future<void> updateProfile(
     String userId,
     String profileId, {
     String? name,
     int? age,
-    String? avatarUrl,
-    String? avatarColor,
+    String? avatarPath,
     List<String>? interestIds,
   }) async {
     try {
       final updates = <String, dynamic>{};
       if (name != null) updates['name'] = name;
       if (age != null) updates['age'] = age;
-      if (avatarUrl != null) updates['avatarUrl'] = avatarUrl;
-      if (avatarColor != null) updates['avatarColor'] = avatarColor;
+      if (avatarPath != null) updates['avatarPath'] = avatarPath;
       if (interestIds != null) updates['interests'] = interestIds;
 
       if (updates.isNotEmpty) {
@@ -170,7 +196,7 @@ class ProfileService extends FirebaseService {
   }
 
   // ---------------------------------------------------------------------------
-  // GESTION DE LA PROGRESSION & LECTURE
+  // GESTION DE LA PROGRESSION & LECTURE (Lazy Creation & Updates)
   // ---------------------------------------------------------------------------
 
   /// Marquer une histoire comme terminée et ajouter les badges gagnés
@@ -184,7 +210,7 @@ class ProfileService extends FirebaseService {
     try {
       final updates = <String, dynamic>{
         'completedStoryIds': FieldValue.arrayUnion([storyId]),
-        // On nettoie la progression en cours car l'histoire est terminée
+        // Suppression de l'avancement temporaire puisque l'histoire est terminée
         'storyProgress.$storyId': FieldValue.delete(),
       };
 
@@ -221,7 +247,7 @@ class ProfileService extends FirebaseService {
     }
   }
 
-  /// Ajouter du temps de lecture
+  /// Ajouter du temps de lecture au profil
   Future<void> addReadingTime(
     String userId,
     String profileId,
@@ -261,11 +287,12 @@ class ProfileService extends FirebaseService {
   // ---------------------------------------------------------------------------
 
   /// Supprimer définitivement un profil ainsi que l'ensemble de ses sous-collections
+/// Supprimer définitivement un profil ainsi que l'ensemble de ses sous-collections
   Future<void> deleteProfile(String userId, String profileId) async {
     try {
       final profileDocRef = _getProfilesRef(userId).doc(profileId);
 
-      // 1. Liste des sous-collections associées au profil à nettoyer
+      // Liste des sous-collections associées au profil à nettoyer
       final List<String> subcollections = [
         'stories',
         'favorites',
@@ -274,20 +301,33 @@ class ProfileService extends FirebaseService {
         'settings',
       ];
 
-      // 2. Nettoyage de chaque sous-collection
       for (final subcolName in subcollections) {
         await _deleteCollectionDocs(profileDocRef.collection(subcolName));
       }
 
-      // 3. Suppression du document profil principal
+      // 1. Suppression du document profil principal
       await profileDocRef.delete();
 
-      // 4. Si ce profil était le profil actif dans le document utilisateur, on nettoie la référence
+      // 2. Vérification si le profil supprimé était le profil ACTIF
       final userDoc = await firestore.collection('users').doc(userId).get();
       if (userDoc.exists && userDoc.data()?['activeProfileId'] == profileId) {
-        await firestore.collection('users').doc(userId).update({
-          'activeProfileId': FieldValue.delete(),
-        });
+        
+        // On récupère les profils RESTANTS
+        final remainingProfiles = await _getProfilesRef(userId).get();
+
+        if (remainingProfiles.docs.isNotEmpty) {
+          // S'il reste au moins un profil, on bascule sur le premier disponible
+          final newActiveProfileId = remainingProfiles.docs.first.id;
+          await firestore.collection('users').doc(userId).update({
+            'activeProfileId': newActiveProfileId,
+            'lastProfileChangedAt': FieldValue.serverTimestamp(),
+          });
+        } else {
+          // S'il n'en reste plus aucun, on supprime activeProfileId
+          await firestore.collection('users').doc(userId).update({
+            'activeProfileId': FieldValue.delete(),
+          });
+        }
       }
     } catch (e) {
       debugPrint('Erreur suppression profil: $e');

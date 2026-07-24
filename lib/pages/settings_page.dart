@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:lumiconte/models/settings_model.dart';
+import 'package:lumiconte/theme/app_theme.dart';
 
 class SettingsPage extends StatefulWidget {
   final String profileId;
@@ -198,7 +199,6 @@ class _SettingsPageState extends State<SettingsPage> {
       );
     }
 
-    // 👈 Utilisation de settings.readTheme au lieu de settings.theme
     switch (settings.readTheme) {
       case 'dark':
         return _PreviewColors(
@@ -221,16 +221,27 @@ class _SettingsPageState extends State<SettingsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final backgroundColor = isDark ? AppTheme.darkBg : AppTheme.lightBg;
+    final cardColor = AppTheme.getCardColor(context);
+    final primaryTextColor = isDark ? Colors.white : Colors.black87;
+    final secondaryTextColor = isDark ? Colors.grey.shade400 : Colors.black54;
+    final borderColor = isDark ? Colors.white.withOpacity(0.05) : Colors.grey.shade200;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
+      backgroundColor: backgroundColor,
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0.5,
-        iconTheme: const IconThemeData(color: Colors.black),
-        title: const Text(
+        backgroundColor: backgroundColor,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: primaryTextColor),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: Text(
           'Paramètres',
           style: TextStyle(
-            color: Colors.black,
+            color: primaryTextColor,
             fontSize: 18,
             fontWeight: FontWeight.bold,
           ),
@@ -240,14 +251,18 @@ class _SettingsPageState extends State<SettingsPage> {
         stream: _settingsCollection.snapshots(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
+            return const Center(
+              child: CircularProgressIndicator(
+                color: AppTheme.accentColor,
+              ),
+            );
           }
 
           if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-            return const Center(
+            return Center(
               child: Text(
                 'Aucun paramètre trouvé.',
-                style: TextStyle(color: Colors.black54),
+                style: TextStyle(color: secondaryTextColor),
               ),
             );
           }
@@ -263,27 +278,31 @@ class _SettingsPageState extends State<SettingsPage> {
           return ListView(
             padding: const EdgeInsets.all(20),
             children: [
-              _buildSectionTitle('Accessibilité'),
+              _buildSectionTitle('Accessibilité', secondaryTextColor),
               const SizedBox(height: 8),
 
               // Mode Dyslexie Card
               Card(
-                color: Colors.white,
+                color: cardColor,
                 elevation: 0,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
-                  side: BorderSide(color: Colors.grey.shade200),
+                  side: BorderSide(color: borderColor),
                 ),
                 child: SwitchListTile(
-                  title: const Text(
+                  title: Text(
                     'Mode Dyslexie',
                     style: TextStyle(
-                        color: Colors.black, fontWeight: FontWeight.w500),
+                      color: primaryTextColor,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
-                  subtitle: const Text(
-                      'Adapte les couleurs, l\'espacement et la taille'),
+                  subtitle: Text(
+                    'Adapte les couleurs, l\'espacement et la taille',
+                    style: TextStyle(color: secondaryTextColor),
+                  ),
                   value: settings.dyslexia,
-                  activeColor: Colors.deepPurple,
+                  activeColor: AppTheme.accentColor,
                   onChanged: (bool value) {
                     _updateSetting(settings.id, 'dyslexia', value);
                   },
@@ -291,16 +310,16 @@ class _SettingsPageState extends State<SettingsPage> {
               ),
 
               const SizedBox(height: 24),
-              _buildSectionTitle('Affichage du texte'),
+              _buildSectionTitle('Affichage du texte', secondaryTextColor),
               const SizedBox(height: 8),
 
               // Taille de la police Card
               Card(
-                color: Colors.white,
+                color: cardColor,
                 elevation: 0,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
-                  side: BorderSide(color: Colors.grey.shade200),
+                  side: BorderSide(color: borderColor),
                 ),
                 child: Padding(
                   padding: const EdgeInsets.all(16.0),
@@ -310,10 +329,10 @@ class _SettingsPageState extends State<SettingsPage> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text(
+                          Text(
                             'Taille du texte',
                             style: TextStyle(
-                              color: Colors.black,
+                              color: primaryTextColor,
                               fontWeight: FontWeight.w500,
                             ),
                           ),
@@ -321,7 +340,7 @@ class _SettingsPageState extends State<SettingsPage> {
                             '${(((settings.fontSize / 16) * 10).round() * 10).clamp(80, 200)} %',
                             style: const TextStyle(
                               fontWeight: FontWeight.bold,
-                              color: Colors.deepPurple,
+                              color: AppTheme.accentColor,
                             ),
                           ),
                         ],
@@ -333,17 +352,17 @@ class _SettingsPageState extends State<SettingsPage> {
                         min: 80,
                         max: 200,
                         divisions: 12,
-                        activeColor: Colors.deepPurple,
-                        inactiveColor: Colors.grey.shade200,
-                        onChanged: (double percentageValue) {
-                          double calculatedPixels =
-                              (percentageValue / 100) * 16;
+                        activeColor: AppTheme.accentColor,
+                        inactiveColor: isDark ? Colors.white12 : Colors.grey.shade200,
+                        onChangeEnd: (double percentageValue) {
+                          double calculatedPixels = (percentageValue / 100) * 16;
                           _updateSetting(
                             settings.id,
                             'fontSize',
                             calculatedPixels.round(),
                           );
                         },
+                        onChanged: (double val) {},
                       ),
                       const SizedBox(height: 10),
                       Container(
@@ -352,7 +371,11 @@ class _SettingsPageState extends State<SettingsPage> {
                         decoration: BoxDecoration(
                           color: previewColors.backgroundColor,
                           borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.grey.shade300),
+                          border: Border.all(
+                            color: isDark
+                                ? Colors.white.withOpacity(0.1)
+                                : Colors.grey.shade300,
+                          ),
                         ),
                         child: RichText(
                           textAlign: TextAlign.left,
@@ -373,7 +396,7 @@ class _SettingsPageState extends State<SettingsPage> {
               // 🌟 Les thèmes sont masqués si le mode dyslexie est activé
               if (!settings.dyslexia) ...[
                 const SizedBox(height: 24),
-                _buildSectionTitle('Thème de lecture'),
+                _buildSectionTitle('Thème de lecture', secondaryTextColor),
                 const SizedBox(height: 12),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -381,29 +404,35 @@ class _SettingsPageState extends State<SettingsPage> {
                     _buildThemeOption(
                       label: 'Clair',
                       themeKey: 'light',
-                      currentTheme: settings.readTheme, // 👈 Utilise readTheme
+                      currentTheme: settings.readTheme,
                       bgColor: Colors.white,
                       textColor: Colors.black,
-                      borderColor: Colors.grey.shade300,
+                      borderColor: isDark ? Colors.white24 : Colors.grey.shade300,
                       settingsId: settings.id,
+                      primaryTextColor: primaryTextColor,
+                      secondaryTextColor: secondaryTextColor,
                     ),
                     _buildThemeOption(
                       label: 'Sombre',
                       themeKey: 'dark',
-                      currentTheme: settings.readTheme, // 👈 Utilise readTheme
+                      currentTheme: settings.readTheme,
                       bgColor: const Color(0xFF1C1C1E),
                       textColor: Colors.white,
                       borderColor: Colors.transparent,
                       settingsId: settings.id,
+                      primaryTextColor: primaryTextColor,
+                      secondaryTextColor: secondaryTextColor,
                     ),
                     _buildThemeOption(
                       label: 'Naturel',
                       themeKey: 'naturel',
-                      currentTheme: settings.readTheme, // 👈 Utilise readTheme
+                      currentTheme: settings.readTheme,
                       bgColor: const Color(0xFFF5EFE6),
                       textColor: const Color(0xFF2B261F),
                       borderColor: Colors.transparent,
                       settingsId: settings.id,
+                      primaryTextColor: primaryTextColor,
+                      secondaryTextColor: secondaryTextColor,
                     ),
                   ],
                 ),
@@ -415,11 +444,11 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  Widget _buildSectionTitle(String title) {
+  Widget _buildSectionTitle(String title, Color textColor) {
     return Text(
       title,
-      style: const TextStyle(
-        color: Colors.black54,
+      style: TextStyle(
+        color: textColor,
         fontSize: 14,
         fontWeight: FontWeight.bold,
       ),
@@ -434,11 +463,12 @@ class _SettingsPageState extends State<SettingsPage> {
     required Color textColor,
     required Color borderColor,
     required String settingsId,
+    required Color primaryTextColor,
+    required Color secondaryTextColor,
   }) {
     final bool isSelected = currentTheme == themeKey;
 
     return GestureDetector(
-      // 👈 Met à jour la clé 'read_theme' dans Firestore
       onTap: () => _updateSetting(settingsId, 'read_theme', themeKey),
       child: Column(
         children: [
@@ -449,7 +479,7 @@ class _SettingsPageState extends State<SettingsPage> {
               color: bgColor,
               borderRadius: BorderRadius.circular(8),
               border: Border.all(
-                color: isSelected ? Colors.deepPurple : borderColor,
+                color: isSelected ? AppTheme.accentColor : borderColor,
                 width: isSelected ? 2.5 : 1,
               ),
             ),
@@ -468,7 +498,7 @@ class _SettingsPageState extends State<SettingsPage> {
           Text(
             label,
             style: TextStyle(
-              color: isSelected ? Colors.black : Colors.black54,
+              color: isSelected ? primaryTextColor : secondaryTextColor,
               fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
               fontSize: 13,
             ),

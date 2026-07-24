@@ -1,30 +1,40 @@
 import 'package:flutter/material.dart';
-import 'package:lumiconte/main.dart'; // Pour accéder à appSettings.isDarkMode
+import 'package:lumiconte/theme/app_theme.dart';
 
 class TermsOfServicePage extends StatelessWidget {
   const TermsOfServicePage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final isDark = appSettings.isDarkMode;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    final backgroundColor =
-        isDark ? const Color(0xFF1E1B29) : const Color(0xFFF8F9FA);
-    final cardColor = isDark ? const Color(0xFF2D283E) : Colors.white;
-    final textColor = isDark ? Colors.white70 : Colors.black87;
+    // Récupération des couleurs depuis AppTheme
+    final bgColor = isDark ? AppTheme.darkBg : AppTheme.lightBg;
+    final cardColor = AppTheme.getCardColor(context);
     final titleColor = isDark ? Colors.white : Colors.black87;
-    const accentColor = Color(0xFFFDB833); // Doré Lumiconte
+    final textColor = isDark ? Colors.white70 : Colors.black87;
 
     return Scaffold(
-      backgroundColor: backgroundColor,
+      backgroundColor: bgColor, // Utilise AppTheme.darkBg (0xFF1E1B29)
       appBar: AppBar(
-        title: const Text(
-          'Conditions Générales',
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-        ),
-        backgroundColor: Colors.transparent,
+        backgroundColor: bgColor, // Même couleur que le fond pour la continuité
+        surfaceTintColor: Colors.transparent, // Bloque la teinte noire/grisée de Material 3
         elevation: 0,
-        foregroundColor: isDark ? Colors.white : Colors.black,
+        leading: IconButton(
+          icon: Icon(
+            Icons.arrow_back,
+            color: isDark ? Colors.white : Colors.black,
+          ),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: Text(
+          'Conditions Générales',
+          style: TextStyle(
+            fontSize: 18, // Taille identique à la page Confidentialité
+            fontWeight: FontWeight.bold,
+            color: titleColor,
+          ),
+        ),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 12.0),
@@ -54,7 +64,7 @@ class TermsOfServicePage extends StatelessWidget {
               content:
                   'Les présentes Conditions Générales d\'Utilisation ont pour objet de définir les modalités de mise à disposition et d\'utilisation de l\'application mobile Lumiconte. L\'accès et l\'utilisation de l\'application entraînent l\'acceptation expresse et sans réserve des présentes CGU par l\'utilisateur.',
               cardColor: cardColor,
-              titleColor: accentColor,
+              titleColor: AppTheme.accentColor,
               textColor: textColor,
             ),
             _buildSection(
@@ -62,15 +72,15 @@ class TermsOfServicePage extends StatelessWidget {
               content:
                   'L\'application Lumiconte est destinée à un public d\'enfants, mais sa configuration, la création du compte utilisateur et la souscription aux éventuels services payants doivent obligatoirement être effectuées par un adulte majeur (parent ou représentant légal).\n\nLe titulaire du compte s\'engage à superviser l\'utilisation de l\'application par les mineurs sous sa responsabilité et se porte garant du respect des présentes conditions.',
               cardColor: cardColor,
-              titleColor: accentColor,
+              titleColor: AppTheme.accentColor,
               textColor: textColor,
             ),
             _buildSection(
               title: '3. Propriété Intellectuelle',
               content:
-                  'L\'ensemble des éléments constituant l\'application Lumiconte (notamment les textes des histoires, les illustrations originales, la musique, les fichiers audios, les logos, le design et le code source) est la propriété exclusive de Lumiconte et est protégé par les lois internationales sur le droit d\'auteur et la propriété intellectuelle.\n\nToute reproduction, représentation, modification ou adaptation totale ou partielle de ces contenus, par quelque procédé que ce soit, sans autorisation écrite préalable, est strictly interdite et constitue une contrefaçon.',
+                  'L\'ensemble des éléments constituant l\'application Lumiconte (notamment les textes des histoires, les illustrations originales, la musique, les fichiers audios, les logos, le design et le code source) est la propriété exclusive de Lumiconte et est protégé par les lois internationales sur le droit d\'auteur et la propriété intellectuelle.\n\nToute reproduction, représentation, modification ou adaptation totale ou partielle de ces contenus, par quelque procédé que ce soit, sans autorisation écrite préalable, est strictement interdite et constitue une contrefaçon.',
               cardColor: cardColor,
-              titleColor: accentColor,
+              titleColor: AppTheme.accentColor,
               textColor: textColor,
             ),
             _buildSection(
@@ -78,7 +88,7 @@ class TermsOfServicePage extends StatelessWidget {
               content:
                   'L\'accès à l\'intégralité du catalogue d\'histoires peut être soumis à la souscription d\'un abonnement payant. Les tarifs en vigueur sont ceux indiqués directement sur les boutiques d\'applications.\n\nTous les achats, facturations, renouvellements automatiques et demandes de remboursement sont gérés de manière exclusive par les plateformes tierces Apple App Store ou Google Play Store. Conformément aux règles de ces plateformes et à la législation sur les contenus numériques, l\'exécution immédiate du service après paiement entraîne la renonciation au droit de rétractation standard.',
               cardColor: cardColor,
-              titleColor: accentColor,
+              titleColor: AppTheme.accentColor,
               textColor: textColor,
             ),
             _buildSection(
@@ -86,7 +96,7 @@ class TermsOfServicePage extends StatelessWidget {
               content:
                   'Lumiconte s\'engage à respecter la vie privée de ses utilisateurs et la confidentialité des données, conformément au Règlement Général sur la Protection des Données (RGPD). Les seules données collectées sont celles strictement nécessaires au bon fonctionnement de l\'application (création du compte parent, pseudonymes et âges des profils enfants pour adapter les lectures, statistiques de progression de lecture).\n\nAucune donnée personnelle n\'est vendue ou transmise à des tiers. Pour en savoir plus, l\'utilisateur est invité à consulter notre Politique de Confidentialité.',
               cardColor: cardColor,
-              titleColor: accentColor,
+              titleColor: AppTheme.accentColor,
               textColor: textColor,
             ),
             _buildSection(
@@ -94,7 +104,7 @@ class TermsOfServicePage extends StatelessWidget {
               content:
                   'Lumiconte met en œuvre tous les moyens raisonnables pour assurer un accès continu et de qualité à l\'application. Cependant, l\'éditeur ne peut être tenu responsable des interruptions de service dues à des opérations de maintenance, à des pannes de réseau internet, ou à des incompatibilités matérielles liées à l\'appareil de l\'utilisateur.\n\nDe plus, la gestion des temps d\'écran de l\'enfant reste sous la responsabilité exclusive du parent.',
               cardColor: cardColor,
-              titleColor: accentColor,
+              titleColor: AppTheme.accentColor,
               textColor: textColor,
             ),
             _buildSection(
@@ -102,7 +112,7 @@ class TermsOfServicePage extends StatelessWidget {
               content:
                   'Lumiconte se réserve le droit de modifier les présentes CGU à tout moment afin de les adapter aux évolutions de l\'application ou de la législation. L\'utilisation continue de l\'application après modification vaut acceptation des nouvelles CGU.\n\nLes présentes conditions sont régies par le droit français. En cas de litige et à défaut d\'accord amiable, les tribunaux français seront seuls compétents.',
               cardColor: cardColor,
-              titleColor: accentColor,
+              titleColor: AppTheme.accentColor,
               textColor: textColor,
             ),
             const SizedBox(height: 20),
@@ -135,15 +145,8 @@ class TermsOfServicePage extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 16.0),
       padding: const EdgeInsets.all(16.0),
       decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.015),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        color: cardColor, // Cartes AppTheme.darkCard (0xFF2D283E)
+        borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

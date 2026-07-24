@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:go_router/go_router.dart';
-import 'package:lumiconte/main.dart'; // Pour appSettings
+import 'package:google_fonts/google_fonts.dart';
+
+import 'package:lumiconte/models/profile_model.dart';
 import 'package:lumiconte/services/profile_service.dart';
-import 'package:lumiconte/pages/profile_creation_page.dart';
+import 'package:lumiconte/theme/app_theme.dart';
 
 class ManageProfilesPage extends StatefulWidget {
   const ManageProfilesPage({super.key});
@@ -26,10 +27,20 @@ class _ManageProfilesPageState extends State<ManageProfilesPage> {
     showDialog(
       context: context,
       builder: (context) {
-        final isDark = appSettings.isDarkMode;
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        final cardBg = AppTheme.getCardColor(context);
+        final primaryText = isDark ? Colors.white : const Color(0xFF1E1E1E);
+
         return AlertDialog(
-          backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-          title: Text('Modifier le profil', style: TextStyle(color: isDark ? Colors.white : Colors.black)),
+          backgroundColor: cardBg,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          title: Text(
+            'Modifier le profil',
+            style: GoogleFonts.nunito(
+              fontWeight: FontWeight.bold,
+              color: primaryText,
+            ),
+          ),
           content: Form(
             key: formKey,
             child: Column(
@@ -37,16 +48,24 @@ class _ManageProfilesPageState extends State<ManageProfilesPage> {
               children: [
                 TextFormField(
                   controller: nameController,
-                  style: TextStyle(color: isDark ? Colors.white : Colors.black),
-                  decoration: const InputDecoration(labelText: 'Nom'),
+                  style: GoogleFonts.nunito(color: primaryText),
+                  decoration: InputDecoration(
+                    labelText: 'Nom',
+                    labelStyle: GoogleFonts.nunito(color: primaryText.withOpacity(0.7)),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
                   validator: (v) => v == null || v.trim().isEmpty ? 'Entrez un nom' : null,
                 ),
                 const SizedBox(height: 16),
                 TextFormField(
                   controller: ageController,
-                  style: TextStyle(color: isDark ? Colors.white : Colors.black),
+                  style: GoogleFonts.nunito(color: primaryText),
                   keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(labelText: 'Âge'),
+                  decoration: InputDecoration(
+                    labelText: 'Âge',
+                    labelStyle: GoogleFonts.nunito(color: primaryText.withOpacity(0.7)),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
                   validator: (v) => v == null || int.tryParse(v) == null ? 'Entrez un âge valide' : null,
                 ),
               ],
@@ -55,23 +74,27 @@ class _ManageProfilesPageState extends State<ManageProfilesPage> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Annuler'),
+              child: Text(
+                'Annuler',
+                style: GoogleFonts.nunito(color: isDark ? Colors.white70 : Colors.grey.shade700),
+              ),
             ),
             ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.accentColor,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
               onPressed: () async {
-                if (!formKey.currentState!.validate()) return;
+                if (!formKey.currentState!.validate() || _uid == null) return;
                 Navigator.pop(context);
 
                 try {
-                  await FirebaseFirestore.instance
-                      .collection('users')
-                      .doc(_uid)
-                      .collection('profiles')
-                      .doc(profileId)
-                      .update({
-                    'name': nameController.text.trim(),
-                    'age': int.parse(ageController.text.trim()),
-                  });
+                  await _profileService.updateProfile(
+                    _uid!,
+                    profileId,
+                    name: nameController.text.trim(),
+                    age: int.parse(ageController.text.trim()),
+                  );
 
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
@@ -86,7 +109,10 @@ class _ManageProfilesPageState extends State<ManageProfilesPage> {
                   }
                 }
               },
-              child: const Text('Sauvegarder'),
+              child: Text(
+                'Sauvegarder',
+                style: GoogleFonts.nunito(fontWeight: FontWeight.bold, color: Colors.white),
+              ),
             ),
           ],
         );
@@ -96,26 +122,38 @@ class _ManageProfilesPageState extends State<ManageProfilesPage> {
 
   // Supprime un profil et toutes ses sous-collections après confirmation
   Future<void> _deleteProfile(String profileId, String profileName) async {
-    final isDark = appSettings.isDarkMode;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardBg = AppTheme.getCardColor(context);
+    final primaryText = isDark ? Colors.white : const Color(0xFF1E1E1E);
 
     final bool? confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-        title: Text('Supprimer le profil', style: TextStyle(color: isDark ? Colors.white : Colors.black)),
+        backgroundColor: cardBg,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: Text(
+          'Supprimer le profil',
+          style: GoogleFonts.nunito(fontWeight: FontWeight.bold, color: primaryText),
+        ),
         content: Text(
           'Voulez-vous vraiment supprimer le profil de $profileName ? Cette action est irréversible.',
-          style: TextStyle(color: isDark ? Colors.white70 : Colors.black87),
+          style: GoogleFonts.nunito(color: isDark ? Colors.white70 : Colors.black87),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Annuler'),
+            child: Text(
+              'Annuler',
+              style: GoogleFonts.nunito(color: isDark ? Colors.white70 : Colors.grey.shade700),
+            ),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
             style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Supprimer'),
+            child: Text(
+              'Supprimer',
+              style: GoogleFonts.nunito(fontWeight: FontWeight.bold, color: Colors.red),
+            ),
           ),
         ],
       ),
@@ -123,7 +161,6 @@ class _ManageProfilesPageState extends State<ManageProfilesPage> {
 
     if (confirm == true && _uid != null) {
       try {
-        // Utilisation de la méthode de suppression complète
         await _profileService.deleteProfile(_uid!, profileId);
 
         if (mounted) {
@@ -145,19 +182,28 @@ class _ManageProfilesPageState extends State<ManageProfilesPage> {
   Future<void> _selectProfile(String profileId, String name) async {
     if (_uid != null) {
       try {
-        // Enregistre le profil actif avant de naviguer
         await _profileService.setActiveProfile(_uid!, profileId);
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Profil actif : $name'), backgroundColor: Colors.indigo),
+            SnackBar(
+              content: Text('Profil actif : $name'),
+              backgroundColor: AppTheme.accentColor,
+              duration: const Duration(seconds: 1),
+            ),
           );
-          context.go('/home');
+
+          // Ferme la page de gestion des profils
+          if (Navigator.of(context).canPop()) {
+            Navigator.of(context).pop();
+          } else {
+            context.go('/home');
+          }
         }
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Erreur lors du changement de profil : $e'), backgroundColor: Colors.red),
+            SnackBar(content: Text('Erreur : $e'), backgroundColor: Colors.red),
           );
         }
       }
@@ -166,33 +212,47 @@ class _ManageProfilesPageState extends State<ManageProfilesPage> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = appSettings.isDarkMode;
-    final primaryTextColor = isDark ? Colors.white : Colors.black;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final backgroundColor = isDark ? AppTheme.darkBg : AppTheme.lightBg;
+    final cardColor = AppTheme.getCardColor(context);
+    final primaryTextColor = isDark ? Colors.white : const Color(0xFF1E1E1E);
 
     if (_uid == null) {
-      return const Scaffold(body: Center(child: Text('Veuillez vous connecter.')));
+      return Scaffold(
+        backgroundColor: backgroundColor,
+        body: Center(
+          child: Text(
+            'Veuillez vous connecter.',
+            style: GoogleFonts.nunito(color: primaryTextColor, fontSize: 16),
+          ),
+        ),
+      );
     }
 
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF0F1123) : const Color(0xFFF8F9FA),
+      backgroundColor: backgroundColor,
       appBar: AppBar(
-        title: const Text('Gérer les profils', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(
+          'Gérer les profils',
+          style: GoogleFonts.nunito(fontWeight: FontWeight.bold, fontSize: 22, color: primaryTextColor),
+        ),
         backgroundColor: Colors.transparent,
         elevation: 0,
+        centerTitle: true,
         foregroundColor: primaryTextColor,
       ),
-      body: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance
-            .collection('users')
-            .doc(_uid)
-            .collection('profiles')
-            .snapshots(),
+      body: StreamBuilder<List<ProfileModel>>(
+        stream: _profileService.getUserProfilesStream(_uid!),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
+            return const Center(
+              child: CircularProgressIndicator(color: AppTheme.accentColor),
+            );
           }
 
-          final docs = snapshot.data?.docs ?? [];
+          final profiles = snapshot.data ?? [];
+          final bool canAddProfile = profiles.length < 6;
+          final int itemCount = canAddProfile ? profiles.length + 1 : profiles.length;
 
           return GridView.builder(
             padding: const EdgeInsets.all(24),
@@ -202,30 +262,41 @@ class _ManageProfilesPageState extends State<ManageProfilesPage> {
               mainAxisSpacing: 16,
               childAspectRatio: 0.75,
             ),
-            itemCount: docs.length + 1,
+            itemCount: itemCount,
             itemBuilder: (context, index) {
-              if (index == docs.length) {
+              // Bouton "Créer un profil" si sous la limite de 6
+              if (canAddProfile && index == profiles.length) {
                 return InkWell(
                   onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(builder: (context) => const ProfileCreationPage()),
-                    );
+                    context.push('/create-profile');
                   },
                   borderRadius: BorderRadius.circular(20),
                   child: Container(
                     decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF1E203B) : Colors.white,
+                      color: cardColor,
                       borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: Colors.grey.withOpacity(0.3), style: BorderStyle.solid, width: 2),
+                      border: Border.all(
+                        color: AppTheme.accentColor.withOpacity(0.4),
+                        style: BorderStyle.solid,
+                        width: 2,
+                      ),
                     ),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.add_circle_outline, size: 48, color: isDark ? Colors.white70 : Colors.grey),
+                        Icon(
+                          Icons.add_circle_outline,
+                          size: 48,
+                          color: AppTheme.accentColor,
+                        ),
                         const SizedBox(height: 12),
                         Text(
                           'Créer un profil',
-                          style: TextStyle(fontWeight: FontWeight.bold, color: primaryTextColor),
+                          style: GoogleFonts.nunito(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15,
+                            color: primaryTextColor,
+                          ),
                         ),
                       ],
                     ),
@@ -233,22 +304,21 @@ class _ManageProfilesPageState extends State<ManageProfilesPage> {
                 );
               }
 
-              final profile = docs[index];
-              final data = profile.data() as Map<String, dynamic>;
-              final String name = data['name'] ?? 'Aventurier';
-              final int age = data['age'] ?? 0;
+              final profile = profiles[index];
+              final String name = profile.name;
+              final int age = profile.age;
 
               return Container(
                 decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF1E203B) : Colors.white,
+                  color: cardColor,
                   borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
+                  boxShadow: !isDark ? [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
+                      color: Colors.black.withOpacity(0.04),
                       blurRadius: 10,
                       offset: const Offset(0, 4),
                     )
-                  ],
+                  ] : null,
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(20),
@@ -266,7 +336,11 @@ class _ManageProfilesPageState extends State<ManageProfilesPage> {
                               backgroundColor: const Color(0xFFFFD25A),
                               child: Text(
                                 name.trim().isNotEmpty ? name.trim()[0].toUpperCase() : '?',
-                                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF0F1123)),
+                                style: GoogleFonts.nunito(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.bold,
+                                  color: const Color(0xFF0F1123),
+                                ),
                               ),
                             ),
                             const SizedBox(height: 12),
@@ -274,18 +348,25 @@ class _ManageProfilesPageState extends State<ManageProfilesPage> {
                               name,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: primaryTextColor),
+                              style: GoogleFonts.nunito(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: primaryTextColor,
+                              ),
                             ),
                             Text(
                               '$age ans',
-                              style: const TextStyle(color: Colors.grey, fontSize: 13),
+                              style: GoogleFonts.nunito(
+                                color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+                                fontSize: 13,
+                              ),
                             ),
                             const Spacer(),
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                               children: [
                                 IconButton(
-                                  icon: const Icon(Icons.edit, size: 20, color: Colors.blue),
+                                  icon: const Icon(Icons.edit_outlined, size: 20, color: Colors.blue),
                                   onPressed: () => _editProfile(profile.id, name, age),
                                   constraints: const BoxConstraints(),
                                   padding: EdgeInsets.zero,

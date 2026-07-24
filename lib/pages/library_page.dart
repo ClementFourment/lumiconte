@@ -54,14 +54,19 @@ class _LibraryPageState extends State<LibraryPage> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final textTheme = theme.textTheme;
+
     final currentUser = FirebaseAuth.instance.currentUser;
     if (currentUser == null) {
-      return const Scaffold(
-        backgroundColor: Color(0xFF140E17),
+      return Scaffold(
         body: Center(
           child: Text(
             'Utilisateur non connecté',
-            style: TextStyle(color: Color(0xFFD1C4E9)),
+            style: textTheme.bodyLarge?.copyWith(
+              color: colorScheme.onSurfaceVariant,
+            ),
           ),
         ),
       );
@@ -84,7 +89,10 @@ class _LibraryPageState extends State<LibraryPage> {
           final progressDocs = snapshot.data![0].docs;
           for (var doc in progressDocs) {
             try {
-              final progressModel = ReadingProgressModel.fromMap(doc.data() as Map<String, dynamic>, doc.id);
+              final progressModel = ReadingProgressModel.fromMap(
+                doc.data() as Map<String, dynamic>,
+                doc.id,
+              );
               // Standardisation à un ratio 0.0 - 1.0 pour l'affichage de la barre
               activeProfileReadProgress[progressModel.storyId] =
                   (progressModel.progress / 100.0).clamp(0.0, 1.0);
@@ -105,15 +113,11 @@ class _LibraryPageState extends State<LibraryPage> {
         }
 
         return Scaffold(
-          backgroundColor: const Color(0xFF140E17),
           appBar: AppBar(
-            backgroundColor: const Color(0xFF140E17),
             elevation: 0,
-            title: const Text(
+            title: Text(
               'Bibliothèque',
-              style: TextStyle(
-                color: Color(0xFFD1C4E9),
-                fontSize: 24,
+              style: textTheme.headlineSmall?.copyWith(
                 fontWeight: FontWeight.bold,
                 letterSpacing: 1,
               ),
@@ -122,7 +126,7 @@ class _LibraryPageState extends State<LibraryPage> {
           ),
           body: Column(
             children: [
-              _buildFilterBar(),
+              _buildFilterBar(context),
               Expanded(
                 child: ListView.builder(
                   itemCount: widget.categories.length,
@@ -171,7 +175,9 @@ class _LibraryPageState extends State<LibraryPage> {
     );
   }
 
-  Widget _buildFilterBar() {
+  Widget _buildFilterBar(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     final filters = [
       {'id': 'tous', 'label': 'Tous'},
       {'id': 'favoris', 'label': 'Favoris'},
@@ -197,17 +203,17 @@ class _LibraryPageState extends State<LibraryPage> {
                 filter['label']!,
                 style: TextStyle(
                   color: isSelected
-                      ? Colors.white
-                      : const Color(0xFFD1C4E9).withOpacity(0.6),
+                      ? colorScheme.onPrimary
+                      : colorScheme.onSurfaceVariant,
                   fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                 ),
               ),
               selected: isSelected,
-              selectedColor: const Color(0xFF4A3780),
-              backgroundColor: const Color(0xFF261C2C),
+              selectedColor: colorScheme.primary,
+              backgroundColor: colorScheme.surfaceContainerHigh,
               showCheckmark: false,
               side: BorderSide(
-                color: isSelected ? const Color(0xFF6A4FB3) : Colors.transparent,
+                color: isSelected ? colorScheme.primary : Colors.transparent,
                 width: isSelected ? 1 : 0,
               ),
               shape: RoundedRectangleBorder(
@@ -233,6 +239,26 @@ class _LibraryPageState extends State<LibraryPage> {
     List<StoryModel> categoryStories,
     Map<String, double> activeProfileReadProgress,
   ) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+
+    // Définition des couleurs de l'étagère adaptables au mode Clair/Sombre
+    final nicheTopColor = isDark
+        ? Colors.black.withOpacity(0.85)
+        : colorScheme.surfaceContainerLowest;
+    final nicheBottomColor = isDark
+        ? colorScheme.surfaceContainerHigh
+        : colorScheme.surfaceContainer;
+
+    final shelfColorTop = isDark
+        ? Color.alphaBlend(colorScheme.primary.withOpacity(0.15), colorScheme.surfaceContainerHighest)
+        : Color.alphaBlend(colorScheme.primary.withOpacity(0.08), colorScheme.surfaceContainerHigh);
+
+    final shelfColorBottom = isDark
+        ? Color.alphaBlend(colorScheme.primary.withOpacity(0.05), colorScheme.surfaceContainer)
+        : Color.alphaBlend(colorScheme.primary.withOpacity(0.12), colorScheme.surfaceContainerHighest);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -240,6 +266,7 @@ class _LibraryPageState extends State<LibraryPage> {
         Stack(
           alignment: Alignment.bottomCenter,
           children: [
+            // Fond de renfoncement (la niche de l'étagère)
             Container(
               height: 210,
               margin: const EdgeInsets.symmetric(horizontal: 12),
@@ -248,14 +275,16 @@ class _LibraryPageState extends State<LibraryPage> {
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
-                    Colors.black.withOpacity(0.85),
-                    const Color(0xFF261C2C),
+                    nicheTopColor,
+                    nicheBottomColor,
                   ],
-                  stops: const [0.0, 0.30],
+                  stops: const [0.0, 0.35],
                 ),
                 borderRadius: BorderRadius.circular(4),
               ),
             ),
+
+            // Rangée de livres
             Container(
               height: 225,
               padding: const EdgeInsets.only(bottom: 24),
@@ -269,54 +298,53 @@ class _LibraryPageState extends State<LibraryPage> {
                 },
               ),
             ),
+
+            // La planche en bois / Socle de l'étagère
             Container(
               height: 32,
               margin: const EdgeInsets.symmetric(horizontal: 6),
               padding: const EdgeInsets.symmetric(horizontal: 20),
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
+                gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [Color(0xFF3C2A4D), Color(0xFF21152B)],
+                  colors: [shelfColorTop, shelfColorBottom],
                 ),
                 borderRadius: const BorderRadius.vertical(
                   bottom: Radius.circular(4),
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.7),
-                    blurRadius: 10,
-                    offset: const Offset(0, 6),
+                    color: Colors.black.withOpacity(isDark ? 0.6 : 0.2),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
                   ),
                 ],
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.start,
                 children: [
+                  // Étiquette de catégorie sur le rebord de l'étagère
                   Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 12,
                       vertical: 3,
                     ),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF4A3780),
+                      color: colorScheme.primary,
                       borderRadius: BorderRadius.circular(3),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.4),
+                          color: Colors.black.withOpacity(0.3),
                           blurRadius: 2,
                           offset: const Offset(0, 1),
                         ),
                       ],
-                      border: Border.all(
-                        color: const Color(0xFF6A4FB3),
-                        width: 1,
-                      ),
                     ),
                     child: Text(
                       category.name.toUpperCase(),
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
+                        color: colorScheme.onPrimary,
                         fontSize: 9,
                         fontWeight: FontWeight.w900,
                         letterSpacing: 1.2,
@@ -339,6 +367,7 @@ class _LibraryPageState extends State<LibraryPage> {
     Map<String, double> activeProfileReadProgress,
   ) {
     final double progress = activeProfileReadProgress[story.id] ?? 0.0;
+    final colorScheme = Theme.of(context).colorScheme;
 
     return GestureDetector(
       onTap: () => context.push('/story', extra: story),
@@ -349,7 +378,7 @@ class _LibraryPageState extends State<LibraryPage> {
           borderRadius: BorderRadius.circular(4),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.6),
+              color: Colors.black.withOpacity(0.5),
               blurRadius: 8,
               offset: const Offset(4, 2),
             ),
@@ -360,8 +389,10 @@ class _LibraryPageState extends State<LibraryPage> {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              // Utilisation de story.coverImage au lieu de story.image
+              // Image de couverture du livre
               B2Image(objectKey: story.image, fit: BoxFit.cover),
+
+              // Effet d'ombrage de la reliure du livre (à gauche)
               Positioned(
                 left: 0,
                 top: 0,
@@ -380,6 +411,8 @@ class _LibraryPageState extends State<LibraryPage> {
                   ),
                 ),
               ),
+
+              // Barre de progression sur la tranche droite du livre
               if (progress > 0.0)
                 Positioned(
                   right: 0,
@@ -387,25 +420,24 @@ class _LibraryPageState extends State<LibraryPage> {
                   bottom: 0,
                   width: 6,
                   child: Container(
-                    color: const Color(0x33000000),
+                    color: Colors.black.withOpacity(0.2),
                     alignment: Alignment.bottomCenter,
                     child: FractionallySizedBox(
                       heightFactor: progress,
                       child: Container(
                         decoration: BoxDecoration(
-                          gradient: const LinearGradient(
+                          gradient: LinearGradient(
                             begin: Alignment.bottomCenter,
                             end: Alignment.topCenter,
                             colors: [
-                              Color(0xFF0D47A1),
-                              Color(0xFF1976D2),
-                              Color(0xFF4FC3F7),
+                              colorScheme.primary,
+                              colorScheme.tertiary,
                             ],
                           ),
                           borderRadius: BorderRadius.circular(2),
                           boxShadow: [
                             BoxShadow(
-                              color: const Color(0xFF4FC3F7).withOpacity(0.5),
+                              color: colorScheme.primary.withOpacity(0.5),
                               blurRadius: 4,
                               spreadRadius: 1,
                             ),
@@ -415,6 +447,8 @@ class _LibraryPageState extends State<LibraryPage> {
                     ),
                   ),
                 ),
+
+              // Ombrage sombre au bas de l'image pour la lisibilité du titre
               Container(
                 decoration: const BoxDecoration(
                   gradient: LinearGradient(
@@ -429,6 +463,8 @@ class _LibraryPageState extends State<LibraryPage> {
                   ),
                 ),
               ),
+
+              // Titre du livre (sur l'image)
               Align(
                 alignment: Alignment.bottomLeft,
                 child: Padding(
@@ -438,11 +474,11 @@ class _LibraryPageState extends State<LibraryPage> {
                     bottom: 10.0,
                   ),
                   child: Text(
-                    story.name, // 'title' au lieu de 'name'
+                    story.name,
                     maxLines: 3,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      color: Color(0xFFF5F5F5),
+                      color: Colors.white, // Toujours blanc sur le dégradé noir
                       fontSize: 13,
                       fontWeight: FontWeight.bold,
                       height: 1.2,

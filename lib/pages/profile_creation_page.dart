@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:go_router/go_router.dart';
-import 'package:lumiconte/models/profile_model.dart';
-import 'package:lumiconte/models/settings_model.dart';
+
+import 'package:lumiconte/theme/app_theme.dart';
 import 'package:lumiconte/services/profile_service.dart';
 import 'package:lumiconte/services/settings_service.dart';
 
@@ -15,8 +15,7 @@ class ProfileCreationPage extends StatefulWidget {
 
 class _ProfileCreationPageState extends State<ProfileCreationPage> {
   final _nameController = TextEditingController();
-  final _ageController = TextEditingController(); 
-  int _selectedAge = 5;
+  final _ageController = TextEditingController();
   bool _isLoading = false;
 
   late ProfileService _profileService;
@@ -36,16 +35,19 @@ class _ProfileCreationPageState extends State<ProfileCreationPage> {
     super.dispose();
   }
 
-Future<void> _createProfile({bool customizeNow = false}) async {
-    if (_nameController.text.trim().isEmpty) {
+  Future<void> _createProfile({bool customizeNow = false}) async {
+    final name = _nameController.text.trim();
+    final ageText = _ageController.text.trim();
+
+    if (name.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Entrez un nom')),
       );
       return;
     }
 
-    final parsedAge = int.tryParse(_ageController.text.trim());
-    if (_ageController.text.trim().isEmpty || parsedAge == null) {
+    final parsedAge = int.tryParse(ageText);
+    if (ageText.isEmpty || parsedAge == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Entrez un âge valide')),
       );
@@ -56,30 +58,31 @@ Future<void> _createProfile({bool customizeNow = false}) async {
 
     try {
       final user = FirebaseAuth.instance.currentUser;
-      if (user == null) throw Exception("Pas d'utilisateur");
+      if (user == null) throw Exception("Utilisateur non connecté");
 
-      _selectedAge = parsedAge;
-
-      // 1. Ton ProfileService renvoie un Future<String> (le profileId)
-      final String profileId = await _profileService.createProfile(
+      // 1. On crée le profil ET on le définit comme profil actif (activeProfileId)
+      final String profileId = await _profileService.createAndSetActiveProfile(
         user.uid,
-        name: _nameController.text.trim(),
-        age: _selectedAge,
+        name: name,
+        age: parsedAge,
       );
 
-      // 2. On passe directement ce profileId pour créer les paramètres
+      // 2. Initialisation des paramètres associés
       await _settingsService.createOrInitSettings(
         user.uid,
         profileId,
       );
 
       if (mounted) {
+        // Redirection vers l'accueil
         context.go('/home');
       }
     } catch (e) {
       if (mounted) {
+        // On nettoie le message pour retirer 'Exception: ' si présent
+        final errorMessage = e.toString().replaceAll('Exception: ', '');
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erreur: $e')),
+          SnackBar(content: Text('Erreur: $errorMessage')),
         );
       }
     } finally {
@@ -89,13 +92,23 @@ Future<void> _createProfile({bool customizeNow = false}) async {
     }
   }
 
+  TextStyle titleStyle(BuildContext context) {
+    final theme = Theme.of(context);
+    return TextStyle(
+      fontSize: 20,
+      fontWeight: FontWeight.bold,
+      color: theme.colorScheme.onSurface,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    // 🎯 Le GestureDetector ici ferme le clavier dès qu'on clique à côté d'un champ textuel
+    final theme = Theme.of(context);
+    final cardColor = AppTheme.getCardColor(context);
+
     return GestureDetector(
       onTap: () => FocusScope.of(context).unfocus(),
       child: Scaffold(
-        backgroundColor: const Color(0xFF0F1123), 
         body: SafeArea(
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(20),
@@ -103,89 +116,87 @@ Future<void> _createProfile({bool customizeNow = false}) async {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const SizedBox(height: 40),
-                
-                const Center(
+                Center(
                   child: Text(
                     'Qui est notre aventurier(e) ?',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 28,
                       fontWeight: FontWeight.bold,
-                      color: Colors.white, 
+                      color: theme.colorScheme.onSurface,
                     ),
                   ),
                 ),
-                
                 const SizedBox(height: 40),
-
                 Text(
                   'Son nom ?',
-                  style: titleStyle,
+                  style: titleStyle(context),
                 ),
                 const SizedBox(height: 15),
                 TextField(
                   controller: _nameController,
-                  style: const TextStyle(color: Colors.white), 
+                  style: TextStyle(color: theme.colorScheme.onSurface),
                   decoration: InputDecoration(
                     hintText: "Ex: Léo, Nina...",
-                    hintStyle: const TextStyle(color: Colors.white54),
-                    filled: true,
-                    fillColor: const Color(0xFF1E203B), 
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(25), 
-                      borderSide: BorderSide.none,
+                    hintStyle: TextStyle(
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
                     ),
-                  ),
-                ),
-
-                const SizedBox(height: 30),
-
-                Text(
-                  'Son age ?',
-                  style: titleStyle,
-                ),
-                const SizedBox(height: 15),
-                TextField(
-                  controller: _ageController,
-                  keyboardType: TextInputType.number,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: InputDecoration(
-                    hintText: "Ex: 5",
-                    hintStyle: const TextStyle(color: Colors.white54),
                     filled: true,
-                    fillColor: const Color(0xFF1E203B),
+                    fillColor: cardColor,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(25),
                       borderSide: BorderSide.none,
                     ),
                   ),
                 ),
-
+                const SizedBox(height: 30),
+                Text(
+                  'Son âge ?',
+                  style: titleStyle(context),
+                ),
+                const SizedBox(height: 15),
+                TextField(
+                  controller: _ageController,
+                  keyboardType: TextInputType.number,
+                  style: TextStyle(color: theme.colorScheme.onSurface),
+                  decoration: InputDecoration(
+                    hintText: "Ex: 5",
+                    hintStyle: TextStyle(
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                    ),
+                    filled: true,
+                    fillColor: cardColor,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(25),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                ),
                 const SizedBox(height: 50),
-
                 SizedBox(
                   width: double.infinity,
                   height: 56,
                   child: ElevatedButton(
-                    onPressed: _isLoading ? null : () => _createProfile(customizeNow: false),
+                    onPressed: _isLoading ? null : () => _createProfile(),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFFFD25A), 
+                      backgroundColor: AppTheme.accentColor, // Doré Lumiconte
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(25),
                       ),
                     ),
                     child: _isLoading
-                        ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(color: Color(0xFF0F1123), strokeWidth: 2),
+                        ? CircularProgressIndicator(
+                            color: theme.scaffoldBackgroundColor,
+                            strokeWidth: 2,
                           )
-                        : const Text(
+                        : Text(
                             'Créer le profil et commencer la lecture',
                             style: TextStyle(
-                              fontSize: 16, 
-                              fontWeight: FontWeight.bold, 
-                              color: Color(0xFF0F1123), 
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: theme.brightness == Brightness.dark
+                                  ? AppTheme.darkBg
+                                  : Colors.black,
                             ),
                           ),
                   ),
@@ -197,10 +208,4 @@ Future<void> _createProfile({bool customizeNow = false}) async {
       ),
     );
   }
-
-  TextStyle get titleStyle => const TextStyle(
-        fontSize: 20,
-        fontWeight: FontWeight.bold,
-        color: Colors.white,
-      );
 }
