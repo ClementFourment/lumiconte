@@ -67,16 +67,17 @@ Future<void> seedDatabase() async {
     interestIds: [interestRef.id],
   );
 
-  // 6. Settings du profil, via SettingsService (id auto-généré, pas 'current' en dur)
+// 6. Settings du profil, via SettingsService
   final settingsService = SettingsService();
-  await settingsService.createSettings(
+  await settingsService.createOrInitSettings(
     user.uid,
     profileId,
     fontSize: 18,
     theme: 'dark',
     dyslexia: true,
-    voice: 'fr-FR-A',
-    autoReader: false,
+    langage: 'fr',
+    totalReadingTime: 120,
+    streak: 3,
   );
 
   // 7. Progression de lecture ("users/{uid}/profiles/{id}/readingProgress")
