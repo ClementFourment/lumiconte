@@ -1,19 +1,30 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:lumiconte/models/profile_model.dart';
 import 'package:lumiconte/models/story_model.dart';
+import 'package:lumiconte/models/settings_model.dart';
 import 'package:lumiconte/widget/b2_audio.dart';
 import 'package:lumiconte/widget/b2_image.dart';
+import 'package:lumiconte/theme/app_theme.dart';
 
 class StoryPage extends StatefulWidget {
   final StoryModel story;
+  final ProfileModel profile;
 
-  const StoryPage({super.key, required this.story});
+  const StoryPage({
+    super.key,
+    required this.story,
+    required this.profile,
+  });
 
   @override
   State<StoryPage> createState() => _StoryPageState();
 }
 
 class _StoryPageState extends State<StoryPage> {
-  double _fontSize = 22;
+  late List<String> _pages;
+  int _currentPage = 0;
   bool _isFavorite = false;
   bool _isPlaying = false;
   bool _isLoading = false;
@@ -23,23 +34,69 @@ class _StoryPageState extends State<StoryPage> {
   Duration _audioDuration = Duration.zero;
 
   B2Audio? _audio;
+  late final String _uid;
+  late final CollectionReference _settingsCollection;
 
   @override
   void initState() {
     super.initState();
+    _uid = FirebaseAuth.instance.currentUser!.uid;
+    _settingsCollection = FirebaseFirestore.instance
+        .collection('users')
+        .doc(_uid)
+        .collection('profiles')
+        .doc(widget.profile.id)
+        .collection('settings');
+
+    _initializePages();
+    _initializeAudio();
+  }
+
+  void _initializePages() {
+    final rawText = widget.story.content
+        .replaceAll(r'\n', '\n\n')
+        .replaceAll(RegExp(r'[ \t]+'), ' ')
+        .trim();
+
+    _pages = _splitTextIntoPages(rawText);
+  }
+
+  /// Divise le texte en pages intelligemment
+  List<String> _splitTextIntoPages(String text) {
+    final sentences = text.split(RegExp(r'(?<=[.!?])\s+'));
+
+    final pages = <String>[];
+    String currentPage = '';
+
+    for (var sentence in sentences) {
+      final testPage =
+          currentPage.isEmpty ? sentence : '$currentPage $sentence';
+
+      if (testPage.length > 150 && currentPage.isNotEmpty) {
+        pages.add(currentPage.trim());
+        currentPage = sentence;
+      } else {
+        currentPage = testPage;
+      }
+    }
+
+    if (currentPage.isNotEmpty) {
+      pages.add(currentPage.trim());
+    }
+
+    return pages.isEmpty ? [text] : pages;
+  }
+
+  void _initializeAudio() {
     _isAudio = (widget.story.audio.isNotEmpty &&
         widget.story.audio.first.values.isNotEmpty);
-    print("audio");
-    print(_isAudio);
-    print("audio");
+
     final audio = _isAudio ? widget.story.audio.first.values.first : '';
 
     if (_isAudio) {
       _audio = B2Audio(objectKey: audio);
-
       _audio!.preload();
 
-      // Gestion de la fin d'audio
       _audio!.onComplete.listen((_) {
         _handleAudioComplete();
       });
@@ -62,19 +119,198 @@ class _StoryPageState extends State<StoryPage> {
     }
   }
 
-  /// Gère la fin de l'audio de manière robuste
+  /// Algorithme dyslexie réutilisé de SettingsPage
+  List<TextSpan> _parseWordToDyslexiaSpans(
+    String word,
+    TextStyle baseDysStyle,
+    Color defaultTextColor,
+  ) {
+    final Color colorRed = Colors.red.shade700;
+    final Color colorBlue = Colors.blue.shade700;
+    final Color colorSilent = defaultTextColor.withOpacity(0.35);
+
+    if (word.trim().isEmpty) {
+      return [
+        TextSpan(
+            text: word, style: baseDysStyle.copyWith(color: defaultTextColor))
+      ];
+    }
+
+    final matchStart = RegExp(r'^[^a-zA-ZÀ-ÿ]+').firstMatch(word);
+    final matchEnd = RegExp(r'[^a-zA-ZÀ-ÿ]+$').firstMatch(word);
+
+    String prefix = matchStart?.group(0) ?? '';
+    String suffix = matchEnd?.group(0) ?? '';
+
+    String cleanWord = word;
+
+    if (prefix.length + suffix.length < word.length) {
+      cleanWord = word.substring(prefix.length, word.length - suffix.length);
+    } else {
+      return [
+        TextSpan(
+            text: word, style: baseDysStyle.copyWith(color: defaultTextColor))
+      ];
+    }
+
+    if (cleanWord.isEmpty) {
+      return [
+        TextSpan(
+            text: word, style: baseDysStyle.copyWith(color: defaultTextColor))
+      ];
+    }
+
+    String silentLetters = '';
+    final silentMatch = RegExp(r'(ts|ds|es|[stdxega])$', caseSensitive: false)
+        .firstMatch(cleanWord);
+
+    if (silentMatch != null &&
+        cleanWord.length > 2 &&
+        !['les', 'des', 'mes', 'tes', 'ses', 'est']
+            .contains(cleanWord.toLowerCase())) {
+      String potentialSilent = silentMatch.group(0) ?? '';
+      if (cleanWord.length > potentialSilent.length) {
+        silentLetters = potentialSilent;
+        cleanWord =
+            cleanWord.substring(0, cleanWord.length - silentLetters.length);
+      }
+    }
+
+    List<TextSpan> wordSpans = [];
+
+    if (prefix.isNotEmpty) {
+      wordSpans.add(TextSpan(
+          text: prefix, style: baseDysStyle.copyWith(color: defaultTextColor)));
+    }
+
+    List<String> syllables = [];
+    if (cleanWord.length <= 3) {
+      syllables.add(cleanWord);
+    } else {
+      final regex = RegExp(
+        r'[^aeiouyéèàùûâîôœüéèêë]*[aeiouyéèàùûâîôœüéèêë]+(?:[^aeiouyéèàùûâîôœüéèêë](?![aeiouyéèàùûâîôœüéèêë]))*',
+        caseSensitive: false,
+      );
+      final matches = regex.allMatches(cleanWord);
+      if (matches.isEmpty) {
+        syllables.add(cleanWord);
+      } else {
+        for (var m in matches) {
+          syllables.add(m.group(0) ?? '');
+        }
+        int totalLength = syllables.join().length;
+        if (totalLength < cleanWord.length && syllables.isNotEmpty) {
+          syllables[syllables.length - 1] += cleanWord.substring(totalLength);
+        }
+      }
+    }
+
+    for (int i = 0; i < syllables.length; i++) {
+      if (syllables[i].isEmpty) continue;
+      wordSpans.add(TextSpan(
+        text: syllables[i],
+        style: baseDysStyle.copyWith(
+          color: i % 2 == 0 ? colorBlue : colorRed,
+        ),
+      ));
+    }
+
+    if (silentLetters.isNotEmpty) {
+      wordSpans.add(TextSpan(
+        text: silentLetters,
+        style: baseDysStyle.copyWith(
+          color: colorSilent,
+          fontWeight: FontWeight.w300,
+          fontStyle: FontStyle.italic,
+        ),
+      ));
+    }
+
+    if (suffix.isNotEmpty) {
+      wordSpans.add(TextSpan(
+          text: suffix, style: baseDysStyle.copyWith(color: defaultTextColor)));
+    }
+
+    return wordSpans;
+  }
+
+  TextSpan _buildColorizedText({
+    required String text,
+    required double baseFontSize,
+    required Color defaultTextColor,
+    required bool isDyslexiaEnabled,
+  }) {
+    if (!isDyslexiaEnabled) {
+      return TextSpan(
+        text: text,
+        style: TextStyle(color: defaultTextColor, fontSize: baseFontSize),
+      );
+    }
+
+    final double dysFontSize = baseFontSize + 4;
+    const double dysLetterSpacing = 1.8;
+    const double dysLineHeight = 1.6;
+
+    final TextStyle baseDysStyle = TextStyle(
+      fontSize: dysFontSize,
+      letterSpacing: dysLetterSpacing,
+      height: dysLineHeight,
+      fontWeight: FontWeight.bold,
+    );
+
+    List<TextSpan> allSpans = [];
+    List<String> words = text.split(' ');
+
+    for (int i = 0; i < words.length; i++) {
+      allSpans.addAll(
+          _parseWordToDyslexiaSpans(words[i], baseDysStyle, defaultTextColor));
+      if (i < words.length - 1) {
+        allSpans.add(TextSpan(text: ' ', style: baseDysStyle));
+      }
+    }
+
+    return TextSpan(children: allSpans);
+  }
+
+  /// Récupère les couleurs en fonction du thème de lecture
+  _ThemeColors _getThemeColors(SettingsModel settings) {
+    if (settings.dyslexia) {
+      return _ThemeColors(
+        backgroundColor: Colors.white,
+        textColor: const Color(0xFF2B261F),
+      );
+    }
+
+    switch (settings.readTheme) {
+      case 'dark':
+        return _ThemeColors(
+          backgroundColor: const Color(0xFF1C1C1E),
+          textColor: Colors.white,
+        );
+      case 'naturel':
+        return _ThemeColors(
+          backgroundColor: const Color(0xFFF5EFE6),
+          textColor: const Color(0xFF2B261F),
+        );
+      case 'light':
+      default:
+        return _ThemeColors(
+          backgroundColor: Colors.white,
+          textColor: Colors.black87,
+        );
+    }
+  }
+
   Future<void> _handleAudioComplete() async {
     if (!mounted) return;
 
     try {
-      // Mettre d'abord l'état à jour avant de faire le seek
       setState(() {
         _isPlaying = false;
         _audioPosition = Duration.zero;
-        _isSeeking = true; // Empêcher les updates pendant le seek
+        _isSeeking = true;
       });
 
-      // Puis rembobiner à zéro
       await _audio?.seekToStart();
 
       if (mounted) {
@@ -112,13 +348,11 @@ class _StoryPageState extends State<StoryPage> {
 
   Future<void> _toggleAudio() async {
     if (_isPlaying) {
-      // Si on est en train de jouer, pause
       await _audio?.pause();
       setState(() => _isPlaying = false);
       return;
     }
 
-    // Si on est à la fin, rembobiner d'abord
     if (_audioPosition >= _audioDuration && _audioDuration > Duration.zero) {
       setState(() => _isSeeking = true);
       try {
@@ -133,7 +367,6 @@ class _StoryPageState extends State<StoryPage> {
       }
     }
 
-    // Ensuite, jouer
     setState(() => _isLoading = true);
     try {
       await _audio?.play();
@@ -149,6 +382,18 @@ class _StoryPageState extends State<StoryPage> {
     }
   }
 
+  void _goToNextPage() {
+    if (_currentPage < _pages.length - 1) {
+      setState(() => _currentPage++);
+    }
+  }
+
+  void _goToPreviousPage() {
+    if (_currentPage > 0) {
+      setState(() => _currentPage--);
+    }
+  }
+
   @override
   void dispose() {
     _audio?.dispose();
@@ -157,88 +402,137 @@ class _StoryPageState extends State<StoryPage> {
 
   @override
   Widget build(BuildContext context) {
-    final text = widget.story.content
-        .replaceAll(r'\n', '\n\n')
-        .replaceAll(RegExp(r'[ \t]+'), ' ')
-        .trim();
-
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: Stack(
-        children: [
-          // Image de fond, fixe
-          Positioned.fill(
-            child: Hero(
-              tag: widget.story.image,
-              child: B2Image(
-                objectKey: widget.story.image,
-                fit: BoxFit.cover,
+    return StreamBuilder<QuerySnapshot>(
+      stream: _settingsCollection.snapshots(),
+      builder: (context, snapshot) {
+        // Chargement des settings
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Scaffold(
+            backgroundColor: Colors.white,
+            body: const Center(
+              child: CircularProgressIndicator(
+                color: AppTheme.accentColor,
               ),
             ),
-          ),
+          );
+        }
 
-          Positioned.fill(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.black.withOpacity(.45),
-                    Colors.transparent,
-                    Colors.transparent,
-                    Colors.black.withOpacity(.6),
-                  ],
-                ),
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return Scaffold(
+            backgroundColor: Colors.white,
+            body: Center(
+              child: Text(
+                'Erreur : paramètres non trouvés',
+                style: TextStyle(color: Colors.grey.shade600),
               ),
             ),
-          ),
+          );
+        }
 
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: _TopBar(
-                isFavorite: _isFavorite,
-                onBack: () => Navigator.pop(context),
-                onFavorite: () => setState(() => _isFavorite = !_isFavorite),
-              ),
-            ),
-          ),
+        final settingsDoc = snapshot.data!.docs.first;
+        final settings = SettingsModel.fromMap(
+          settingsDoc.data() as Map<String, dynamic>,
+          settingsDoc.id,
+        );
 
-          // Le panneau texte, redimensionnable via la tirette
-          DraggableScrollableSheet(
-            initialChildSize: 0.42,
-            minChildSize: 0.2,
-            maxChildSize: 0.88,
-            snap: true,
-            snapSizes: const [0.2, 0.42, 0.88],
-            builder: (context, scrollController) {
-              return Container(
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(36)),
-                ),
+        final themeColors = _getThemeColors(settings);
+
+        return Scaffold(
+          backgroundColor: themeColors.backgroundColor,
+          body: Stack(
+            children: [
+              SafeArea(
                 child: Column(
                   children: [
-                    const _DragHandle(),
-                    Expanded(
-                      child: SingleChildScrollView(
-                        controller: scrollController,
-                        physics: const BouncingScrollPhysics(),
-                        padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
-                        child: AnimatedDefaultTextStyle(
-                          duration: const Duration(milliseconds: 200),
-                          style: TextStyle(
-                            fontSize: _fontSize,
-                            height: 1.7,
-                            color: Colors.black87,
+                    // Top bar
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 12),
+                      child: Row(
+                        children: [
+                          _CircleButton(
+                            icon: Icons.arrow_back,
+                            onPressed: () => Navigator.pop(context),
+                            color: themeColors.textColor,
                           ),
-                          child: Text(text),
+                          const Spacer(),
+                          _CircleButton(
+                            icon: _isFavorite
+                                ? Icons.favorite
+                                : Icons.favorite_border,
+                            color: _isFavorite
+                                ? Colors.red
+                                : themeColors.textColor,
+                            onPressed: () =>
+                                setState(() => _isFavorite = !_isFavorite),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // Image illustrative
+                    Expanded(
+                      flex: 2,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 24, vertical: 16),
+                        child: Hero(
+                          tag: widget.story.image,
+                          child: B2Image(
+                            objectKey: widget.story.image,
+                            fit: BoxFit.contain,
+                          ),
                         ),
                       ),
                     ),
+
+                    // Texte - Page actuelle
+                    Expanded(
+                      flex: 2,
+                      child: Center(
+                        child: SingleChildScrollView(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 32, vertical: 24),
+                            child: AnimatedSwitcher(
+                              duration: const Duration(milliseconds: 300),
+                              transitionBuilder: (child, animation) {
+                                return FadeTransition(
+                                    opacity: animation, child: child);
+                              },
+                              child: RichText(
+                                key: ValueKey(_currentPage),
+                                textAlign: TextAlign.center,
+                                text: _buildColorizedText(
+                                  text: _pages[_currentPage],
+                                  baseFontSize: settings.fontSize.toDouble(),
+                                  defaultTextColor: themeColors.textColor,
+                                  isDyslexiaEnabled: settings.dyslexia,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    // Pagination
                     Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: Text(
+                        '${_currentPage + 1}/${_pages.length}',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: themeColors.textColor.withOpacity(0.5),
+                          fontWeight: FontWeight.w500,
+                          letterSpacing: 1,
+                        ),
+                      ),
+                    ),
+
+                    // Contrôles du bas
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
                       child: _BottomControls(
                         storyId: widget.story.id,
                         isPlaying: _isPlaying,
@@ -247,71 +541,22 @@ class _StoryPageState extends State<StoryPage> {
                         audioPosition: _audioPosition,
                         audioDuration: _audioDuration,
                         onSeek: _seekAudio,
-                        onDecreaseText: () => setState(
-                          () => _fontSize = (_fontSize - 2).clamp(18, 34),
-                        ),
-                        onIncreaseText: () => setState(
-                          () => _fontSize = (_fontSize + 2).clamp(18, 34),
-                        ),
                         onToggleAudio: _toggleAudio,
+                        onPrevious: _goToPreviousPage,
+                        onNext: _goToNextPage,
+                        canGoPrevious: _currentPage > 0,
+                        canGoNext: _currentPage < _pages.length - 1,
+                        themeColors: themeColors,
+                        isDyslexia: settings.dyslexia,
                       ),
                     ),
                   ],
                 ),
-              );
-            },
+              ),
+            ],
           ),
-        ],
-      ),
-    );
-  }
-}
-
-class _DragHandle extends StatelessWidget {
-  const _DragHandle();
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      child: Container(
-        width: 44,
-        height: 5,
-        decoration: BoxDecoration(
-          color: Colors.black12,
-          borderRadius: BorderRadius.circular(50),
-        ),
-      ),
-    );
-  }
-}
-
-class _TopBar extends StatelessWidget {
-  final bool isFavorite;
-  final VoidCallback onBack;
-  final VoidCallback onFavorite;
-
-  const _TopBar({
-    required this.isFavorite,
-    required this.onBack,
-    required this.onFavorite,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 8),
-      child: Row(
-        children: [
-          _CircleButton(icon: Icons.arrow_back, onPressed: onBack),
-          const Spacer(),
-          _CircleButton(
-            icon: isFavorite ? Icons.favorite : Icons.favorite_border,
-            color: isFavorite ? Colors.red : Colors.white,
-            onPressed: onFavorite,
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 }
@@ -324,9 +569,13 @@ class _BottomControls extends StatelessWidget {
   final Duration audioPosition;
   final Duration audioDuration;
   final ValueChanged<double> onSeek;
-  final VoidCallback onDecreaseText;
-  final VoidCallback onIncreaseText;
   final VoidCallback onToggleAudio;
+  final VoidCallback onPrevious;
+  final VoidCallback onNext;
+  final bool canGoPrevious;
+  final bool canGoNext;
+  final _ThemeColors themeColors;
+  final bool isDyslexia;
 
   const _BottomControls({
     required this.storyId,
@@ -336,68 +585,99 @@ class _BottomControls extends StatelessWidget {
     required this.audioPosition,
     required this.audioDuration,
     required this.onSeek,
-    required this.onDecreaseText,
-    required this.onIncreaseText,
     required this.onToggleAudio,
+    required this.onPrevious,
+    required this.onNext,
+    required this.canGoPrevious,
+    required this.canGoNext,
+    required this.themeColors,
+    required this.isDyslexia,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-      decoration: BoxDecoration(
-        color: Colors.deepPurple.shade50,
-        borderRadius: BorderRadius.circular(24),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Slider(
-            min: 0,
-            max: audioDuration.inSeconds.toDouble() > 0
-                ? audioDuration.inSeconds.toDouble()
-                : 1,
-            value: audioPosition.inSeconds
-                .clamp(
-                  0,
-                  audioDuration.inSeconds,
-                )
-                .toDouble(),
-            onChanged: (value) {
-              // uniquement déplacer visuellement le curseur
-            },
-            onChangeEnd: (value) {
-              onSeek(value);
-            },
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Slider audio
+        if (isAudio)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Slider(
+              min: 0,
+              max: audioDuration.inSeconds.toDouble() > 0
+                  ? audioDuration.inSeconds.toDouble()
+                  : 1,
+              value: audioPosition.inSeconds
+                  .clamp(
+                    0,
+                    audioDuration.inSeconds,
+                  )
+                  .toDouble(),
+              onChanged: (v) {},
+              onChangeEnd: (value) {
+                onSeek(value);
+              },
+              activeColor: AppTheme.accentColor,
+              inactiveColor: themeColors.textColor.withOpacity(0.1),
+            ),
           ),
-          Row(
+
+        // Boutons de contrôle
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: themeColors.textColor.withOpacity(0.05),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: themeColors.textColor.withOpacity(0.1),
+              width: 1,
+            ),
+          ),
+          child: Row(
             children: [
+              // Bouton précédent
               _ControlButton(
-                icon: Icons.remove,
-                onPressed: onDecreaseText,
+                icon: Icons.arrow_back,
+                onPressed: canGoPrevious ? onPrevious : null,
+                disabled: !canGoPrevious,
+                color: themeColors.textColor,
               ),
-              _ControlButton(
-                icon: Icons.add,
-                onPressed: onIncreaseText,
-              ),
-              const Spacer(),
+
+              const SizedBox(width: 8),
+
+              // Bouton audio
               if (isLoading)
-                const SizedBox(
-                  width: 24,
-                  height: 24,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
+                SizedBox(
+                  width: 40,
+                  height: 40,
+                  child: Center(
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation(AppTheme.accentColor),
+                    ),
                   ),
                 )
               else if (isAudio)
                 _ControlButton(
-                  icon: isPlaying ? Icons.pause : Icons.volume_up,
+                  icon: isPlaying ? Icons.pause : Icons.play_arrow,
                   onPressed: onToggleAudio,
+                  color: themeColors.textColor,
                 ),
+
+              const SizedBox(width: 8),
+
+              // Bouton suivant
+              _ControlButton(
+                icon: Icons.arrow_forward,
+                onPressed: canGoNext ? onNext : null,
+                disabled: !canGoNext,
+                color: themeColors.textColor,
+              ),
             ],
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
@@ -410,21 +690,23 @@ class _CircleButton extends StatelessWidget {
   const _CircleButton({
     required this.icon,
     required this.onPressed,
-    this.color = Colors.white,
+    required this.color,
   });
 
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: Colors.black38,
-      shape: const CircleBorder(),
+      color: Colors.transparent,
       child: InkWell(
-        borderRadius: BorderRadius.circular(100),
         onTap: onPressed,
-        child: SizedBox(
-          width: 48,
-          height: 48,
-          child: Icon(icon, color: color),
+        borderRadius: BorderRadius.circular(24),
+        child: Padding(
+          padding: const EdgeInsets.all(8),
+          child: Icon(
+            icon,
+            color: color,
+            size: 24,
+          ),
         ),
       ),
     );
@@ -433,12 +715,38 @@ class _CircleButton extends StatelessWidget {
 
 class _ControlButton extends StatelessWidget {
   final IconData icon;
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
+  final bool disabled;
+  final Color color;
 
-  const _ControlButton({required this.icon, required this.onPressed});
+  const _ControlButton({
+    required this.icon,
+    required this.onPressed,
+    required this.color,
+    this.disabled = false,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return IconButton(onPressed: onPressed, icon: Icon(icon));
+    return IconButton(
+      onPressed: disabled ? null : onPressed,
+      icon: Icon(
+        icon,
+        color: disabled ? color.withOpacity(0.3) : color,
+        size: 24,
+      ),
+      splashRadius: 24,
+    );
   }
+}
+
+/// Classe helper pour les couleurs du thème
+class _ThemeColors {
+  final Color backgroundColor;
+  final Color textColor;
+
+  _ThemeColors({
+    required this.backgroundColor,
+    required this.textColor,
+  });
 }

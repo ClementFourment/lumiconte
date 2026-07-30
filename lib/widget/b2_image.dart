@@ -12,18 +12,14 @@ import 'package:lumiconte/services/storage_service.dart';
 ///   fit: BoxFit.cover,
 /// )
 /// ```
+
 class B2Image extends StatelessWidget {
-  /// URL complète du fichier sur B2.
   final String objectKey;
   final BoxFit fit;
   final double? width;
   final double? height;
   final BorderRadius? borderRadius;
-
-  /// Widget affiché pendant le chargement. Par défaut : petit spinner centré.
   final Widget? placeholder;
-
-  /// Widget affiché en cas d'erreur. Par défaut : icône "image cassée".
   final Widget? errorWidget;
 
   const B2Image({
@@ -39,6 +35,18 @@ class B2Image extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // ✅ Double-check en runtime
+    if (objectKey.isEmpty) {
+      return SizedBox(
+        width: width,
+        height: height,
+        child: errorWidget ??
+            const Center(
+              child: Icon(Icons.broken_image_outlined, color: Colors.grey),
+            ),
+      );
+    }
+
     Widget content = FutureBuilder<Uint8List>(
       future: StorageService.fetchObjectCached(objectKey),
       builder: (context, snapshot) {
