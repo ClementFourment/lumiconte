@@ -1,22 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'dart:ui';
 import 'package:lumiconte/models/profile_model.dart';
 import 'package:lumiconte/models/story_model.dart';
 import 'package:lumiconte/models/settings_model.dart';
 import 'package:lumiconte/widget/b2_audio.dart';
 import 'package:lumiconte/widget/b2_image.dart';
-import 'package:lumiconte/theme/app_theme.dart';
 
 class StoryPage extends StatefulWidget {
   final StoryModel story;
   final ProfileModel profile;
 
-  const StoryPage({
-    super.key,
-    required this.story,
-    required this.profile,
-  });
+  const StoryPage({super.key, required this.story, required this.profile});
 
   @override
   State<StoryPage> createState() => _StoryPageState();
@@ -61,8 +57,9 @@ class _StoryPageState extends State<StoryPage> {
     _pages = _splitTextIntoPages(rawText);
   }
 
-  /// Divise le texte en pages intelligemment
+  /// Divise le texte en pages (~150 caractères)
   List<String> _splitTextIntoPages(String text) {
+    const int charsPerPage = 150;
     final sentences = text.split(RegExp(r'(?<=[.!?])\s+'));
 
     final pages = <String>[];
@@ -72,7 +69,7 @@ class _StoryPageState extends State<StoryPage> {
       final testPage =
           currentPage.isEmpty ? sentence : '$currentPage $sentence';
 
-      if (testPage.length > 150 && currentPage.isNotEmpty) {
+      if (testPage.length > charsPerPage && currentPage.isNotEmpty) {
         pages.add(currentPage.trim());
         currentPage = sentence;
       } else {
@@ -93,7 +90,7 @@ class _StoryPageState extends State<StoryPage> {
 
     final audio = _isAudio ? widget.story.audio.first.values.first : '';
 
-    if (_isAudio) {
+    if (_isAudio && audio.isNotEmpty) {
       _audio = B2Audio(objectKey: audio);
       _audio!.preload();
 
@@ -119,7 +116,87 @@ class _StoryPageState extends State<StoryPage> {
     }
   }
 
-  /// Algorithme dyslexie réutilisé de SettingsPage
+  Future<void> _handleAudioComplete() async {
+    if (!mounted) return;
+
+    try {
+      setState(() {
+        _isPlaying = false;
+        _audioPosition = Duration.zero;
+        _isSeeking = true;
+      });
+
+      await _audio?.seekToStart();
+
+      if (mounted) {
+        setState(() {
+          _isSeeking = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Erreur lors de la fin d\'audio: $e');
+      if (mounted) {
+        setState(() {
+          _isSeeking = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _seekAudio(double value) async {
+    setState(() => _isSeeking = true);
+    try {
+      await _audio?.seek(Duration(seconds: value.toInt()));
+      if (mounted) {
+        setState(() {
+          _audioPosition = Duration(seconds: value.toInt());
+        });
+      }
+    } catch (e) {
+      debugPrint('Erreur seek: $e');
+    } finally {
+      if (mounted) {
+        setState(() => _isSeeking = false);
+      }
+    }
+  }
+
+  Future<void> _toggleAudio() async {
+    if (_isPlaying) {
+      await _audio?.pause();
+      setState(() => _isPlaying = false);
+      return;
+    }
+
+    if (_audioPosition >= _audioDuration && _audioDuration > Duration.zero) {
+      setState(() => _isSeeking = true);
+      try {
+        await _audio?.seekToStart();
+        setState(() {
+          _audioPosition = Duration.zero;
+          _isSeeking = false;
+        });
+      } catch (e) {
+        debugPrint('Erreur lors du rewind: $e');
+        setState(() => _isSeeking = false);
+      }
+    }
+
+    setState(() => _isLoading = true);
+    try {
+      await _audio?.play();
+      if (mounted) setState(() => _isPlaying = true);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erreur audio: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
   List<TextSpan> _parseWordToDyslexiaSpans(
     String word,
     TextStyle baseDysStyle,
@@ -243,7 +320,12 @@ class _StoryPageState extends State<StoryPage> {
     if (!isDyslexiaEnabled) {
       return TextSpan(
         text: text,
-        style: TextStyle(color: defaultTextColor, fontSize: baseFontSize),
+        style: TextStyle(
+          color: defaultTextColor,
+          fontSize: baseFontSize,
+          height: 1.8,
+          letterSpacing: 0.2,
+        ),
       );
     }
 
@@ -272,114 +354,123 @@ class _StoryPageState extends State<StoryPage> {
     return TextSpan(children: allSpans);
   }
 
-  /// Récupère les couleurs en fonction du thème de lecture
   _ThemeColors _getThemeColors(SettingsModel settings) {
     if (settings.dyslexia) {
       return _ThemeColors(
         backgroundColor: Colors.white,
         textColor: const Color(0xFF2B261F),
+        accentColor: const Color(0xFF7C3AED),
       );
     }
 
     switch (settings.readTheme) {
       case 'dark':
         return _ThemeColors(
-          backgroundColor: const Color(0xFF1C1C1E),
+          backgroundColor: const Color(0xFF0F172A),
           textColor: Colors.white,
+          accentColor: const Color(0xFFA78BFA),
         );
       case 'naturel':
         return _ThemeColors(
-          backgroundColor: const Color(0xFFF5EFE6),
-          textColor: const Color(0xFF2B261F),
+          backgroundColor: const Color(0xFFFAF5F0),
+          textColor: const Color(0xFF1F2937),
+          accentColor: const Color(0xFFC084FC),
         );
       case 'light':
       default:
         return _ThemeColors(
           backgroundColor: Colors.white,
-          textColor: Colors.black87,
+          textColor: const Color(0xFF1F2937),
+          accentColor: const Color(0xFF7C3AED),
         );
     }
   }
 
-  Future<void> _handleAudioComplete() async {
-    if (!mounted) return;
+  /// Parse le texte et extrait les images [img:X]
+  /// Retourne une liste de widgets (texte + images)
+  List<Widget> _buildPageContent(
+    String text,
+    double fontSize,
+    Color textColor,
+    bool isDyslexia,
+  ) {
+    final widgets = <Widget>[];
+    final pattern = RegExp(r'\[img:(\d+)\]');
 
-    try {
-      setState(() {
-        _isPlaying = false;
-        _audioPosition = Duration.zero;
-        _isSeeking = true;
-      });
-
-      await _audio?.seekToStart();
-
-      if (mounted) {
-        setState(() {
-          _isSeeking = false;
-        });
+    int lastIndex = 0;
+    for (final match in pattern.allMatches(text)) {
+      // Ajouter le texte avant l'image
+      if (match.start > lastIndex) {
+        final textBefore = text.substring(lastIndex, match.start).trim();
+        if (textBefore.isNotEmpty) {
+          widgets.add(
+            RichText(
+              textAlign: TextAlign.center,
+              text: _buildColorizedText(
+                text: textBefore,
+                baseFontSize: fontSize,
+                defaultTextColor: textColor,
+                isDyslexiaEnabled: isDyslexia,
+              ),
+            ),
+          );
+          widgets.add(const SizedBox(height: 16));
+        }
       }
-    } catch (e) {
-      debugPrint('Erreur lors de la fin d\'audio: $e');
-      if (mounted) {
-        setState(() {
-          _isSeeking = false;
-        });
-      }
-    }
-  }
 
-  Future<void> _seekAudio(double value) async {
-    setState(() => _isSeeking = true);
-    try {
-      await _audio?.seek(Duration(seconds: value.toInt()));
-      if (mounted) {
-        setState(() {
-          _audioPosition = Duration(seconds: value.toInt());
-        });
-      }
-    } catch (e) {
-      debugPrint('Erreur seek: $e');
-    } finally {
-      if (mounted) {
-        setState(() => _isSeeking = false);
-      }
-    }
-  }
+      // Ajouter l'image
+      final imgNumber = match.group(1);
+      final imageUrl = '${widget.story.illustrations}img$imgNumber.jpg';
+      widgets.add(
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: B2Image(
+              objectKey: imageUrl,
+              height: 160,
+              width: double.infinity,
+              fit: BoxFit.cover,
+            ),
+          ),
+        ),
+      );
+      widgets.add(const SizedBox(height: 16));
 
-  Future<void> _toggleAudio() async {
-    if (_isPlaying) {
-      await _audio?.pause();
-      setState(() => _isPlaying = false);
-      return;
-    }
-
-    if (_audioPosition >= _audioDuration && _audioDuration > Duration.zero) {
-      setState(() => _isSeeking = true);
-      try {
-        await _audio?.seekToStart();
-        setState(() {
-          _audioPosition = Duration.zero;
-          _isSeeking = false;
-        });
-      } catch (e) {
-        debugPrint('Erreur lors du rewind: $e');
-        setState(() => _isSeeking = false);
-      }
+      lastIndex = match.end;
     }
 
-    setState(() => _isLoading = true);
-    try {
-      await _audio?.play();
-      if (mounted) setState(() => _isPlaying = true);
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erreur audio: $e')),
+    // Ajouter le texte restant
+    if (lastIndex < text.length) {
+      final textAfter = text.substring(lastIndex).trim();
+      if (textAfter.isNotEmpty) {
+        widgets.add(
+          RichText(
+            textAlign: TextAlign.center,
+            text: _buildColorizedText(
+              text: textAfter,
+              baseFontSize: fontSize,
+              defaultTextColor: textColor,
+              isDyslexiaEnabled: isDyslexia,
+            ),
+          ),
         );
       }
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
     }
+
+    return widgets.isEmpty
+        ? [
+            RichText(
+              textAlign: TextAlign.center,
+              text: _buildColorizedText(
+                text: text,
+                baseFontSize: fontSize,
+                defaultTextColor: textColor,
+                isDyslexiaEnabled: isDyslexia,
+              ),
+            )
+          ]
+        : widgets;
   }
 
   void _goToNextPage() {
@@ -405,26 +496,11 @@ class _StoryPageState extends State<StoryPage> {
     return StreamBuilder<QuerySnapshot>(
       stream: _settingsCollection.snapshots(),
       builder: (context, snapshot) {
-        // Chargement des settings
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return Scaffold(
-            backgroundColor: Colors.white,
-            body: const Center(
-              child: CircularProgressIndicator(
-                color: AppTheme.accentColor,
-              ),
-            ),
-          );
-        }
-
         if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
           return Scaffold(
             backgroundColor: Colors.white,
-            body: Center(
-              child: Text(
-                'Erreur : paramètres non trouvés',
-                style: TextStyle(color: Colors.grey.shade600),
-              ),
+            body: const Center(
+              child: CircularProgressIndicator(),
             ),
           );
         }
@@ -439,258 +515,253 @@ class _StoryPageState extends State<StoryPage> {
 
         return Scaffold(
           backgroundColor: themeColors.backgroundColor,
-          body: Stack(
-            children: [
-              SafeArea(
-                child: Column(
-                  children: [
-                    // Top bar
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 12),
-                      child: Row(
-                        children: [
-                          _CircleButton(
-                            icon: Icons.arrow_back,
-                            onPressed: () => Navigator.pop(context),
-                            color: themeColors.textColor,
-                          ),
-                          const Spacer(),
-                          _CircleButton(
-                            icon: _isFavorite
-                                ? Icons.favorite
-                                : Icons.favorite_border,
-                            color: _isFavorite
-                                ? Colors.red
-                                : themeColors.textColor,
-                            onPressed: () =>
-                                setState(() => _isFavorite = !_isFavorite),
-                          ),
-                        ],
+          body: SafeArea(
+            child: Column(
+              children: [
+                // Header avec boutons
+                Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  child: Row(
+                    children: [
+                      _IconBtn(
+                        icon: Icons.arrow_back_ios_new,
+                        onPressed: () => Navigator.pop(context),
+                        color: themeColors.textColor,
                       ),
-                    ),
-
-                    // Image illustrative
-                    Expanded(
-                      flex: 2,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 24, vertical: 16),
-                        child: Hero(
-                          tag: widget.story.image,
-                          child: B2Image(
-                            objectKey: widget.story.image,
-                            fit: BoxFit.contain,
-                          ),
-                        ),
+                      const Spacer(),
+                      _IconBtn(
+                        icon: _isFavorite
+                            ? Icons.favorite
+                            : Icons.favorite_border,
+                        onPressed: () =>
+                            setState(() => _isFavorite = !_isFavorite),
+                        color: _isFavorite
+                            ? const Color(0xFFEF4444)
+                            : themeColors.textColor,
                       ),
-                    ),
+                    ],
+                  ),
+                ),
 
-                    // Texte - Page actuelle
-                    Expanded(
-                      flex: 2,
-                      child: Center(
-                        child: SingleChildScrollView(
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 32, vertical: 24),
-                            child: AnimatedSwitcher(
-                              duration: const Duration(milliseconds: 300),
-                              transitionBuilder: (child, animation) {
-                                return FadeTransition(
-                                    opacity: animation, child: child);
-                              },
-                              child: RichText(
-                                key: ValueKey(_currentPage),
-                                textAlign: TextAlign.center,
-                                text: _buildColorizedText(
-                                  text: _pages[_currentPage],
-                                  baseFontSize: settings.fontSize.toDouble(),
-                                  defaultTextColor: themeColors.textColor,
-                                  isDyslexiaEnabled: settings.dyslexia,
+                const SizedBox(height: 32),
+
+                // Texte principal avec images
+                Expanded(
+                  child: GestureDetector(
+                    onHorizontalDragEnd: (details) {
+                      // Swipe vers la droite → page précédente
+                      if (details.primaryVelocity! > 0) {
+                        _goToPreviousPage();
+                      }
+                      // Swipe vers la gauche → page suivante
+                      else if (details.primaryVelocity! < 0) {
+                        _goToNextPage();
+                      }
+                    },
+                    child: Center(
+                      child: SingleChildScrollView(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 32, vertical: 24),
+                          child: AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 400),
+                            transitionBuilder: (child, animation) {
+                              return FadeTransition(
+                                opacity: animation,
+                                child: BackdropFilter(
+                                  filter: ImageFilter.blur(
+                                    sigmaX: Tween<double>(begin: 10, end: 0)
+                                        .evaluate(animation),
+                                    sigmaY: Tween<double>(begin: 10, end: 0)
+                                        .evaluate(animation),
+                                  ),
+                                  child: child,
                                 ),
+                              );
+                            },
+                            child: Column(
+                              key: ValueKey(_currentPage),
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: _buildPageContent(
+                                _pages[_currentPage],
+                                settings.fontSize.toDouble(),
+                                themeColors.textColor,
+                                settings.dyslexia,
                               ),
                             ),
                           ),
                         ),
                       ),
                     ),
+                  ),
+                ),
 
-                    // Pagination
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: Text(
-                        '${_currentPage + 1}/${_pages.length}',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: themeColors.textColor.withOpacity(0.5),
-                          fontWeight: FontWeight.w500,
-                          letterSpacing: 1,
+                // Pagination
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: Text(
+                    '${_currentPage + 1} / ${_pages.length}',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: themeColors.textColor.withOpacity(0.5),
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 2,
+                    ),
+                  ),
+                ),
+
+                // Footer avec contrôles
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Slider audio
+                      if (_isAudio)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 20),
+                          child: Column(
+                            children: [
+                              Slider(
+                                min: 0,
+                                max: _audioDuration.inSeconds.toDouble() > 0
+                                    ? _audioDuration.inSeconds.toDouble()
+                                    : 1,
+                                value: _audioPosition.inSeconds
+                                    .clamp(0, _audioDuration.inSeconds)
+                                    .toDouble(),
+                                onChanged: (v) {},
+                                onChangeEnd: (value) {
+                                  _seekAudio(value);
+                                },
+                                activeColor: themeColors.accentColor,
+                                inactiveColor:
+                                    themeColors.textColor.withOpacity(0.1),
+                              ),
+                              Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 8),
+                                child: Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      _formatDuration(_audioPosition),
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: themeColors.textColor
+                                            .withOpacity(0.6),
+                                      ),
+                                    ),
+                                    Text(
+                                      _formatDuration(_audioDuration),
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: themeColors.textColor
+                                            .withOpacity(0.6),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                      // Boutons de contrôle
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 20, vertical: 16),
+                        decoration: BoxDecoration(
+                          color: themeColors.textColor.withOpacity(0.05),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: themeColors.textColor.withOpacity(0.1),
+                            width: 1,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            // Bouton précédent
+                            _IconBtn(
+                              icon: Icons.arrow_back,
+                              onPressed:
+                                  _currentPage > 0 ? _goToPreviousPage : null,
+                              color: _currentPage > 0
+                                  ? themeColors.textColor
+                                  : themeColors.textColor.withOpacity(0.3),
+                            ),
+
+                            const Spacer(),
+
+                            // Bouton audio
+                            if (_isLoading)
+                              SizedBox(
+                                width: 40,
+                                height: 40,
+                                child: Center(
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation(
+                                        themeColors.accentColor),
+                                  ),
+                                ),
+                              )
+                            else if (_isAudio)
+                              _IconBtn(
+                                icon: _isPlaying
+                                    ? Icons.pause_rounded
+                                    : Icons.play_arrow_rounded,
+                                onPressed: _toggleAudio,
+                                color: themeColors.accentColor,
+                                size: 28,
+                              ),
+
+                            const Spacer(),
+
+                            // Bouton suivant
+                            _IconBtn(
+                              icon: Icons.arrow_forward,
+                              onPressed: _currentPage < _pages.length - 1
+                                  ? _goToNextPage
+                                  : null,
+                              color: _currentPage < _pages.length - 1
+                                  ? themeColors.textColor
+                                  : themeColors.textColor.withOpacity(0.3),
+                            ),
+                          ],
                         ),
                       ),
-                    ),
-
-                    // Contrôles du bas
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-                      child: _BottomControls(
-                        storyId: widget.story.id,
-                        isPlaying: _isPlaying,
-                        isLoading: _isLoading,
-                        isAudio: _isAudio,
-                        audioPosition: _audioPosition,
-                        audioDuration: _audioDuration,
-                        onSeek: _seekAudio,
-                        onToggleAudio: _toggleAudio,
-                        onPrevious: _goToPreviousPage,
-                        onNext: _goToNextPage,
-                        canGoPrevious: _currentPage > 0,
-                        canGoNext: _currentPage < _pages.length - 1,
-                        themeColors: themeColors,
-                        isDyslexia: settings.dyslexia,
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         );
       },
     );
   }
-}
 
-class _BottomControls extends StatelessWidget {
-  final String storyId;
-  final bool isPlaying;
-  final bool isLoading;
-  final bool isAudio;
-  final Duration audioPosition;
-  final Duration audioDuration;
-  final ValueChanged<double> onSeek;
-  final VoidCallback onToggleAudio;
-  final VoidCallback onPrevious;
-  final VoidCallback onNext;
-  final bool canGoPrevious;
-  final bool canGoNext;
-  final _ThemeColors themeColors;
-  final bool isDyslexia;
-
-  const _BottomControls({
-    required this.storyId,
-    required this.isPlaying,
-    required this.isLoading,
-    required this.isAudio,
-    required this.audioPosition,
-    required this.audioDuration,
-    required this.onSeek,
-    required this.onToggleAudio,
-    required this.onPrevious,
-    required this.onNext,
-    required this.canGoPrevious,
-    required this.canGoNext,
-    required this.themeColors,
-    required this.isDyslexia,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        // Slider audio
-        if (isAudio)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: Slider(
-              min: 0,
-              max: audioDuration.inSeconds.toDouble() > 0
-                  ? audioDuration.inSeconds.toDouble()
-                  : 1,
-              value: audioPosition.inSeconds
-                  .clamp(
-                    0,
-                    audioDuration.inSeconds,
-                  )
-                  .toDouble(),
-              onChanged: (v) {},
-              onChangeEnd: (value) {
-                onSeek(value);
-              },
-              activeColor: AppTheme.accentColor,
-              inactiveColor: themeColors.textColor.withOpacity(0.1),
-            ),
-          ),
-
-        // Boutons de contrôle
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: BoxDecoration(
-            color: themeColors.textColor.withOpacity(0.05),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: themeColors.textColor.withOpacity(0.1),
-              width: 1,
-            ),
-          ),
-          child: Row(
-            children: [
-              // Bouton précédent
-              _ControlButton(
-                icon: Icons.arrow_back,
-                onPressed: canGoPrevious ? onPrevious : null,
-                disabled: !canGoPrevious,
-                color: themeColors.textColor,
-              ),
-
-              const SizedBox(width: 8),
-
-              // Bouton audio
-              if (isLoading)
-                SizedBox(
-                  width: 40,
-                  height: 40,
-                  child: Center(
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation(AppTheme.accentColor),
-                    ),
-                  ),
-                )
-              else if (isAudio)
-                _ControlButton(
-                  icon: isPlaying ? Icons.pause : Icons.play_arrow,
-                  onPressed: onToggleAudio,
-                  color: themeColors.textColor,
-                ),
-
-              const SizedBox(width: 8),
-
-              // Bouton suivant
-              _ControlButton(
-                icon: Icons.arrow_forward,
-                onPressed: canGoNext ? onNext : null,
-                disabled: !canGoNext,
-                color: themeColors.textColor,
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
+  String _formatDuration(Duration duration) {
+    final minutes = duration.inMinutes;
+    final seconds = duration.inSeconds % 60;
+    return '$minutes:${seconds.toString().padLeft(2, '0')}';
   }
 }
 
-class _CircleButton extends StatelessWidget {
+class _IconBtn extends StatelessWidget {
   final IconData icon;
+  final VoidCallback? onPressed;
   final Color color;
-  final VoidCallback onPressed;
+  final double size;
 
-  const _CircleButton({
+  const _IconBtn({
     required this.icon,
-    required this.onPressed,
+    this.onPressed,
     required this.color,
+    this.size = 24,
   });
 
   @override
@@ -701,11 +772,11 @@ class _CircleButton extends StatelessWidget {
         onTap: onPressed,
         borderRadius: BorderRadius.circular(24),
         child: Padding(
-          padding: const EdgeInsets.all(8),
+          padding: const EdgeInsets.all(12),
           child: Icon(
             icon,
             color: color,
-            size: 24,
+            size: size,
           ),
         ),
       ),
@@ -713,40 +784,14 @@ class _CircleButton extends StatelessWidget {
   }
 }
 
-class _ControlButton extends StatelessWidget {
-  final IconData icon;
-  final VoidCallback? onPressed;
-  final bool disabled;
-  final Color color;
-
-  const _ControlButton({
-    required this.icon,
-    required this.onPressed,
-    required this.color,
-    this.disabled = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return IconButton(
-      onPressed: disabled ? null : onPressed,
-      icon: Icon(
-        icon,
-        color: disabled ? color.withOpacity(0.3) : color,
-        size: 24,
-      ),
-      splashRadius: 24,
-    );
-  }
-}
-
-/// Classe helper pour les couleurs du thème
 class _ThemeColors {
   final Color backgroundColor;
   final Color textColor;
+  final Color accentColor;
 
   _ThemeColors({
     required this.backgroundColor,
     required this.textColor,
+    required this.accentColor,
   });
 }

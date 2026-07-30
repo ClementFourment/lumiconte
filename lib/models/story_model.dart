@@ -3,6 +3,7 @@ class StoryModel {
   final String name;
   final String content;
   final String image;
+  final String illustrations;
   final List<Map<String, String>> audio;
   final String audioTimes;
   final List<String> categoryIds;
@@ -15,6 +16,7 @@ class StoryModel {
     required this.name,
     required this.content,
     required this.image,
+    required this.illustrations,
     required this.audio,
     required this.audioTimes,
     this.categoryIds = const [],
@@ -29,6 +31,7 @@ class StoryModel {
       name: data['name'] ?? '',
       content: data['content'] ?? '',
       image: data['image'] ?? '',
+      illustrations: data['illustrations'] ?? '',
       audio: (data['audio'] as List<dynamic>? ?? [])
           .map((item) => Map<String, String>.from(item as Map))
           .toList(),
@@ -45,6 +48,7 @@ class StoryModel {
       'name': name,
       'content': content,
       'image': image,
+      'illustrations': illustrations,
       'audio': audio,
       'audioTimes': audioTimes,
       'categoryIds': categoryIds,
