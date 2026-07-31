@@ -137,7 +137,7 @@ class _BottomNavState extends State<BottomNav> {
                   ),
                   LibraryPage(
                     key: ValueKey('library_${activeProfile.id}'),
-                    profileId: activeProfile.id,
+                    profile: activeProfile,
                     categories: categories,
                     stories: stories,
                   ),

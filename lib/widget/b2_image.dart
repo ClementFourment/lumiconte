@@ -14,7 +14,7 @@ import 'package:lumiconte/services/storage_service.dart';
 /// ```
 
 class B2Image extends StatelessWidget {
-  final String objectKey;
+  final String? objectKey;
   final BoxFit fit;
   final double? width;
   final double? height;
@@ -36,7 +36,7 @@ class B2Image extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // ✅ Double-check en runtime
-    if (objectKey.isEmpty) {
+    if (objectKey == null || (objectKey != null && objectKey == "")) {
       return SizedBox(
         width: width,
         height: height,
@@ -48,7 +48,7 @@ class B2Image extends StatelessWidget {
     }
 
     Widget content = FutureBuilder<Uint8List>(
-      future: StorageService.fetchObjectCached(objectKey),
+      future: StorageService.fetchObjectCached(objectKey!),
       builder: (context, snapshot) {
         if (snapshot.connectionState != ConnectionState.done) {
           return placeholder ??

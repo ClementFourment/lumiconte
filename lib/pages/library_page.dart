@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:lumiconte/models/category_model.dart';
+import 'package:lumiconte/models/profile_model.dart';
 import 'package:lumiconte/models/story_model.dart';
 import 'package:lumiconte/models/reading_progress_model.dart';
 import 'package:lumiconte/widget/b2_image.dart';
@@ -10,13 +11,13 @@ import 'package:go_router/go_router.dart';
 class LibraryPage extends StatefulWidget {
   final List<CategoryModel> categories;
   final List<StoryModel> stories;
-  final String profileId;
+  final ProfileModel profile;
 
   const LibraryPage({
     super.key,
     required this.categories,
     required this.stories,
-    required this.profileId,
+    required this.profile,
   });
 
   @override
@@ -29,7 +30,8 @@ class _LibraryPageState extends State<LibraryPage> {
   /// Combine en temps réel la progression de lecture (ReadingProgressModel)
   /// et la sous-collection des favoris du profil
   Stream<List<QuerySnapshot>> _combineStreams(DocumentReference profileRef) {
-    Stream<QuerySnapshot> s1 = profileRef.collection('readingProgress').snapshots();
+    Stream<QuerySnapshot> s1 =
+        profileRef.collection('readingProgress').snapshots();
     Stream<QuerySnapshot> s2 = profileRef.collection('favoris').snapshots();
 
     QuerySnapshot? lastS1;
@@ -38,11 +40,13 @@ class _LibraryPageState extends State<LibraryPage> {
     return Stream<List<QuerySnapshot>>.multi((controller) {
       final sub1 = s1.listen((data) {
         lastS1 = data;
-        if (lastS2 != null && !controller.isClosed) controller.add([lastS1!, lastS2!]);
+        if (lastS2 != null && !controller.isClosed)
+          controller.add([lastS1!, lastS2!]);
       });
       final sub2 = s2.listen((data) {
         lastS2 = data;
-        if (lastS1 != null && !controller.isClosed) controller.add([lastS1!, lastS2!]);
+        if (lastS1 != null && !controller.isClosed)
+          controller.add([lastS1!, lastS2!]);
       });
 
       controller.onCancel = () {
@@ -76,7 +80,7 @@ class _LibraryPageState extends State<LibraryPage> {
         .collection('users')
         .doc(currentUser.uid)
         .collection('profiles')
-        .doc(widget.profileId);
+        .doc(widget.profile.id);
 
     return StreamBuilder<List<QuerySnapshot>>(
       stream: _combineStreams(profileRef),
@@ -136,7 +140,8 @@ class _LibraryPageState extends State<LibraryPage> {
 
                     // Filtrage des histoires associées à cette catégorie
                     List<StoryModel> categoryStories = widget.stories
-                        .where((story) => story.categoryIds.contains(category.id))
+                        .where(
+                            (story) => story.categoryIds.contains(category.id))
                         .toList();
 
                     // Application des filtres utilisateur
@@ -152,7 +157,8 @@ class _LibraryPageState extends State<LibraryPage> {
                     } else if (_selectedFilter == 'non_lu') {
                       categoryStories = categoryStories
                           .where((story) =>
-                              !activeProfileReadProgress.containsKey(story.id) ||
+                              !activeProfileReadProgress
+                                  .containsKey(story.id) ||
                               activeProfileReadProgress[story.id] == 0.0)
                           .toList();
                     }
@@ -252,12 +258,16 @@ class _LibraryPageState extends State<LibraryPage> {
         : colorScheme.surfaceContainer;
 
     final shelfColorTop = isDark
-        ? Color.alphaBlend(colorScheme.primary.withOpacity(0.15), colorScheme.surfaceContainerHighest)
-        : Color.alphaBlend(colorScheme.primary.withOpacity(0.08), colorScheme.surfaceContainerHigh);
+        ? Color.alphaBlend(colorScheme.primary.withOpacity(0.15),
+            colorScheme.surfaceContainerHighest)
+        : Color.alphaBlend(colorScheme.primary.withOpacity(0.08),
+            colorScheme.surfaceContainerHigh);
 
     final shelfColorBottom = isDark
-        ? Color.alphaBlend(colorScheme.primary.withOpacity(0.05), colorScheme.surfaceContainer)
-        : Color.alphaBlend(colorScheme.primary.withOpacity(0.12), colorScheme.surfaceContainerHighest);
+        ? Color.alphaBlend(
+            colorScheme.primary.withOpacity(0.05), colorScheme.surfaceContainer)
+        : Color.alphaBlend(colorScheme.primary.withOpacity(0.12),
+            colorScheme.surfaceContainerHighest);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -370,7 +380,10 @@ class _LibraryPageState extends State<LibraryPage> {
     final colorScheme = Theme.of(context).colorScheme;
 
     return GestureDetector(
-      onTap: () => context.push('/story', extra: story),
+      onTap: () => context.push('/story', extra: {
+        'story': story,
+        'profile': widget.profile,
+      }),
       child: Container(
         width: 115,
         margin: const EdgeInsets.only(right: 14),

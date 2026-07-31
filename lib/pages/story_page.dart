@@ -85,10 +85,10 @@ class _StoryPageState extends State<StoryPage> {
   }
 
   void _initializeAudio() {
-    _isAudio = (widget.story.audio.isNotEmpty &&
-        widget.story.audio.first.values.isNotEmpty);
+    _isAudio = widget.story.audio?.isNotEmpty == true &&
+        widget.story.audio!.first.isNotEmpty;
 
-    final audio = _isAudio ? widget.story.audio.first.values.first : '';
+    final audio = _isAudio ? widget.story.audio!.first.values.first : '';
 
     if (_isAudio && audio.isNotEmpty) {
       _audio = B2Audio(objectKey: audio);
