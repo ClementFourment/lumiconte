@@ -54,6 +54,7 @@ class _BottomNavState extends State<BottomNav> {
     final categories = await _categoryService.getAllCategories();
     final stories = await _storyService.getAllStories();
 
+
     return DataFuture(
       categories: categories,
       stories: stories,

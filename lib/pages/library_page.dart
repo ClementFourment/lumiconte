@@ -32,6 +32,7 @@ class _LibraryPageState extends State<LibraryPage> {
   Stream<List<QuerySnapshot>> _combineStreams(DocumentReference profileRef) {
     Stream<QuerySnapshot> s1 =
         profileRef.collection('readingProgress').snapshots();
+
     Stream<QuerySnapshot> s2 = profileRef.collection('favoris').snapshots();
 
     QuerySnapshot? lastS1;
@@ -137,7 +138,6 @@ class _LibraryPageState extends State<LibraryPage> {
                   padding: const EdgeInsets.only(top: 10, bottom: 30),
                   itemBuilder: (context, index) {
                     final category = widget.categories[index];
-
                     // Filtrage des histoires associées à cette catégorie
                     List<StoryModel> categoryStories = widget.stories
                         .where(
