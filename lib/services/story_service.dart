@@ -8,7 +8,7 @@ class StoryService extends FirebaseService {
     try {
       final querySnapshot = await firestore
           .collection('stories')
-          .orderBy('createdAt', descending: true)
+          .orderBy('name', descending: false)
           .get();
 
       return querySnapshot.docs

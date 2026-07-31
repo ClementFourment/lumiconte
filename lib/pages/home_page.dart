@@ -39,7 +39,8 @@ class _HomePageState extends State<HomePage> {
       body: SafeArea(
         child: SingleChildScrollView(
           physics: const BouncingScrollPhysics(),
-          padding: const EdgeInsets.only(left: 20, right: 20, top: 15, bottom: 40),
+          padding:
+              const EdgeInsets.only(left: 20, right: 20, top: 15, bottom: 40),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -214,7 +215,10 @@ class _HomePageState extends State<HomePage> {
                   itemBuilder: (context, index) {
                     final story = widget.stories[index];
                     return GestureDetector(
-                      onTap: () => context.push('/story', extra: story),
+                      onTap: () => context.push('/story', extra: {
+                        'story': story,
+                        'profile': widget.profile,
+                      }),
                       child: _buildStoryCard(context, story),
                     );
                   },

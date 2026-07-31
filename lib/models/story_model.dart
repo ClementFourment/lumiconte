@@ -2,25 +2,27 @@ class StoryModel {
   final String id;
   final String name;
   final String content;
-  final String image;
-  final List<Map<String, String>> audio;
-  final String audioTimes;
+  final String? image;
+  final String? illustrations;
+  final List<Map<String, String>>? audio;
+  final String? audioTimes;
   final List<String> categoryIds;
-  final String type; // 'original' ou 'generated'
-  final String createdByProfileId;
-  final DateTime createdAt;
+  final String? type; // 'original' ou 'generated'
+  final String? createdByProfileId;
+  final DateTime? createdAt;
 
   StoryModel({
     required this.id,
     required this.name,
     required this.content,
-    required this.image,
-    required this.audio,
-    required this.audioTimes,
+    this.image,
+    this.illustrations,
+    this.audio,
+    this.audioTimes,
     this.categoryIds = const [],
     this.type = 'original',
     this.createdByProfileId = '',
-    required this.createdAt,
+    this.createdAt,
   });
 
   factory StoryModel.fromMap(Map<String, dynamic> data, String docId) {
@@ -28,15 +30,22 @@ class StoryModel {
       id: docId,
       name: data['name'] ?? '',
       content: data['content'] ?? '',
-      image: data['image'] ?? '',
-      audio: (data['audio'] as List<dynamic>? ?? [])
-          .map((item) => Map<String, String>.from(item as Map))
-          .toList(),
-      audioTimes: data['audioTimes'] ?? '',
-      categoryIds: List<String>.from(data['categoryIds'] ?? []),
+      image: data['image'],
+      illustrations: data['illustrations'],
+      audio: data['audio'] != null
+          ? (data['audio'] as List<dynamic>)
+              .map((item) => Map<String, String>.from(item as Map))
+              .toList()
+          : null, // Accepte null si l'audio n'existe pas
+      audioTimes: data['audioTimes'],
+      categoryIds: data['categoryIds'] != null
+          ? List<String>.from(data['categoryIds'])
+          : [],
       type: data['type'] ?? 'original',
-      createdByProfileId: data['createdByProfileId'] ?? '',
-      createdAt: data['createdAt']?.toDate() ?? DateTime.now(),
+      createdByProfileId: data['createdByProfileId'],
+      createdAt: data['createdAt'] != null
+          ? (data['createdAt'] as dynamic).toDate()
+          : null,
     );
   }
 
@@ -45,6 +54,7 @@ class StoryModel {
       'name': name,
       'content': content,
       'image': image,
+      'illustrations': illustrations,
       'audio': audio,
       'audioTimes': audioTimes,
       'categoryIds': categoryIds,

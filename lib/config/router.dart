@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:lumiconte/models/profile_model.dart';
 
 import 'package:lumiconte/models/story_model.dart';
 import 'package:lumiconte/pages/onboarding_page.dart';
@@ -13,7 +14,7 @@ import 'package:lumiconte/pages/manage_profiles_page.dart';
 import 'package:lumiconte/pages/story_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// Notifier personnalisé qui signale à GoRouter de réévaluer le `redirect` 
+/// Notifier personnalisé qui signale à GoRouter de réévaluer le `redirect`
 /// lors d'un changement d'Auth OU de changement dans le document User Firestore.
 class AppRouterNotifier extends ChangeNotifier {
   StreamSubscription? _authSub;
@@ -76,7 +77,8 @@ final GoRouter appRouter = GoRouter(
         .get();
 
     final activeProfileId = userDoc.data()?['activeProfileId'] as String?;
-    final hasActiveProfile = activeProfileId != null && activeProfileId.isNotEmpty;
+    final hasActiveProfile =
+        activeProfileId != null && activeProfileId.isNotEmpty;
 
     // S'il n'a AUCUN profil actif, il doit obligatoirement en créer un
     if (!hasActiveProfile) {
@@ -122,11 +124,14 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/story',
       builder: (context, state) {
-        final story = state.extra as StoryModel?;
-        if (story == null) {
+        final extras = state.extra as Map<String, dynamic>? ?? {};
+        final story = extras['story'] as StoryModel?;
+        final profile = extras['profile'] as ProfileModel?;
+
+        if (story == null || profile == null) {
           return const BottomNav();
         }
-        return StoryPage(story: story);
+        return StoryPage(story: story, profile: profile);
       },
     ),
   ],

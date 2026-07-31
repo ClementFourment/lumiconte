@@ -21,8 +21,20 @@ class StorageService {
   static void clearCache() => _cache.clear();
 
   static Future<List<int>> fetchObject(String url) async {
+    if (url.isEmpty) {
+      throw ArgumentError('URL ne peut pas être vide');
+    }
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      throw ArgumentError('URL doit commencer par http:// ou https://: $url');
+    }
+
     final uri = Uri.parse(url);
     final host = uri.host;
+
+    if (host.isEmpty) {
+      throw ArgumentError('Host vide dans l\'URL: $url');
+    }
+
     final region = _regionFromHost(host);
 
     final now = DateTime.now().toUtc();

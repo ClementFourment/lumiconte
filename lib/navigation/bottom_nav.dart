@@ -14,7 +14,8 @@ import 'package:lumiconte/services/profile_service.dart';
 import 'package:lumiconte/pages/home_page.dart';
 import 'package:lumiconte/pages/profile_page.dart';
 import 'package:lumiconte/pages/library_page.dart';
-import 'package:lumiconte/pages/favorites_page.dart';
+
+import 'package:lumiconte/theme/app_theme.dart';
 
 class BottomNav extends StatefulWidget {
   const BottomNav({super.key});
@@ -35,7 +36,7 @@ class DataFuture {
 
 class _BottomNavState extends State<BottomNav> {
   int _currentIndex = 0;
-  
+
   final ProfileService _profileService = ProfileService();
   final CategoryService _categoryService = CategoryService();
   final StoryService _storyService = StoryService();
@@ -52,6 +53,7 @@ class _BottomNavState extends State<BottomNav> {
   Future<DataFuture> _loadStaticData() async {
     final categories = await _categoryService.getAllCategories();
     final stories = await _storyService.getAllStories();
+
 
     return DataFuture(
       categories: categories,
@@ -87,15 +89,20 @@ class _BottomNavState extends State<BottomNav> {
 
         // Écoute en temps réel du profil actif enregistré sur l'utilisateur
         return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-          stream: FirebaseFirestore.instance.collection('users').doc(_uid).snapshots(),
+          stream: FirebaseFirestore.instance
+              .collection('users')
+              .doc(_uid)
+              .snapshots(),
           builder: (context, userSnapshot) {
-            final activeProfileId = userSnapshot.data?.data()?['activeProfileId'] as String?;
+            final activeProfileId =
+                userSnapshot.data?.data()?['activeProfileId'] as String?;
 
             // Écoute en temps réel de tous les profils rattachés
             return StreamBuilder<List<ProfileModel>>(
               stream: _profileService.getUserProfilesStream(_uid!),
               builder: (context, profilesSnapshot) {
-                if (profilesSnapshot.connectionState == ConnectionState.waiting) {
+                if (profilesSnapshot.connectionState ==
+                    ConnectionState.waiting) {
                   return const Scaffold(
                     body: Center(child: CircularProgressIndicator()),
                   );
@@ -131,13 +138,9 @@ class _BottomNavState extends State<BottomNav> {
                   ),
                   LibraryPage(
                     key: ValueKey('library_${activeProfile.id}'),
-                    profileId: activeProfile.id,
+                    profile: activeProfile,
                     categories: categories,
                     stories: stories,
-                  ),
-                  FavoritesPage(
-                    key: ValueKey('favorites_${activeProfile.id}'),
-                    profileId: activeProfile.id,
                   ),
                   ProfilePage(
                     key: ValueKey('profile_${activeProfile.id}'),
@@ -148,24 +151,21 @@ class _BottomNavState extends State<BottomNav> {
                 return Scaffold(
                   body: pages[_currentIndex],
                   bottomNavigationBar: BottomNavigationBar(
+                    fixedColor: AppTheme.getNavBarFixedColor(context),
                     currentIndex: _currentIndex,
                     onTap: (value) => setState(() => _currentIndex = value),
                     type: BottomNavigationBarType.fixed,
                     items: const [
                       BottomNavigationBarItem(
-                        icon: Icon(Icons.home), 
+                        icon: Icon(Icons.home),
                         label: "Accueil",
                       ),
                       BottomNavigationBarItem(
-                        icon: Icon(Icons.menu_book), 
+                        icon: Icon(Icons.menu_book),
                         label: "Bibliothèque",
                       ),
                       BottomNavigationBarItem(
-                        icon: Icon(Icons.favorite), 
-                        label: "Favoris",
-                      ),
-                      BottomNavigationBarItem(
-                        icon: Icon(Icons.person), 
+                        icon: Icon(Icons.person),
                         label: "Profil",
                       ),
                     ],
