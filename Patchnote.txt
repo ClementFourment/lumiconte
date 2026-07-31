@@ -1,6 +1,8 @@
 **Bug connu ou ajout : **
-settings : ajouter les themes
-la creation de profile ne doit pas etre forcée à la connexion si un profile existe déjà
+- settings : 
+    - ajouter les themes
+    - rafraichissement a corriger
+- la creation de profile ne doit pas etre forcée à la connexion si un profile existe déjà
 
 ** Amelioration a faire**
 - Visuel (police,taille,disposition,..)
