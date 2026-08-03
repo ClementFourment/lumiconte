@@ -11,7 +11,8 @@ import 'package:lumiconte/pages/login_page.dart';
 import 'package:lumiconte/navigation/bottom_nav.dart';
 import 'package:lumiconte/pages/profile_creation_page.dart';
 import 'package:lumiconte/pages/manage_profiles_page.dart';
-import 'package:lumiconte/pages/story_page.dart';
+import 'package:lumiconte/pages/settings_page.dart';
+import 'package:lumiconte/pages/story/story_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Notifier personnalisé qui signale à GoRouter de réévaluer le `redirect`
@@ -132,6 +133,14 @@ final GoRouter appRouter = GoRouter(
           return const BottomNav();
         }
         return StoryPage(story: story, profile: profile);
+      },
+    ),
+    GoRoute(
+      path: '/settings',
+      builder: (context, state) {
+        final extras = state.extra as Map<String, dynamic>;
+        final profileId = extras['profileId'] as String;
+        return SettingsPage(profileId: profileId);
       },
     ),
   ],
