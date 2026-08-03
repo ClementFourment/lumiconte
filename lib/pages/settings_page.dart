@@ -226,7 +226,8 @@ class _SettingsPageState extends State<SettingsPage> {
     final cardColor = AppTheme.getCardColor(context);
     final primaryTextColor = isDark ? Colors.white : Colors.black87;
     final secondaryTextColor = isDark ? Colors.grey.shade400 : Colors.black54;
-    final borderColor = isDark ? Colors.white.withOpacity(0.05) : Colors.grey.shade200;
+    final borderColor =
+        isDark ? Colors.white.withOpacity(0.05) : Colors.grey.shade200;
 
     return Scaffold(
       backgroundColor: backgroundColor,
@@ -353,9 +354,11 @@ class _SettingsPageState extends State<SettingsPage> {
                         max: 200,
                         divisions: 12,
                         activeColor: AppTheme.accentColor,
-                        inactiveColor: isDark ? Colors.white12 : Colors.grey.shade200,
+                        inactiveColor:
+                            isDark ? Colors.white12 : Colors.grey.shade200,
                         onChangeEnd: (double percentageValue) {
-                          double calculatedPixels = (percentageValue / 100) * 16;
+                          double calculatedPixels =
+                              (percentageValue / 100) * 16;
                           _updateSetting(
                             settings.id,
                             'fontSize',
@@ -402,19 +405,20 @@ class _SettingsPageState extends State<SettingsPage> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     _buildThemeOption(
-                      label: 'Clair',
-                      themeKey: 'light',
+                      label: 'Classique',
+                      themeKey: 'classic',
                       currentTheme: settings.readTheme,
                       bgColor: Colors.white,
                       textColor: Colors.black,
-                      borderColor: isDark ? Colors.white24 : Colors.grey.shade300,
+                      borderColor:
+                          isDark ? Colors.white24 : Colors.grey.shade300,
                       settingsId: settings.id,
                       primaryTextColor: primaryTextColor,
                       secondaryTextColor: secondaryTextColor,
                     ),
                     _buildThemeOption(
-                      label: 'Sombre',
-                      themeKey: 'dark',
+                      label: 'Immersif',
+                      themeKey: 'immersive',
                       currentTheme: settings.readTheme,
                       bgColor: const Color(0xFF1C1C1E),
                       textColor: Colors.white,
@@ -424,8 +428,8 @@ class _SettingsPageState extends State<SettingsPage> {
                       secondaryTextColor: secondaryTextColor,
                     ),
                     _buildThemeOption(
-                      label: 'Naturel',
-                      themeKey: 'naturel',
+                      label: 'Manuscrit',
+                      themeKey: 'manuscript',
                       currentTheme: settings.readTheme,
                       bgColor: const Color(0xFFF5EFE6),
                       textColor: const Color(0xFF2B261F),
