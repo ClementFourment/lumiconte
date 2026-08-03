@@ -24,6 +24,7 @@ class _StoryClassicViewState extends State<StoryClassicView> {
 
   @override
   void initState() {
+    debugPrint('classic');
     super.initState();
     _currentImageUrl = widget.params.image;
   }
@@ -78,6 +79,8 @@ class _StoryClassicViewState extends State<StoryClassicView> {
                             ? const Color(0xFFEF4444)
                             : textColor,
                       ),
+                      Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 6)),
                       _CircleIconButton(
                         icon: Icons.settings,
                         onPressed: () => context.push('/settings', extra: {
@@ -327,21 +330,15 @@ class _StoryClassicViewState extends State<StoryClassicView> {
     final pattern = RegExp(r'\[img:(\d+)\]');
     final match = pattern.firstMatch(widget.params.currentPageText);
 
-    if (match != null) {
+    if (match != null &&
+        widget.params.illustrationsPath != '' &&
+        widget.params.illustrationsPath?.isNotEmpty == true) {
       final imgNumber = match.group(1);
       _currentImageUrl = '${widget.params.illustrationsPath}img$imgNumber.webp';
     }
     return SizedBox.expand(
       child: B2Image(
         objectKey: _currentImageUrl,
-        width: double.infinity,
-        height: double.infinity,
-        fit: BoxFit.cover,
-      ),
-    );
-    return SizedBox.expand(
-      child: B2Image(
-        objectKey: '${widget.params.illustrationsPath}img1.jpg',
         width: double.infinity,
         height: double.infinity,
         fit: BoxFit.cover,

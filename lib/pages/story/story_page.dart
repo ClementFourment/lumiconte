@@ -385,13 +385,11 @@ class _StoryPageState extends State<StoryPage> {
             body: const Center(child: CircularProgressIndicator()),
           );
         }
-
         final settingsDoc = snapshot.data!.docs.first;
         final settings = SettingsModel.fromMap(
           settingsDoc.data() as Map<String, dynamic>,
           settingsDoc.id,
         );
-
         final themeColors = _getThemeColors(settings);
 
         final storyParams = StoryViewParams(
@@ -417,20 +415,19 @@ class _StoryPageState extends State<StoryPage> {
           onSeekAudio: _seekAudio,
           buildColorizedText: _buildColorizedText,
         );
-        final bool isDarkTheme = settings.readTheme == 'dark';
+        final bool isDarkTheme = settings.theme == 'dark';
 
+        debugPrint(settings.readTheme);
         switch (settings.readTheme) {
-          case 'immersif':
+          case 'immersive':
             return StoryImmersiveView(
                 isDark: isDarkTheme,
                 params: storyParams,
                 profileId: widget.profile.id);
-          case 'manuscrit':
+          case 'manuscript':
             return StoryManuscriptView(
-                isDark: isDarkTheme,
-                params: storyParams,
-                profileId: widget.profile.id);
-          case 'classique':
+                params: storyParams, profileId: widget.profile.id);
+          case 'classic':
           default:
             return StoryClassicView(
                 isDark: isDarkTheme,
