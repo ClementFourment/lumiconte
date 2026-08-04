@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:drop_cap_text/drop_cap_text.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lumiconte/pages/story/story_view_params.dart';
 import 'package:lumiconte/widget/b2_image.dart';
+import 'package:lumiconte/widget/drop_cap_text.dart';
 
 class StoryManuscriptView extends StatefulWidget {
   final StoryViewParams params;
