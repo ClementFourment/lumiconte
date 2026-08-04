@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:crypto/crypto.dart';
+import 'package:flutter/rendering.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
@@ -21,6 +22,7 @@ class StorageService {
   static void clearCache() => _cache.clear();
 
   static Future<List<int>> fetchObject(String url) async {
+    debugPrint(url);
     if (url.isEmpty) {
       throw ArgumentError('URL ne peut pas être vide');
     }

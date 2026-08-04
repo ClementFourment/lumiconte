@@ -334,7 +334,8 @@ class _StoryClassicViewState extends State<StoryClassicView> {
         widget.params.illustrationsPath != '' &&
         widget.params.illustrationsPath?.isNotEmpty == true) {
       final imgNumber = match.group(1);
-      _currentImageUrl = '${widget.params.illustrationsPath}img$imgNumber.webp';
+      _currentImageUrl =
+          '${widget.params.illustrationsPath}/img$imgNumber.webp';
     }
     return SizedBox.expand(
       child: B2Image(
