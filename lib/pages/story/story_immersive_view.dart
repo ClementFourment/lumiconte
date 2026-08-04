@@ -247,7 +247,8 @@ class _StoryImmersiveViewState extends State<StoryImmersiveView> {
         widget.params.illustrationsPath != '' &&
         widget.params.illustrationsPath?.isNotEmpty == true) {
       final imgNumber = match.group(1);
-      _currentImageUrl = '${widget.params.illustrationsPath}img$imgNumber.webp';
+      _currentImageUrl =
+          '${widget.params.illustrationsPath}/img$imgNumber.webp';
     }
     return SizedBox.expand(
       child: B2Image(

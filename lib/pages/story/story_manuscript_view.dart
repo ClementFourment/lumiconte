@@ -135,11 +135,9 @@ class _StoryManuscriptViewState extends State<StoryManuscriptView> {
                                   begin: Alignment.topLeft,
                                   end: Alignment.bottomRight,
                                   colors: [
-                                          const Color(0xFFFAF6EB)
-                                              .withOpacity(0.3),
-                                          const Color(0xFFF0E8D8)
-                                              .withOpacity(0.3),
-                                        ],
+                                    const Color(0xFFFAF6EB).withOpacity(0.3),
+                                    const Color(0xFFF0E8D8).withOpacity(0.3),
+                                  ],
                                 ),
                               ),
                             ),
@@ -516,7 +514,8 @@ class _StoryManuscriptViewState extends State<StoryManuscriptView> {
         widget.params.illustrationsPath != '' &&
         widget.params.illustrationsPath?.isNotEmpty == true) {
       final imgNumber = match.group(1);
-      _currentImageUrl = '${widget.params.illustrationsPath}img$imgNumber.webp';
+      _currentImageUrl =
+          '${widget.params.illustrationsPath}/img$imgNumber.webp';
     }
     return SizedBox.expand(
       child: B2Image(
