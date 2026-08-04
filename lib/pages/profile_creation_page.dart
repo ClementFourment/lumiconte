@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:lumiconte/main.dart';
 import 'package:lumiconte/theme/app_theme.dart';
 import 'package:lumiconte/services/profile_service.dart';
 import 'package:lumiconte/services/settings_service.dart';
+import 'package:lumiconte/constants/avatars.dart';
 
 class ProfileCreationPage extends StatefulWidget {
   const ProfileCreationPage({super.key});
@@ -16,6 +18,7 @@ class ProfileCreationPage extends StatefulWidget {
 class _ProfileCreationPageState extends State<ProfileCreationPage> {
   final _nameController = TextEditingController();
   final _ageController = TextEditingController();
+  String _selectedAvatar = AppAvatars.defaultAvatar;
   bool _isLoading = false;
 
   late ProfileService _profileService;
@@ -35,7 +38,7 @@ class _ProfileCreationPageState extends State<ProfileCreationPage> {
     super.dispose();
   }
 
-  Future<void> _createProfile({bool customizeNow = false}) async {
+  Future<void> _createProfile() async {
     final name = _nameController.text.trim();
     final ageText = _ageController.text.trim();
 
@@ -60,26 +63,25 @@ class _ProfileCreationPageState extends State<ProfileCreationPage> {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) throw Exception("Utilisateur non connecté");
 
-      // 1. On crée le profil ET on le définit comme profil actif (activeProfileId)
       final String profileId = await _profileService.createAndSetActiveProfile(
         user.uid,
         name: name,
         age: parsedAge,
+        avatarPath: _selectedAvatar,
       );
 
-      // 2. Initialisation des paramètres associés
       await _settingsService.createOrInitSettings(
         user.uid,
         profileId,
       );
 
+      appSettings.toggleDarkMode(profileId, false);
+
       if (mounted) {
-        // Redirection vers l'accueil
         context.go('/home');
       }
     } catch (e) {
       if (mounted) {
-        // On nettoie le message pour retirer 'Exception: ' si présent
         final errorMessage = e.toString().replaceAll('Exception: ', '');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Erreur: $errorMessage')),
@@ -115,7 +117,7 @@ class _ProfileCreationPageState extends State<ProfileCreationPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const SizedBox(height: 40),
+                const SizedBox(height: 20),
                 Center(
                   child: Text(
                     'Qui est notre aventurier(e) ?',
@@ -127,7 +129,47 @@ class _ProfileCreationPageState extends State<ProfileCreationPage> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 40),
+                const SizedBox(height: 30),
+
+                // Sélection de l'avatar
+                Text(
+                  'Choisis ton avatar',
+                  style: titleStyle(context),
+                ),
+                const SizedBox(height: 15),
+                SizedBox(
+                  height: 90,
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: AppAvatars.availableAvatars.length,
+                    itemBuilder: (context, index) {
+                      final avatar = AppAvatars.availableAvatars[index];
+                      final isSelected = avatar == _selectedAvatar;
+                      return GestureDetector(
+                        onTap: () => setState(() => _selectedAvatar = avatar),
+                        child: Container(
+                          margin: const EdgeInsets.only(right: 12),
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: isSelected
+                                  ? AppTheme.accentColor
+                                  : Colors.transparent,
+                              width: 3,
+                            ),
+                          ),
+                          child: CircleAvatar(
+                            radius: 35,
+                            backgroundImage: AssetImage(avatar),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+
+                const SizedBox(height: 30),
                 Text(
                   'Son nom ?',
                   style: titleStyle(context),
@@ -172,14 +214,14 @@ class _ProfileCreationPageState extends State<ProfileCreationPage> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 50),
+                const SizedBox(height: 40),
                 SizedBox(
                   width: double.infinity,
                   height: 56,
                   child: ElevatedButton(
                     onPressed: _isLoading ? null : () => _createProfile(),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.accentColor, // Doré Lumiconte
+                      backgroundColor: AppTheme.accentColor,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(25),
                       ),

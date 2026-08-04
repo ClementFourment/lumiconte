@@ -10,7 +10,7 @@ import 'package:lumiconte/models/reading_progress_model.dart';
 
 class AppSettings extends ChangeNotifier {
   bool _isDarkMode = false;
-  bool _isNotificationsEnabled = true;
+  bool _isNotificationsEnabled = true; // Valeur par défaut
   SettingsModel? _currentSettings;
 
   bool get isDarkMode => _isDarkMode;
@@ -22,13 +22,21 @@ class AppSettings extends ChangeNotifier {
 
   AppSettings() {
     _initNotifications();
-    _loadGlobalSettings();
+    _initAuthListener(); // 👈 Écoute dynamique du statut d'authentification
+  }
+
+  /// Écoute l'authentification : si l'utilisateur se connecte, on charge ses paramètres globaux
+  void _initAuthListener() {
+    FirebaseAuth.instance.authStateChanges().listen((user) {
+      if (user != null) {
+        _loadGlobalSettings();
+      }
+    });
   }
 
   Future<void> _initNotifications() async {
     tz.initializeTimeZones();
 
-    // Configuration de la timezone réelle de l'appareil
     try {
       final dynamic timezoneInfo = await FlutterTimezone.getLocalTimezone();
       final String timeZoneName = timezoneInfo.toString();
@@ -66,7 +74,7 @@ class AppSettings extends ChangeNotifier {
     }
   }
 
-  /// Charge les paramètres globaux au niveau du document user
+  /// Charge les paramètres globaux (`users/{uid}`)
   Future<void> _loadGlobalSettings() async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
@@ -77,17 +85,21 @@ class AppSettings extends ChangeNotifier {
       if (userDoc.exists) {
         final data = userDoc.data();
         if (data != null) {
-          _isNotificationsEnabled = data['notificationsEnabled'] ?? true;
-          notifyListeners();
+          // 👈 Récupère la valeur ou retombe sur true par défaut
+          _isNotificationsEnabled = data['notificationsEnabled'] as bool? ?? true;
+          notifyListeners(); // 👈 Notifie l'UI pour positionner le Switch à droite
         }
       }
     } catch (_) {}
   }
 
-  /// Charge les paramètres Firestore spécifiques au profil (ex: langue, thème du profil)
+  /// Charge les paramètres Firestore spécifiques au profil
   Future<void> loadSettingsFromFirestore(String profileId) async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
+
+    // Recharge la valeur globale de la notification au passage
+    await _loadGlobalSettings();
 
     final snapshot = await FirebaseFirestore.instance
         .collection('users')
@@ -100,14 +112,9 @@ class AppSettings extends ChangeNotifier {
     if (snapshot.docs.isNotEmpty) {
       final doc = snapshot.docs.first;
       _currentSettings = SettingsModel.fromMap(doc.data(), doc.id);
-
       _isDarkMode = _currentSettings?.theme == 'dark';
-
       notifyListeners();
     }
-
-    // Recharge l'état global des notifications stocké sur l'utilisateur
-    await _loadGlobalSettings();
   }
 
   /// Alterne le mode sombre et met à jour le SettingsModel du profil
@@ -133,7 +140,6 @@ class AppSettings extends ChangeNotifier {
     if (uid == null) return;
 
     try {
-      // Sauvegarde globale dans Firestore
       await FirebaseFirestore.instance.collection('users').doc(uid).set({
         'notificationsEnabled': value,
       }, SetOptions(merge: true));
@@ -170,13 +176,12 @@ class AppSettings extends ChangeNotifier {
     await _notificationsPlugin.cancelAll();
   }
 
-  /// Planifie une notification journalière à 19h30 en inspectant TOUS les profils
+  /// Planifie une notification journalière à 19h30
   Future<void> scheduleReadingReminder() async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
 
     try {
-      // 1. Récupération de tous les profils
       final profilesSnapshot = await FirebaseFirestore.instance
           .collection('users')
           .doc(uid)
@@ -185,7 +190,6 @@ class AppSettings extends ChangeNotifier {
 
       bool hasUnfinishedStoryAnywhere = false;
 
-      // 2. Vérification des lectures non terminées
       for (var profileDoc in profilesSnapshot.docs) {
         final progressSnapshot = await profileDoc.reference
             .collection('readingProgress')
@@ -220,15 +224,14 @@ class AppSettings extends ChangeNotifier {
       const NotificationDetails platformDetails =
           NotificationDetails(android: androidDetails);
 
-      // Calcul de l'heure locale : 19h30 pile
       final tz.TZDateTime now = tz.TZDateTime.now(tz.local);
       tz.TZDateTime scheduledTime = tz.TZDateTime(
         tz.local,
         now.year,
         now.month,
         now.day,
-        19, // 19 heures
-        30, // 30 minutes
+        19,
+        30,
       );
 
       if (scheduledTime.isBefore(now)) {

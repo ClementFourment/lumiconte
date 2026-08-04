@@ -88,13 +88,12 @@ final GoRouter appRouter = GoRouter(
     }
 
     // 4. Si connecté avec un profil actif :
-    // - On interdit Onboarding et Login (redirection vers /home)
+    // Redirection automatique depuis l'Onboarding ou le Login vers la gestion des profils
     if (isOnboarding || isLogin) {
-      return '/home';
+      return '/manage-profiles'; // 👈 Modifié ici (/home -> /manage-profiles)
     }
 
     // - On autorise l'accès à /create-profile pour ajouter d'autres profils
-    // (le contrôle de la limite des 6 profils est géré dans ProfileService et ManageProfilesPage)
     if (isProfileCreation) {
       return null;
     }

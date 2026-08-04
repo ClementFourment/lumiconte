@@ -30,8 +30,12 @@ class AppTheme {
     brightness: Brightness.light,
     scaffoldBackgroundColor: lightBg,
     primaryColor: accentColor,
+    // Désactive les reflets bleus au clic :
+    splashColor: accentColor.withOpacity(0.2),
+    highlightColor: accentColor.withOpacity(0.1),
     colorScheme: const ColorScheme.light(
       primary: accentColor,
+      secondary: accentColor, // Évite le bleu par défaut
       surface: lightCard,
       onSurface: Colors.black87,
     ),
@@ -55,16 +59,18 @@ class AppTheme {
     brightness: Brightness.dark,
     scaffoldBackgroundColor: darkBg, // 0xFF1E1B29
     primaryColor: accentColor,
+    // Désactive les reflets bleus au clic :
+    splashColor: accentColor.withOpacity(0.2),
+    highlightColor: accentColor.withOpacity(0.1),
     colorScheme: const ColorScheme.dark(
       primary: accentColor,
-      surface:
-          darkCard, // 0xFF2D283E (appliqué automatiquement sur les Cards/Containers)
+      secondary: accentColor, // Évite le bleu par défaut
+      surface: darkCard, // 0xFF2D283E
       onSurface: Colors.white,
     ),
     appBarTheme: const AppBarTheme(
       backgroundColor: Colors.transparent,
-      surfaceTintColor:
-          Colors.transparent, // Désactive le voile noir/gris Material 3
+      surfaceTintColor: Colors.transparent,
       elevation: 0,
       centerTitle: false,
       foregroundColor: Colors.white,

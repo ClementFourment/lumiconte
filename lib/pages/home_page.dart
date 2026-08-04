@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lumiconte/constants/avatars.dart';
 import 'package:lumiconte/models/category_model.dart';
 import 'package:lumiconte/models/story_model.dart';
 import 'package:lumiconte/models/profile_model.dart';
@@ -28,7 +29,6 @@ class _HomePageState extends State<HomePage> {
     final colorScheme = theme.colorScheme;
     final textTheme = theme.textTheme;
 
-    // Style unifié et bien proportionné pour les titres de section
     final sectionTitleStyle = textTheme.titleMedium?.copyWith(
       fontWeight: FontWeight.bold,
       fontSize: 18,
@@ -64,8 +64,8 @@ class _HomePageState extends State<HomePage> {
                   CircleAvatar(
                     radius: 22,
                     backgroundColor: colorScheme.surfaceContainerHigh,
-                    backgroundImage: const AssetImage(
-                      "assets/images/boy.png",
+                    backgroundImage: AssetImage(
+                      widget.profile.avatarPath ?? AppAvatars.defaultAvatar,
                     ),
                   )
                 ],
