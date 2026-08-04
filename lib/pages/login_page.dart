@@ -61,13 +61,72 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
     super.dispose();
   }
 
-  Future<void> _signInWithGoogle() async {
-    setState(() => _isLoading = true);
-    _authService.signInWithGoogle();
+  /// Redirige l'utilisateur vers la création ou la sélection de profil
+  Future<void> _handleProfileRouting(String uid) async {
+    final profiles = await _profileService.getUserProfiles(uid);
+    if (!mounted) return;
+
+    if (profiles.isEmpty) {
+      context.go('/create-profile');
+    } else {
+      context.go('/manage-profiles');
+    }
   }
 
   // ---------------------------------------------------------------------------
-  // CONNEXION EMAIL - REDIRECTION VERS GESTION DE PROFIL
+  // CONNEXION GOOGLE
+  // ---------------------------------------------------------------------------
+  Future<void> _signInWithGoogle() async {
+    setState(() => _isLoading = true);
+    try {
+      final userModel = await _authService.signInWithGoogle();
+      final uid = userModel?.uid ?? FirebaseAuth.instance.currentUser?.uid;
+
+      if (uid != null) {
+        await _handleProfileRouting(uid);
+      }
+    } catch (e) {
+      debugPrint("Erreur Google Sign In : $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Échec de la connexion avec Google")),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // CONNEXION APPLE
+  // ---------------------------------------------------------------------------
+  Future<void> _signInWithApple() async {
+    setState(() => _isLoading = true);
+    try {
+      final userModel = await _authService.signInWithApple();
+      final uid = userModel?.uid ?? FirebaseAuth.instance.currentUser?.uid;
+
+      if (uid != null) {
+        await _handleProfileRouting(uid);
+      }
+    } catch (e) {
+      debugPrint("Erreur Apple Sign In : $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Échec de la connexion avec Apple")),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // CONNEXION EMAIL
   // ---------------------------------------------------------------------------
   Future<void> _signInWithEmail() async {
     if (!_formKey.currentState!.validate()) return;
@@ -79,20 +138,10 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
         _passwordController.text.trim(),
       );
 
-      // Correction : Accès direct à .uid sur UserModel ou secours via Firebase
       final uid = userModel?.uid ?? FirebaseAuth.instance.currentUser?.uid;
 
-      if (mounted && uid != null) {
-        // Vérification des profils existants
-        final profiles = await _profileService.getUserProfiles(uid);
-
-        if (profiles.isEmpty) {
-          // 0 profil -> Redirection création de profil
-          context.go('/create-profile');
-        } else {
-          // 1 profil ou + -> Redirection sélection de profil
-          context.go('/manage-profiles');
-        }
+      if (uid != null) {
+        await _handleProfileRouting(uid);
       }
     } on FirebaseAuthException catch (e) {
       String message;
@@ -127,9 +176,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
   // INSCRIPTION EMAIL
   // ---------------------------------------------------------------------------
   Future<void> _signUpWithEmail() async {
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
+    if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
 
@@ -139,24 +186,23 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
         _passwordController.text.trim(),
       );
 
-      debugPrint("Compte créé : ${user.email}");
+      debugPrint("Compte créé : ${user?.email}");
 
       if (mounted) {
-        // Nouveau compte -> direct sur la création de profil
         context.go('/create-profile');
       }
     } catch (e) {
       debugPrint("Erreur inscription : $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Échec de l'inscription")),
+        );
+      }
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
       }
     }
-  }
-
-  Future<void> _signInWithApple() async {
-    setState(() => _isLoading = true);
-    debugPrint('Sign in with Apple');
   }
 
   @override
@@ -310,7 +356,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                                           text: 'Continuer avec Google',
                                           onPressed: _signInWithGoogle,
                                         ),
-                                      const SizedBox(width: 24),
+                                      const SizedBox(height: 12),
                                       if (canUseAppleSignIn)
                                         _buildSocialIconButton(
                                           type: 'apple',

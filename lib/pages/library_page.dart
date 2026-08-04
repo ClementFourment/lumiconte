@@ -378,7 +378,6 @@ class _LibraryPageState extends State<LibraryPage> {
     Map<String, double> activeProfileReadProgress,
   ) {
     final double progress = activeProfileReadProgress[story.id] ?? 0.0;
-    final int percentage = (progress * 100).round();
 
     return GestureDetector(
       onTap: () => context.push('/story', extra: {
@@ -442,33 +441,38 @@ class _LibraryPageState extends State<LibraryPage> {
                 ),
               ),
 
-              // MARQUE-PAGE DE PROGRESSION (Haut Droite)
-              if (progress > 0.0)
-                Positioned(
-                  top: 0,
-                  right: 8,
-                  child: _buildBookmark(percentage),
-                ),
-
-              // Titre
+              // CONTENU DU BAS : TITRE ET BARRE DE PROGRESSION CONDITIONNELLE
               Align(
                 alignment: Alignment.bottomLeft,
                 child: Padding(
                   padding: const EdgeInsets.only(
                     left: 10.0,
-                    right: 15.0,
-                    bottom: 10.0,
+                    right: 10.0,
+                    bottom: 8.0,
                   ),
-                  child: Text(
-                    story.name,
-                    maxLines: 3,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold,
-                      height: 1.2,
-                    ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Titre
+                      Text(
+                        story.name,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          height: 1.2,
+                        ),
+                      ),
+                      
+                      // Affichage conditionnel de la barre si progress > 0
+                      if (progress > 0.0) ...[
+                        const SizedBox(height: 12),
+                        _LanternProgressBar(progress: progress),
+                      ],
+                    ],
                   ),
                 ),
               ),
@@ -478,77 +482,125 @@ class _LibraryPageState extends State<LibraryPage> {
       ),
     );
   }
+}
 
-  // ---------------------------------------------------------------------------
-  // WIDGET MARQUE-PAGE
-  // ---------------------------------------------------------------------------
-  Widget _buildBookmark(int percentage) {
-    return CustomPaint(
-      painter: _BookmarkBorderPainter(),
-      child: ClipPath(
-        clipper: _BookmarkClipper(),
-        child: Container(
-          width: 28,
-          height: 42,
-          color: const Color(0xFF7A1C1C), // Bordeaux ruban
-          padding: const EdgeInsets.only(top: 4, bottom: 8),
-          child: Center(
-            child: Text(
-              '$percentage%',
-              style: const TextStyle(
-                color: Color(0xFFFFD700), // Doré
-                fontSize: 9,
-                fontWeight: FontWeight.bold,
-                shadows: [
-                  Shadow(
-                    offset: Offset(0, 1),
-                    blurRadius: 2,
-                    color: Colors.black87,
-                  ),
-                ],
-              ),
-            ),
+// -----------------------------------------------------------------------------
+// BARRE DE PROGRESSION AVEC SOLEIL FIXE À LA FIN ET TIRETÉS PARTOUT
+// -----------------------------------------------------------------------------
+class _LanternProgressBar extends StatelessWidget {
+  final double progress; // 0.0 à 1.0
+
+  const _LanternProgressBar({required this.progress});
+
+  @override
+  Widget build(BuildContext context) {
+    const int totalMainDots = 4; // 4 grands points
+    const int dashesBetweenDots = 3; // 3 petits tirets entre chaque point
+    
+    final int totalSections = totalMainDots; 
+    final int totalSteps = totalSections * (dashesBetweenDots + 1);
+    final int currentStep = (progress * totalSteps).round().clamp(0, totalSteps);
+
+    final isSunActive = progress >= 0.95;
+
+    return Row(
+      children: [
+        // Partie pointillés et grands points
+        Expanded(
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: List.generate(totalMainDots, (dotIndex) {
+              final int mainDotStep = dotIndex * (dashesBetweenDots + 1) + 1;
+              final bool isDotActive = currentStep >= mainDotStep;
+
+              return Expanded(
+                child: Row(
+                  children: [
+                    // Grand point
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: isDotActive
+                            ? const Color(0xFFFFC107)
+                            : Colors.white.withAlpha(50),
+                        boxShadow: isDotActive
+                            ? [
+                                const BoxShadow(
+                                  color: Color(0xFFFFB300),
+                                  blurRadius: 4,
+                                  spreadRadius: 1,
+                                )
+                              ]
+                            : null,
+                      ),
+                    ),
+
+                    // Petits tirets
+                    Expanded(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: List.generate(dashesBetweenDots, (dashIndex) {
+                          final int dashStep = mainDotStep + dashIndex + 1;
+                          final bool isDashActive = currentStep >= dashStep;
+
+                          return Container(
+                            width: 2,
+                            height: 2,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: isDashActive
+                                  ? const Color(0xFFFFC107)
+                                  : Colors.white.withAlpha(40),
+                            ),
+                          );
+                        }),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }),
           ),
         ),
-      ),
+
+        const SizedBox(width: 2),
+
+        // Soleil fixe tout à droite
+        _GlowingLantern(isActive: isSunActive),
+      ],
     );
   }
 }
 
-class _BookmarkClipper extends CustomClipper<Path> {
+class _GlowingLantern extends StatelessWidget {
+  final bool isActive;
+
+  const _GlowingLantern({required this.isActive});
+
   @override
-  Path getClip(Size size) {
-    final path = Path();
-    path.lineTo(0, size.height);
-    path.lineTo(size.width / 2, size.height - 7);
-    path.lineTo(size.width, size.height);
-    path.lineTo(size.width, 0);
-    path.close();
-    return path;
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: isActive
+          ? const BoxDecoration(
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: Color(0xFFFFB300),
+                  blurRadius: 8,
+                  spreadRadius: 2,
+                ),
+              ],
+            )
+          : null,
+      child: Icon(
+        Icons.light_mode_rounded,
+        size: 18,
+        color: isActive
+            ? const Color(0xFFFFE082)
+            : Colors.white.withAlpha(80),
+      ),
+    );
   }
-
-  @override
-  bool shouldReclip(covariant CustomClipper<Path> oldClipper) => false;
-}
-
-class _BookmarkBorderPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = const Color(0xFFD4AF37)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.2;
-
-    final path = Path();
-    path.moveTo(0, 0);
-    path.lineTo(0, size.height);
-    path.lineTo(size.width / 2, size.height - 7);
-    path.lineTo(size.width, size.height);
-    path.lineTo(size.width, 0);
-
-    canvas.drawPath(path, paint);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
