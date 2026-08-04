@@ -4,6 +4,7 @@ class UserModel {
   final String? displayName;
   final String? photoUrl;
   final bool subscribed;
+  final bool notificationsEnabled; // 👈 Champ ajouté
   final DateTime createdAt;
   final UserAuthProvider authProvider;
 
@@ -13,6 +14,7 @@ class UserModel {
     this.displayName,
     this.photoUrl,
     this.subscribed = false,
+    this.notificationsEnabled = true, // 👈 Valeur par défaut à true
     required this.createdAt,
     required this.authProvider,
   });
@@ -24,6 +26,7 @@ class UserModel {
       displayName: data['displayName'],
       photoUrl: data['photoUrl'],
       subscribed: data['subscribed'] ?? false,
+      notificationsEnabled: data['notificationsEnabled'] ?? true, // 👈 Lecture depuis Firestore (true par défaut)
       createdAt: data['createdAt']?.toDate() ?? DateTime.now(),
       authProvider: _parseAuthProvider(data['authProvider'] ?? 'google'),
     );
@@ -35,6 +38,7 @@ class UserModel {
       'displayName': displayName,
       'photoUrl': photoUrl,
       'subscribed': subscribed,
+      'notificationsEnabled': notificationsEnabled, // 👈 Sauvegardé dans Firestore
       'createdAt': createdAt,
       'authProvider': authProvider.toString().split('.').last,
     };
@@ -46,6 +50,7 @@ class UserModel {
     String? displayName,
     String? photoUrl,
     bool? subscribed,
+    bool? notificationsEnabled,
     DateTime? createdAt,
     UserAuthProvider? authProvider,
   }) {
@@ -55,6 +60,7 @@ class UserModel {
       displayName: displayName ?? this.displayName,
       photoUrl: photoUrl ?? this.photoUrl,
       subscribed: subscribed ?? this.subscribed,
+      notificationsEnabled: notificationsEnabled ?? this.notificationsEnabled,
       createdAt: createdAt ?? this.createdAt,
       authProvider: authProvider ?? this.authProvider,
     );
@@ -62,7 +68,7 @@ class UserModel {
 
   @override
   String toString() {
-    return 'User(uid: $uid, email: $email, displayName: $displayName, authProvider: $authProvider)';
+    return 'User(uid: $uid, email: $email, displayName: $displayName, notificationsEnabled: $notificationsEnabled, authProvider: $authProvider)';
   }
 
   static UserAuthProvider _parseAuthProvider(String provider) {

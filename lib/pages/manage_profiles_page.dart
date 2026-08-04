@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import 'package:lumiconte/constants/avatars.dart';
+import 'package:lumiconte/main.dart';
 import 'package:lumiconte/models/profile_model.dart';
 import 'package:lumiconte/services/profile_service.dart';
 import 'package:lumiconte/theme/app_theme.dart';
@@ -18,11 +21,18 @@ class _ManageProfilesPageState extends State<ManageProfilesPage> {
   final ProfileService _profileService = ProfileService();
   final _uid = FirebaseAuth.instance.currentUser?.uid;
 
-  // Modifie le nom et l'âge d'un profil dans Firestore
-  Future<void> _editProfile(String profileId, String currentName, int currentAge) async {
+  // Modifie le nom, l'âge et l'avatar d'un profil dans Firestore
+  Future<void> _editProfile(
+    String profileId,
+    String currentName,
+    int currentAge,
+    String? currentAvatar,
+  ) async {
     final nameController = TextEditingController(text: currentName);
     final ageController = TextEditingController(text: currentAge.toString());
     final formKey = GlobalKey<FormState>();
+
+    String selectedAvatar = currentAvatar ?? AppAvatars.defaultAvatar;
 
     showDialog(
       context: context,
@@ -31,90 +41,172 @@ class _ManageProfilesPageState extends State<ManageProfilesPage> {
         final cardBg = AppTheme.getCardColor(context);
         final primaryText = isDark ? Colors.white : const Color(0xFF1E1E1E);
 
-        return AlertDialog(
-          backgroundColor: cardBg,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-          title: Text(
-            'Modifier le profil',
-            style: GoogleFonts.nunito(
-              fontWeight: FontWeight.bold,
-              color: primaryText,
-            ),
-          ),
-          content: Form(
-            key: formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextFormField(
-                  controller: nameController,
-                  style: GoogleFonts.nunito(color: primaryText),
-                  decoration: InputDecoration(
-                    labelText: 'Nom',
-                    labelStyle: GoogleFonts.nunito(color: primaryText.withOpacity(0.7)),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                  validator: (v) => v == null || v.trim().isEmpty ? 'Entrez un nom' : null,
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              backgroundColor: cardBg,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(24),
+              ),
+              title: Text(
+                'Modifier le profil',
+                style: GoogleFonts.nunito(
+                  fontWeight: FontWeight.bold,
+                  color: primaryText,
                 ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: ageController,
-                  style: GoogleFonts.nunito(color: primaryText),
-                  keyboardType: TextInputType.number,
-                  decoration: InputDecoration(
-                    labelText: 'Âge',
-                    labelStyle: GoogleFonts.nunito(color: primaryText.withOpacity(0.7)),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              content: SizedBox(
+                width: double.maxFinite,
+                child: Form(
+                  key: formKey,
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Avatar',
+                          style: GoogleFonts.nunito(
+                            fontWeight: FontWeight.bold,
+                            color: primaryText,
+                            fontSize: 14,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Center(
+                          child: Wrap(
+                            spacing: 12,
+                            runSpacing: 12,
+                            alignment: WrapAlignment.center,
+                            children: AppAvatars.availableAvatars.map((avatar) {
+                              final isSelected = avatar == selectedAvatar;
+                              return GestureDetector(
+                                onTap: () {
+                                  setDialogState(() {
+                                    selectedAvatar = avatar;
+                                  });
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.all(2),
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: isSelected
+                                          ? AppTheme.accentColor
+                                          : Colors.transparent,
+                                      width: 3,
+                                    ),
+                                  ),
+                                  child: CircleAvatar(
+                                    radius: 26,
+                                    backgroundImage: AssetImage(avatar),
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        TextFormField(
+                          controller: nameController,
+                          style: GoogleFonts.nunito(color: primaryText),
+                          decoration: InputDecoration(
+                            labelText: 'Nom',
+                            labelStyle: GoogleFonts.nunito(
+                              color: primaryText.withValues(alpha: 0.7),
+                            ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          validator: (v) =>
+                              v == null || v.trim().isEmpty ? 'Entrez un nom' : null,
+                        ),
+                        const SizedBox(height: 16),
+                        TextFormField(
+                          controller: ageController,
+                          style: GoogleFonts.nunito(color: primaryText),
+                          keyboardType: TextInputType.number,
+                          decoration: InputDecoration(
+                            labelText: 'Âge',
+                            labelStyle: GoogleFonts.nunito(
+                              color: primaryText.withValues(alpha: 0.7),
+                            ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          validator: (v) => v == null || int.tryParse(v) == null
+                              ? 'Entrez un âge valide'
+                              : null,
+                        ),
+                      ],
+                    ),
                   ),
-                  validator: (v) => v == null || int.tryParse(v) == null ? 'Entrez un âge valide' : null,
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text(
+                    'Annuler',
+                    style: GoogleFonts.nunito(
+                      color: isDark ? Colors.white70 : Colors.grey.shade700,
+                    ),
+                  ),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.accentColor,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  onPressed: () async {
+                    if (!formKey.currentState!.validate() || _uid == null) {
+                      return;
+                    }
+                    Navigator.pop(context);
+
+                    try {
+                      await _profileService.updateProfile(
+                        _uid!,
+                        profileId,
+                        name: nameController.text.trim(),
+                        age: int.parse(ageController.text.trim()),
+                        avatarPath: selectedAvatar,
+                      );
+
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Profil mis à jour !'),
+                            backgroundColor: Colors.green,
+                          ),
+                        );
+                      }
+                    } catch (e) {
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Erreur : $e'),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      }
+                    }
+                  },
+                  child: Text(
+                    'Sauvegarder',
+                    style: GoogleFonts.nunito(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
                 ),
               ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text(
-                'Annuler',
-                style: GoogleFonts.nunito(color: isDark ? Colors.white70 : Colors.grey.shade700),
-              ),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.accentColor,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-              onPressed: () async {
-                if (!formKey.currentState!.validate() || _uid == null) return;
-                Navigator.pop(context);
-
-                try {
-                  await _profileService.updateProfile(
-                    _uid!,
-                    profileId,
-                    name: nameController.text.trim(),
-                    age: int.parse(ageController.text.trim()),
-                  );
-
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Profil mis à jour !'), backgroundColor: Colors.green),
-                    );
-                  }
-                } catch (e) {
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Erreur : $e'), backgroundColor: Colors.red),
-                    );
-                  }
-                }
-              },
-              child: Text(
-                'Sauvegarder',
-                style: GoogleFonts.nunito(fontWeight: FontWeight.bold, color: Colors.white),
-              ),
-            ),
-          ],
+            );
+          },
         );
       },
     );
@@ -133,18 +225,25 @@ class _ManageProfilesPageState extends State<ManageProfilesPage> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         title: Text(
           'Supprimer le profil',
-          style: GoogleFonts.nunito(fontWeight: FontWeight.bold, color: primaryText),
+          style: GoogleFonts.nunito(
+            fontWeight: FontWeight.bold,
+            color: primaryText,
+          ),
         ),
         content: Text(
           'Voulez-vous vraiment supprimer le profil de $profileName ? Cette action est irréversible.',
-          style: GoogleFonts.nunito(color: isDark ? Colors.white70 : Colors.black87),
+          style: GoogleFonts.nunito(
+            color: isDark ? Colors.white70 : Colors.black87,
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
             child: Text(
               'Annuler',
-              style: GoogleFonts.nunito(color: isDark ? Colors.white70 : Colors.grey.shade700),
+              style: GoogleFonts.nunito(
+                color: isDark ? Colors.white70 : Colors.grey.shade700,
+              ),
             ),
           ),
           TextButton(
@@ -152,7 +251,10 @@ class _ManageProfilesPageState extends State<ManageProfilesPage> {
             style: TextButton.styleFrom(foregroundColor: Colors.red),
             child: Text(
               'Supprimer',
-              style: GoogleFonts.nunito(fontWeight: FontWeight.bold, color: Colors.red),
+              style: GoogleFonts.nunito(
+                fontWeight: FontWeight.bold,
+                color: Colors.red,
+              ),
             ),
           ),
         ],
@@ -165,7 +267,10 @@ class _ManageProfilesPageState extends State<ManageProfilesPage> {
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Profil et données supprimés'), backgroundColor: Colors.orange),
+            const SnackBar(
+              content: Text('Profil et données supprimés'),
+              backgroundColor: Colors.orange,
+            ),
           );
         }
       } catch (e) {
@@ -178,11 +283,25 @@ class _ManageProfilesPageState extends State<ManageProfilesPage> {
     }
   }
 
-  // Change le profil actif de l'application
+  // Change le profil actif de l'application ET applique son thème
   Future<void> _selectProfile(String profileId, String name) async {
     if (_uid != null) {
       try {
         await _profileService.setActiveProfile(_uid!, profileId);
+
+        final settingsSnapshot = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(_uid)
+            .collection('profiles')
+            .doc(profileId)
+            .collection('settings')
+            .get();
+
+        if (settingsSnapshot.docs.isNotEmpty) {
+          final data = settingsSnapshot.docs.first.data();
+          final bool isDark = data['isDarkMode'] ?? data['darkMode'] ?? false;
+          appSettings.toggleDarkMode(profileId, isDark);
+        }
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -193,7 +312,6 @@ class _ManageProfilesPageState extends State<ManageProfilesPage> {
             ),
           );
 
-          // Ferme la page de gestion des profils
           if (Navigator.of(context).canPop()) {
             Navigator.of(context).pop();
           } else {
@@ -234,7 +352,11 @@ class _ManageProfilesPageState extends State<ManageProfilesPage> {
       appBar: AppBar(
         title: Text(
           'Gérer les profils',
-          style: GoogleFonts.nunito(fontWeight: FontWeight.bold, fontSize: 22, color: primaryTextColor),
+          style: GoogleFonts.nunito(
+            fontWeight: FontWeight.bold,
+            fontSize: 22,
+            color: primaryTextColor,
+          ),
         ),
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -252,7 +374,8 @@ class _ManageProfilesPageState extends State<ManageProfilesPage> {
 
           final profiles = snapshot.data ?? [];
           final bool canAddProfile = profiles.length < 6;
-          final int itemCount = canAddProfile ? profiles.length + 1 : profiles.length;
+          final int itemCount =
+              canAddProfile ? profiles.length + 1 : profiles.length;
 
           return GridView.builder(
             padding: const EdgeInsets.all(24),
@@ -264,7 +387,6 @@ class _ManageProfilesPageState extends State<ManageProfilesPage> {
             ),
             itemCount: itemCount,
             itemBuilder: (context, index) {
-              // Bouton "Créer un profil" si sous la limite de 6
               if (canAddProfile && index == profiles.length) {
                 return InkWell(
                   onTap: () {
@@ -276,7 +398,7 @@ class _ManageProfilesPageState extends State<ManageProfilesPage> {
                       color: cardColor,
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
-                        color: AppTheme.accentColor.withOpacity(0.4),
+                        color: AppTheme.accentColor.withValues(alpha: 0.4),
                         style: BorderStyle.solid,
                         width: 2,
                       ),
@@ -284,7 +406,7 @@ class _ManageProfilesPageState extends State<ManageProfilesPage> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(
+                        const Icon(
                           Icons.add_circle_outline,
                           size: 48,
                           color: AppTheme.accentColor,
@@ -312,13 +434,15 @@ class _ManageProfilesPageState extends State<ManageProfilesPage> {
                 decoration: BoxDecoration(
                   color: cardColor,
                   borderRadius: BorderRadius.circular(20),
-                  boxShadow: !isDark ? [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.04),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    )
-                  ] : null,
+                  boxShadow: !isDark
+                      ? [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.04),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          )
+                        ]
+                      : null,
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(20),
@@ -334,13 +458,8 @@ class _ManageProfilesPageState extends State<ManageProfilesPage> {
                             CircleAvatar(
                               radius: 32,
                               backgroundColor: const Color(0xFFFFD25A),
-                              child: Text(
-                                name.trim().isNotEmpty ? name.trim()[0].toUpperCase() : '?',
-                                style: GoogleFonts.nunito(
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.bold,
-                                  color: const Color(0xFF0F1123),
-                                ),
+                              backgroundImage: AssetImage(
+                                profile.avatarPath ?? AppAvatars.defaultAvatar,
                               ),
                             ),
                             const SizedBox(height: 12),
@@ -357,7 +476,9 @@ class _ManageProfilesPageState extends State<ManageProfilesPage> {
                             Text(
                               '$age ans',
                               style: GoogleFonts.nunito(
-                                color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+                                color: isDark
+                                    ? Colors.grey.shade400
+                                    : Colors.grey.shade600,
                                 fontSize: 13,
                               ),
                             ),
@@ -366,14 +487,28 @@ class _ManageProfilesPageState extends State<ManageProfilesPage> {
                               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                               children: [
                                 IconButton(
-                                  icon: const Icon(Icons.edit_outlined, size: 20, color: Colors.blue),
-                                  onPressed: () => _editProfile(profile.id, name, age),
+                                  icon: const Icon(
+                                    Icons.edit_outlined,
+                                    size: 20,
+                                    color: Colors.blue,
+                                  ),
+                                  onPressed: () => _editProfile(
+                                    profile.id,
+                                    name,
+                                    age,
+                                    profile.avatarPath,
+                                  ),
                                   constraints: const BoxConstraints(),
                                   padding: EdgeInsets.zero,
                                 ),
                                 IconButton(
-                                  icon: Icon(Icons.delete_outline, size: 20, color: Colors.red.shade400),
-                                  onPressed: () => _deleteProfile(profile.id, name),
+                                  icon: Icon(
+                                    Icons.delete_outline,
+                                    size: 20,
+                                    color: Colors.red.shade400,
+                                  ),
+                                  onPressed: () =>
+                                      _deleteProfile(profile.id, name),
                                   constraints: const BoxConstraints(),
                                   padding: EdgeInsets.zero,
                                 ),

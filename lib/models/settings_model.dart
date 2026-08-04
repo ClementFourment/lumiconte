@@ -4,7 +4,7 @@ class SettingsModel {
   final String id;
   final int fontSize;
   final String theme;     // Thème de l'application (ex: light, dark)
-  final String readTheme; // Thème de lecture (ex: light, dark, naturel)
+  final String readTheme; // Thème de lecture (ex: classic, dark, naturel)
   final bool dyslexia;
   final String langage;
   final int totalReadingTime;
@@ -14,7 +14,7 @@ class SettingsModel {
   // Valeurs par défaut centralisées
   static const int defaultFontSize = 16;
   static const String defaultTheme = 'light';
-  static const String defaultReadTheme = 'light';
+  static const String defaultReadTheme = 'classic'; // 👈 Changé à 'classic'
   static const bool defaultDyslexia = false;
   static const String defaultLangage = 'fr';
   static const int defaultTotalReadingTime = 0;
@@ -40,7 +40,6 @@ class SettingsModel {
       // On lit 'read_theme', ou 'readTheme', ou fallback sur 'theme' / valeur par défaut
       readTheme: (data['read_theme'] as String?) ??
           (data['readTheme'] as String?) ??
-          (data['theme'] as String?) ??
           defaultReadTheme,
       dyslexia: (data['dyslexia'] as bool?) ?? defaultDyslexia,
       langage: (data['langage'] as String?) ??

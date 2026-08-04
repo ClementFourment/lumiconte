@@ -27,8 +27,7 @@ class LibraryPage extends StatefulWidget {
 class _LibraryPageState extends State<LibraryPage> {
   String _selectedFilter = 'tous';
 
-  /// Combine en temps réel la progression de lecture (ReadingProgressModel)
-  /// et la sous-collection des favoris du profil
+  /// Combine en temps réel la progression de lecture et les favoris du profil
   Stream<List<QuerySnapshot>> _combineStreams(DocumentReference profileRef) {
     Stream<QuerySnapshot> s1 =
         profileRef.collection('readingProgress').snapshots();
@@ -41,14 +40,17 @@ class _LibraryPageState extends State<LibraryPage> {
     return Stream<List<QuerySnapshot>>.multi((controller) {
       final sub1 = s1.listen((data) {
         lastS1 = data;
-        if (lastS2 != null && !controller.isClosed)
+        if (lastS2 != null && !controller.isClosed) {
           controller.add([lastS1!, lastS2!]);
-      });
+        }
+      }, onError: controller.addError);
+
       final sub2 = s2.listen((data) {
         lastS2 = data;
-        if (lastS1 != null && !controller.isClosed)
+        if (lastS1 != null && !controller.isClosed) {
           controller.add([lastS1!, lastS2!]);
-      });
+        }
+      }, onError: controller.addError);
 
       controller.onCancel = () {
         sub1.cancel();
@@ -90,23 +92,35 @@ class _LibraryPageState extends State<LibraryPage> {
         List<String> favoriteStoryIds = [];
 
         if (snapshot.hasData && snapshot.data!.length == 2) {
-          // Parse ReadingProgress via ReadingProgressModel
+          // --- PARSING DU READING PROGRESS ---
           final progressDocs = snapshot.data![0].docs;
           for (var doc in progressDocs) {
+            final data = doc.data() as Map<String, dynamic>?;
+            if (data == null) continue;
+
+            // Récupération souple de l'ID d'histoire
+            String storyId = doc.id;
             try {
-              final progressModel = ReadingProgressModel.fromMap(
-                doc.data() as Map<String, dynamic>,
-                doc.id,
-              );
-              // Standardisation à un ratio 0.0 - 1.0 pour l'affichage de la barre
-              activeProfileReadProgress[progressModel.storyId] =
-                  (progressModel.progress / 100.0).clamp(0.0, 1.0);
+              final progressModel = ReadingProgressModel.fromMap(data, doc.id);
+              if (progressModel.storyId.isNotEmpty) {
+                storyId = progressModel.storyId;
+              }
             } catch (_) {
-              // Ignore les documents mal structurés si nécessaire
+              storyId = data['storyId'] as String? ?? doc.id;
             }
+
+            // Extraction et normalisation de la progression (support 0..1 et 0..100)
+            final rawProgress = data['progress'] ?? data['percentage'] ?? 0;
+            double p = 0.0;
+            if (rawProgress is num) {
+              double val = rawProgress.toDouble();
+              p = val > 1.0 ? val / 100.0 : val;
+            }
+
+            activeProfileReadProgress[storyId] = p.clamp(0.0, 1.0);
           }
 
-          // Parse Favoris
+          // --- PARSING DES FAVORIS ---
           final favoriteDocs = snapshot.data![1].docs;
           for (var doc in favoriteDocs) {
             final data = doc.data() as Map<String, dynamic>?;
@@ -138,13 +152,12 @@ class _LibraryPageState extends State<LibraryPage> {
                   padding: const EdgeInsets.only(top: 10, bottom: 30),
                   itemBuilder: (context, index) {
                     final category = widget.categories[index];
-                    // Filtrage des histoires associées à cette catégorie
                     List<StoryModel> categoryStories = widget.stories
                         .where(
                             (story) => story.categoryIds.contains(category.id))
                         .toList();
 
-                    // Application des filtres utilisateur
+                    // Application des filtres
                     if (_selectedFilter == 'favoris') {
                       categoryStories = categoryStories
                           .where((story) => favoriteStoryIds.contains(story.id))
@@ -155,12 +168,10 @@ class _LibraryPageState extends State<LibraryPage> {
                         return p > 0.0 && p < 1.0;
                       }).toList();
                     } else if (_selectedFilter == 'non_lu') {
-                      categoryStories = categoryStories
-                          .where((story) =>
-                              !activeProfileReadProgress
-                                  .containsKey(story.id) ||
-                              activeProfileReadProgress[story.id] == 0.0)
-                          .toList();
+                      categoryStories = categoryStories.where((story) {
+                        final p = activeProfileReadProgress[story.id] ?? 0.0;
+                        return p == 0.0;
+                      }).toList();
                     }
 
                     if (categoryStories.isEmpty) return const SizedBox.shrink();
@@ -249,7 +260,6 @@ class _LibraryPageState extends State<LibraryPage> {
     final colorScheme = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
 
-    // Définition des couleurs de l'étagère adaptables au mode Clair/Sombre
     final nicheTopColor = isDark
         ? Colors.black.withOpacity(0.85)
         : colorScheme.surfaceContainerLowest;
@@ -276,7 +286,6 @@ class _LibraryPageState extends State<LibraryPage> {
         Stack(
           alignment: Alignment.bottomCenter,
           children: [
-            // Fond de renfoncement (la niche de l'étagère)
             Container(
               height: 210,
               margin: const EdgeInsets.symmetric(horizontal: 12),
@@ -284,17 +293,12 @@ class _LibraryPageState extends State<LibraryPage> {
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [
-                    nicheTopColor,
-                    nicheBottomColor,
-                  ],
+                  colors: [nicheTopColor, nicheBottomColor],
                   stops: const [0.0, 0.35],
                 ),
                 borderRadius: BorderRadius.circular(4),
               ),
             ),
-
-            // Rangée de livres
             Container(
               height: 225,
               padding: const EdgeInsets.only(bottom: 24),
@@ -308,8 +312,6 @@ class _LibraryPageState extends State<LibraryPage> {
                 },
               ),
             ),
-
-            // La planche en bois / Socle de l'étagère
             Container(
               height: 32,
               margin: const EdgeInsets.symmetric(horizontal: 6),
@@ -334,7 +336,6 @@ class _LibraryPageState extends State<LibraryPage> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.start,
                 children: [
-                  // Étiquette de catégorie sur le rebord de l'étagère
                   Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 12,
@@ -377,7 +378,7 @@ class _LibraryPageState extends State<LibraryPage> {
     Map<String, double> activeProfileReadProgress,
   ) {
     final double progress = activeProfileReadProgress[story.id] ?? 0.0;
-    final colorScheme = Theme.of(context).colorScheme;
+    final int percentage = (progress * 100).round();
 
     return GestureDetector(
       onTap: () => context.push('/story', extra: {
@@ -402,10 +403,10 @@ class _LibraryPageState extends State<LibraryPage> {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              // Image de couverture du livre
+              // Couverture
               B2Image(objectKey: story.image, fit: BoxFit.cover),
 
-              // Effet d'ombrage de la reliure du livre (à gauche)
+              // Reliure à gauche
               Positioned(
                 left: 0,
                 top: 0,
@@ -425,43 +426,7 @@ class _LibraryPageState extends State<LibraryPage> {
                 ),
               ),
 
-              // Barre de progression sur la tranche droite du livre
-              if (progress > 0.0)
-                Positioned(
-                  right: 0,
-                  top: 0,
-                  bottom: 0,
-                  width: 6,
-                  child: Container(
-                    color: Colors.black.withOpacity(0.2),
-                    alignment: Alignment.bottomCenter,
-                    child: FractionallySizedBox(
-                      heightFactor: progress,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.bottomCenter,
-                            end: Alignment.topCenter,
-                            colors: [
-                              colorScheme.primary,
-                              colorScheme.tertiary,
-                            ],
-                          ),
-                          borderRadius: BorderRadius.circular(2),
-                          boxShadow: [
-                            BoxShadow(
-                              color: colorScheme.primary.withOpacity(0.5),
-                              blurRadius: 4,
-                              spreadRadius: 1,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-
-              // Ombrage sombre au bas de l'image pour la lisibilité du titre
+              // Dégradé sombre pour lisibilité du titre
               Container(
                 decoration: const BoxDecoration(
                   gradient: LinearGradient(
@@ -477,7 +442,15 @@ class _LibraryPageState extends State<LibraryPage> {
                 ),
               ),
 
-              // Titre du livre (sur l'image)
+              // MARQUE-PAGE DE PROGRESSION (Haut Droite)
+              if (progress > 0.0)
+                Positioned(
+                  top: 0,
+                  right: 8,
+                  child: _buildBookmark(percentage),
+                ),
+
+              // Titre
               Align(
                 alignment: Alignment.bottomLeft,
                 child: Padding(
@@ -491,7 +464,7 @@ class _LibraryPageState extends State<LibraryPage> {
                     maxLines: 3,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      color: Colors.white, // Toujours blanc sur le dégradé noir
+                      color: Colors.white,
                       fontSize: 13,
                       fontWeight: FontWeight.bold,
                       height: 1.2,
@@ -505,4 +478,77 @@ class _LibraryPageState extends State<LibraryPage> {
       ),
     );
   }
+
+  // ---------------------------------------------------------------------------
+  // WIDGET MARQUE-PAGE
+  // ---------------------------------------------------------------------------
+  Widget _buildBookmark(int percentage) {
+    return CustomPaint(
+      painter: _BookmarkBorderPainter(),
+      child: ClipPath(
+        clipper: _BookmarkClipper(),
+        child: Container(
+          width: 28,
+          height: 42,
+          color: const Color(0xFF7A1C1C), // Bordeaux ruban
+          padding: const EdgeInsets.only(top: 4, bottom: 8),
+          child: Center(
+            child: Text(
+              '$percentage%',
+              style: const TextStyle(
+                color: Color(0xFFFFD700), // Doré
+                fontSize: 9,
+                fontWeight: FontWeight.bold,
+                shadows: [
+                  Shadow(
+                    offset: Offset(0, 1),
+                    blurRadius: 2,
+                    color: Colors.black87,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _BookmarkClipper extends CustomClipper<Path> {
+  @override
+  Path getClip(Size size) {
+    final path = Path();
+    path.lineTo(0, size.height);
+    path.lineTo(size.width / 2, size.height - 7);
+    path.lineTo(size.width, size.height);
+    path.lineTo(size.width, 0);
+    path.close();
+    return path;
+  }
+
+  @override
+  bool shouldReclip(covariant CustomClipper<Path> oldClipper) => false;
+}
+
+class _BookmarkBorderPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = const Color(0xFFD4AF37)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.2;
+
+    final path = Path();
+    path.moveTo(0, 0);
+    path.lineTo(0, size.height);
+    path.lineTo(size.width / 2, size.height - 7);
+    path.lineTo(size.width, size.height);
+    path.lineTo(size.width, 0);
+
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

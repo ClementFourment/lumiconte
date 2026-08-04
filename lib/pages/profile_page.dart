@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+import 'package:lumiconte/constants/avatars.dart';
 import 'package:lumiconte/main.dart';
 import 'package:lumiconte/models/profile_model.dart';
 import 'package:lumiconte/models/settings_model.dart';
@@ -53,8 +54,6 @@ class _ProfilePageState extends State<ProfilePage> {
       _readingProgressCollection = _profileDoc.collection('readingProgress');
       _settingsCollection = _profileDoc.collection('settings');
 
-      // À chaque changement de progression dans ce profil, on redemande à appSettings
-      // de re-vérifier globalement la planification des rappels
       _progressSubscription =
           _readingProgressCollection.snapshots().listen((_) {
         if (mounted && appSettings.isNotificationsEnabled) {
@@ -62,7 +61,6 @@ class _ProfilePageState extends State<ProfilePage> {
         }
       });
 
-      // Sync du mode sombre du profil avec appSettings
       _settingsSubscription =
           _settingsCollection.snapshots().listen((snapshot) {
         if (mounted && snapshot.docs.isNotEmpty) {
@@ -182,7 +180,6 @@ class _ProfilePageState extends State<ProfilePage> {
 
                     currentLangCode = settings.langage;
 
-                    // Calcul du temps de lecture
                     final int totalMinutes = settings.totalReadingTime;
                     if (totalMinutes < 60) {
                       timeDisplay = '$totalMinutes min';
@@ -193,7 +190,6 @@ class _ProfilePageState extends State<ProfilePage> {
                           minutes > 0 ? '${hours}h $minutes' : '${hours}h';
                     }
 
-                    // Calcul de la série de jours (Streak)
                     if (settings.stopRead != null) {
                       final DateTime lastReadDate = settings.stopRead!;
                       final DateTime now = DateTime.now();
@@ -219,430 +215,438 @@ class _ProfilePageState extends State<ProfilePage> {
                     }
                   }
 
-                  return ListenableBuilder(
-                    listenable: appSettings,
-                    builder: (context, child) {
-                      return SingleChildScrollView(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Header Profil
-                            Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.only(
-                                  top: 60, bottom: 24, left: 24, right: 24),
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: theme.brightness == Brightness.dark
-                                      ? [
-                                          AppTheme.darkCard,
-                                          theme.scaffoldBackgroundColor
-                                        ]
-                                      : [
-                                          AppTheme.accentColor
-                                              .withValues(alpha: 0.15),
-                                          theme.scaffoldBackgroundColor
-                                        ],
-                                  begin: Alignment.topCenter,
-                                  end: Alignment.bottomCenter,
+                  return SingleChildScrollView(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Header Profil
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.only(
+                              top: 60, bottom: 24, left: 24, right: 24),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: theme.brightness == Brightness.dark
+                                  ? [
+                                      AppTheme.darkCard,
+                                      theme.scaffoldBackgroundColor
+                                    ]
+                                  : [
+                                      AppTheme.accentColor
+                                          .withValues(alpha: 0.15),
+                                      theme.scaffoldBackgroundColor
+                                    ],
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              CircleAvatar(
+                                radius: 40,
+                                backgroundColor: theme.colorScheme.primary
+                                    .withValues(alpha: 0.2),
+                                backgroundImage: AssetImage(
+                                  profile.avatarPath ?? AppAvatars.defaultAvatar,
                                 ),
                               ),
-                              child: Row(
+                              const SizedBox(width: 20),
+                              Column(
+                                crossAxisAlignment:
+                                    CrossAxisAlignment.start,
                                 children: [
-                                  CircleAvatar(
-                                    radius: 40,
-                                    backgroundColor: theme.colorScheme.primary
-                                        .withValues(alpha: 0.2),
-                                    backgroundImage: const AssetImage(
-                                        'assets/images/boy.png'),
+                                  Text(
+                                    profile.name,
+                                    style: TextStyle(
+                                      fontSize: 22,
+                                      fontWeight: FontWeight.bold,
+                                      color: theme.colorScheme.onSurface,
+                                    ),
                                   ),
-                                  const SizedBox(width: 20),
-                                  Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        profile.name,
-                                        style: TextStyle(
-                                          fontSize: 22,
-                                          fontWeight: FontWeight.bold,
-                                          color: theme.colorScheme.onSurface,
-                                        ),
-                                      ),
-                                      Text(
-                                        '${profile.age} ans',
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          color: theme.colorScheme.onSurface
-                                              .withValues(alpha: 0.6),
-                                        ),
-                                      ),
-                                    ],
+                                  Text(
+                                    '${profile.age} ans',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: theme.colorScheme.onSurface
+                                          .withValues(alpha: 0.6),
+                                    ),
                                   ),
                                 ],
                               ),
-                            ),
-                            Padding(
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 20),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                            ],
+                          ),
+                        ),
+                        Padding(
+                          padding:
+                              const EdgeInsets.symmetric(horizontal: 20),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Section Statistiques
+                              Text(
+                                'Statistiques',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: theme.colorScheme.onSurface,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                 children: [
-                                  // Section Statistiques
-                                  Text(
-                                    'Statistiques',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                      color: theme.colorScheme.onSurface,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 12),
-                                  Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      _buildStatCard(
-                                          context,
-                                          'Histoires\nlues',
-                                          '$storiesReadCount'),
-                                      _buildStatCard(context,
-                                          'Temps de\nlecture', timeDisplay),
-                                      _buildStatCard(context,
-                                          'Série en\ncours', streakDisplay),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 28),
+                                  _buildStatCard(
+                                      context,
+                                      'Histoires\nlues',
+                                      '$storiesReadCount'),
+                                  _buildStatCard(context,
+                                      'Temps de\nlecture', timeDisplay),
+                                  _buildStatCard(context,
+                                      'Série en\ncours', streakDisplay),
+                                ],
+                              ),
+                              const SizedBox(height: 28),
 
-                                  // Section Préférences
-                                  Text(
-                                    'Préférences',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                      color: theme.colorScheme.onSurface,
+                              // Section Préférences
+                              Text(
+                                'Préférences',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: theme.colorScheme.onSurface,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Material(
+                                color: AppTheme.getCardColor(context),
+                                borderRadius: BorderRadius.circular(16),
+                                clipBehavior: Clip.antiAlias,
+                                child: Column(
+                                  children: [
+                                    // Langue
+                                    Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 16.0, vertical: 4.0),
+                                      child: Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Text(
+                                            'Langue',
+                                            style: TextStyle(
+                                              fontSize: 15,
+                                              fontWeight: FontWeight.w500,
+                                              color: theme
+                                                  .colorScheme.onSurface,
+                                            ),
+                                          ),
+                                          DropdownButtonHideUnderline(
+                                            child: DropdownButton<String>(
+                                              value: currentLangCode,
+                                              icon: Icon(
+                                                Icons.arrow_forward_ios,
+                                                size: 14,
+                                                color: theme
+                                                    .colorScheme.onSurface
+                                                    .withValues(
+                                                        alpha: 0.4),
+                                              ),
+                                              style: TextStyle(
+                                                fontSize: 14,
+                                                color: theme
+                                                    .colorScheme.onSurface,
+                                              ),
+                                              dropdownColor:
+                                                  AppTheme.getCardColor(
+                                                      context),
+                                              onChanged:
+                                                  (String? newValue) {
+                                                if (newValue != null &&
+                                                    settingsDocId
+                                                        .isNotEmpty) {
+                                                  _updateSetting(
+                                                      settingsDocId,
+                                                      'langage',
+                                                      newValue);
+                                                }
+                                              },
+                                              items: const [
+                                                DropdownMenuItem(
+                                                    value: 'fr',
+                                                    child: Text(
+                                                        'Français  ')),
+                                                DropdownMenuItem(
+                                                    value: 'en',
+                                                    child:
+                                                        Text('English  ')),
+                                                DropdownMenuItem(
+                                                    value: 'es',
+                                                    child:
+                                                        Text('Español  ')),
+                                              ],
+                                            ),
+                                          )
+                                        ],
+                                      ),
                                     ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Material(
-                                    color: AppTheme.getCardColor(context),
-                                    borderRadius: BorderRadius.circular(16),
-                                    clipBehavior: Clip.antiAlias,
-                                    child: Column(
-                                      children: [
-                                        // Langue
-                                        Padding(
-                                          padding: const EdgeInsets.symmetric(
-                                              horizontal: 16.0, vertical: 4.0),
-                                          child: Row(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.spaceBetween,
-                                            children: [
-                                              Text(
-                                                'Langue',
+                                    Divider(
+                                      height: 1,
+                                      indent: 16,
+                                      endIndent: 16,
+                                      color: theme.colorScheme.onSurface
+                                          .withValues(alpha: 0.08),
+                                    ),
+
+                                    ListenableBuilder(
+                                      listenable: appSettings,
+                                      builder: (context, child) {
+                                        return Column(
+                                          children: [
+                                            // Rappels de lecture
+                                            SwitchListTile(
+                                              title: Text(
+                                                'Rappels de lecture',
                                                 style: TextStyle(
-                                                  fontSize: 15,
+                                                  fontSize: 14,
                                                   fontWeight: FontWeight.w500,
                                                   color: theme
                                                       .colorScheme.onSurface,
                                                 ),
                                               ),
-                                              DropdownButtonHideUnderline(
-                                                child: DropdownButton<String>(
-                                                  value: currentLangCode,
-                                                  icon: Icon(
-                                                    Icons.arrow_forward_ios,
-                                                    size: 14,
-                                                    color: theme
-                                                        .colorScheme.onSurface
-                                                        .withValues(
-                                                            alpha: 0.4),
-                                                  ),
-                                                  style: TextStyle(
-                                                    fontSize: 14,
-                                                    color: theme
-                                                        .colorScheme.onSurface,
-                                                  ),
-                                                  dropdownColor:
-                                                      AppTheme.getCardColor(
-                                                          context),
-                                                  onChanged:
-                                                      (String? newValue) {
-                                                    if (newValue != null &&
-                                                        settingsDocId
-                                                            .isNotEmpty) {
-                                                      _updateSetting(
-                                                          settingsDocId,
-                                                          'langage',
-                                                          newValue);
-                                                    }
-                                                  },
-                                                  items: const [
-                                                    DropdownMenuItem(
-                                                        value: 'fr',
-                                                        child: Text(
-                                                            'Français  ')),
-                                                    DropdownMenuItem(
-                                                        value: 'en',
-                                                        child:
-                                                            Text('English  ')),
-                                                    DropdownMenuItem(
-                                                        value: 'es',
-                                                        child:
-                                                            Text('Español  ')),
-                                                  ],
-                                                ),
-                                              )
-                                            ],
-                                          ),
-                                        ),
-                                        Divider(
-                                          height: 1,
-                                          indent: 16,
-                                          endIndent: 16,
-                                          color: theme.colorScheme.onSurface
-                                              .withValues(alpha: 0.08),
-                                        ),
-                                        // Rappels de lecture (Branché sur le toggleNotifications(bool) global)
-                                        SwitchListTile(
-                                          title: Text(
-                                            'Rappels de lecture',
-                                            style: TextStyle(
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w500,
-                                              color:
-                                                  theme.colorScheme.onSurface,
+                                              value: appSettings
+                                                  .isNotificationsEnabled,
+                                              onChanged: (bool newValue) {
+                                                appSettings
+                                                    .toggleNotifications(
+                                                        newValue);
+                                              },
+                                              activeColor: AppTheme.accentColor,
                                             ),
-                                          ),
-                                          value:
-                                              appSettings.isNotificationsEnabled,
-                                          onChanged: (bool newValue) {
-                                            appSettings
-                                                .toggleNotifications(newValue);
-                                          },
-                                          activeColor: AppTheme.accentColor,
-                                        ),
-                                        Divider(
-                                          height: 1,
-                                          indent: 16,
-                                          endIndent: 16,
-                                          color: theme.colorScheme.onSurface
-                                              .withValues(alpha: 0.08),
-                                        ),
-                                        // Mode Nuit (Inchangé : prend le profileId + la valeur bool)
-                                        SwitchListTile(
-                                          title: Text(
-                                            'Mode nuit',
-                                            style: TextStyle(
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w500,
-                                              color:
-                                                  theme.colorScheme.onSurface,
+                                            Divider(
+                                              height: 1,
+                                              indent: 16,
+                                              endIndent: 16,
+                                              color: theme
+                                                  .colorScheme.onSurface
+                                                  .withValues(alpha: 0.08),
                                             ),
-                                          ),
-                                          value: appSettings.isDarkMode,
-                                          onChanged: (bool newValue) {
-                                            appSettings.toggleDarkMode(
-                                                widget.profileId, newValue);
-                                            if (settingsDocId.isNotEmpty) {
-                                              _updateSetting(settingsDocId,
-                                                  'isDarkMode', newValue);
-                                            }
-                                          },
-                                          activeColor: AppTheme.accentColor,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  const SizedBox(height: 24),
-
-                                  // Section Mon Compte
-                                  Text(
-                                    'Mon Compte',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                      color: theme.colorScheme.onSurface,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Material(
-                                    color: AppTheme.getCardColor(context),
-                                    borderRadius: BorderRadius.circular(16),
-                                    clipBehavior: Clip.antiAlias,
-                                    child: Column(
-                                      children: [
-                                        _buildListTile(
-                                          context,
-                                          'Gérer mes profils',
-                                          icon: Icons.people_outline,
-                                          onTap: () {
-                                            Navigator.of(context).push(
-                                              MaterialPageRoute(
-                                                  builder: (context) =>
-                                                      const ManageProfilesPage()),
-                                            );
-                                          },
-                                        ),
-                                        Divider(
-                                          height: 1,
-                                          indent: 16,
-                                          endIndent: 16,
-                                          color: theme.colorScheme.onSurface
-                                              .withValues(alpha: 0.08),
-                                        ),
-                                        _buildListTile(
-                                          context,
-                                          'Mes Récompenses',
-                                          icon: Icons.emoji_events_outlined,
-                                          onTap: () {
-                                            Navigator.of(context).push(
-                                              MaterialPageRoute(
-                                                builder: (context) =>
-                                                    RewardsPage(
-                                                  userId: _uid ?? '',
-                                                  profileId: widget.profileId,
+                                            // Mode Nuit
+                                            SwitchListTile(
+                                              title: Text(
+                                                'Mode nuit',
+                                                style: TextStyle(
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.w500,
+                                                  color: theme
+                                                      .colorScheme.onSurface,
                                                 ),
                                               ),
-                                            );
-                                          },
-                                        ),
-                                        Divider(
-                                          height: 1,
-                                          indent: 16,
-                                          endIndent: 16,
-                                          color: theme.colorScheme.onSurface
-                                              .withValues(alpha: 0.08),
-                                        ),
-                                        _buildListTile(
-                                          context,
-                                          'Paramètres de lecture',
-                                          icon: Icons.menu_book_outlined,
-                                          onTap: () {
-                                            Navigator.of(context).push(
-                                              MaterialPageRoute(
-                                                builder: (context) =>
-                                                    SettingsPage(
-                                                        profileId:
-                                                            widget.profileId),
-                                              ),
-                                            );
-                                          },
-                                        ),
-                                      ],
+                                              value: appSettings.isDarkMode,
+                                              onChanged: (bool newValue) {
+                                                appSettings.toggleDarkMode(
+                                                    widget.profileId, newValue);
+                                                if (settingsDocId.isNotEmpty) {
+                                                  _updateSetting(settingsDocId,
+                                                      'isDarkMode', newValue);
+                                                }
+                                              },
+                                              activeColor: AppTheme.accentColor,
+                                            ),
+                                          ],
+                                        );
+                                      },
                                     ),
-                                  ),
-                                  const SizedBox(height: 24),
-
-                                  // Section Assistance
-                                  Text(
-                                    'Assistance et Informations',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                      color: theme.colorScheme.onSurface,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Material(
-                                    color: AppTheme.getCardColor(context),
-                                    borderRadius: BorderRadius.circular(16),
-                                    clipBehavior: Clip.antiAlias,
-                                    child: Column(
-                                      children: [
-                                        _buildListTile(
-                                          context,
-                                          'Envoyer un commentaire',
-                                          icon: Icons.chat_bubble_outline,
-                                          onTap: () {
-                                            Navigator.of(context).push(
-                                              MaterialPageRoute(
-                                                builder: (context) =>
-                                                    FeedbackPage(
-                                                        profileId:
-                                                            widget.profileId),
-                                              ),
-                                            );
-                                          },
-                                        ),
-                                        Divider(
-                                          height: 1,
-                                          indent: 16,
-                                          endIndent: 16,
-                                          color: theme.colorScheme.onSurface
-                                              .withValues(alpha: 0.08),
-                                        ),
-                                        _buildListTile(
-                                          context,
-                                          "Conditions Générales d'Utilisation",
-                                          icon: Icons.description_outlined,
-                                          onTap: () {
-                                            Navigator.of(context).push(
-                                              MaterialPageRoute(
-                                                  builder: (context) =>
-                                                      const TermsOfServicePage()),
-                                            );
-                                          },
-                                        ),
-                                        Divider(
-                                          height: 1,
-                                          indent: 16,
-                                          endIndent: 16,
-                                          color: theme.colorScheme.onSurface
-                                              .withValues(alpha: 0.08),
-                                        ),
-                                        _buildListTile(
-                                          context,
-                                          'Politique de Confidentialité',
-                                          icon: Icons.lock_outline,
-                                          onTap: () {
-                                            Navigator.of(context).push(
-                                              MaterialPageRoute(
-                                                  builder: (context) =>
-                                                      const PrivacyPolicyPage()),
-                                            );
-                                          },
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  const SizedBox(height: 32),
-
-                                  // Bouton Déconnexion
-                                  SizedBox(
-                                    width: double.infinity,
-                                    child: OutlinedButton.icon(
-                                      style: OutlinedButton.styleFrom(
-                                        side: BorderSide(
-                                            color: Colors.red.shade400),
-                                        padding: const EdgeInsets.symmetric(
-                                            vertical: 14),
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius:
-                                              BorderRadius.circular(12),
-                                        ),
-                                      ),
-                                      onPressed: _handleSignOut,
-                                      icon: Icon(Icons.logout,
-                                          color: Colors.red.shade400, size: 20),
-                                      label: Text(
-                                        'Se déconnecter',
-                                        style: TextStyle(
-                                          color: Colors.red.shade400,
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 15,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 40),
-                                ],
+                                  ],
+                                ),
                               ),
-                            ),
-                          ],
+                              const SizedBox(height: 24),
+
+                              // Section Mon Compte
+                              Text(
+                                'Mon Compte',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: theme.colorScheme.onSurface,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Material(
+                                color: AppTheme.getCardColor(context),
+                                borderRadius: BorderRadius.circular(16),
+                                clipBehavior: Clip.antiAlias,
+                                child: Column(
+                                  children: [
+                                    _buildListTile(
+                                      context,
+                                      'Gérer mes profils',
+                                      icon: Icons.people_outline,
+                                      onTap: () {
+                                        Navigator.of(context).push(
+                                          MaterialPageRoute(
+                                              builder: (context) =>
+                                                  const ManageProfilesPage()),
+                                        );
+                                      },
+                                    ),
+                                    Divider(
+                                      height: 1,
+                                      indent: 16,
+                                      endIndent: 16,
+                                      color: theme.colorScheme.onSurface
+                                          .withValues(alpha: 0.08),
+                                    ),
+                                    _buildListTile(
+                                      context,
+                                      'Mes Récompenses',
+                                      icon: Icons.emoji_events_outlined,
+                                      onTap: () {
+                                        Navigator.of(context).push(
+                                          MaterialPageRoute(
+                                            builder: (context) =>
+                                                RewardsPage(
+                                              userId: _uid ?? '',
+                                              profileId: widget.profileId,
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                    Divider(
+                                      height: 1,
+                                      indent: 16,
+                                      endIndent: 16,
+                                      color: theme.colorScheme.onSurface
+                                          .withValues(alpha: 0.08),
+                                    ),
+                                    _buildListTile(
+                                      context,
+                                      'Paramètres de lecture',
+                                      icon: Icons.menu_book_outlined,
+                                      onTap: () {
+                                        Navigator.of(context).push(
+                                          MaterialPageRoute(
+                                            builder: (context) =>
+                                                SettingsPage(
+                                                    profileId:
+                                                        widget.profileId),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 24),
+
+                              // Section Assistance
+                              Text(
+                                'Assistance et Informations',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: theme.colorScheme.onSurface,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Material(
+                                color: AppTheme.getCardColor(context),
+                                borderRadius: BorderRadius.circular(16),
+                                clipBehavior: Clip.antiAlias,
+                                child: Column(
+                                  children: [
+                                    _buildListTile(
+                                      context,
+                                      'Envoyer un commentaire',
+                                      icon: Icons.chat_bubble_outline,
+                                      onTap: () {
+                                        Navigator.of(context).push(
+                                          MaterialPageRoute(
+                                            builder: (context) =>
+                                                FeedbackPage(
+                                                    profileId:
+                                                        widget.profileId),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                    Divider(
+                                      height: 1,
+                                      indent: 16,
+                                      endIndent: 16,
+                                      color: theme.colorScheme.onSurface
+                                          .withValues(alpha: 0.08),
+                                    ),
+                                    _buildListTile(
+                                      context,
+                                      "Conditions Générales d'Utilisation",
+                                      icon: Icons.description_outlined,
+                                      onTap: () {
+                                        Navigator.of(context).push(
+                                          MaterialPageRoute(
+                                              builder: (context) =>
+                                                  const TermsOfServicePage()),
+                                        );
+                                      },
+                                    ),
+                                    Divider(
+                                      height: 1,
+                                      indent: 16,
+                                      endIndent: 16,
+                                      color: theme.colorScheme.onSurface
+                                          .withValues(alpha: 0.08),
+                                    ),
+                                    _buildListTile(
+                                      context,
+                                      'Politique de Confidentialité',
+                                      icon: Icons.lock_outline,
+                                      onTap: () {
+                                        Navigator.of(context).push(
+                                          MaterialPageRoute(
+                                              builder: (context) =>
+                                                  const PrivacyPolicyPage()),
+                                        );
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 32),
+
+                              // Bouton Déconnexion
+                              SizedBox(
+                                width: double.infinity,
+                                child: OutlinedButton.icon(
+                                  style: OutlinedButton.styleFrom(
+                                    side: BorderSide(
+                                        color: Colors.red.shade400),
+                                    padding: const EdgeInsets.symmetric(
+                                        vertical: 14),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius:
+                                          BorderRadius.circular(12),
+                                    ),
+                                  ),
+                                  onPressed: _handleSignOut,
+                                  icon: Icon(Icons.logout,
+                                      color: Colors.red.shade400, size: 20),
+                                  label: Text(
+                                    'Se déconnecter',
+                                    style: TextStyle(
+                                      color: Colors.red.shade400,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 15,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 40),
+                            ],
+                          ),
                         ),
-                      );
-                    },
+                      ],
+                    ),
                   );
                 },
               );
