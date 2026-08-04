@@ -21,7 +21,7 @@ class BottomNav extends StatefulWidget {
   const BottomNav({super.key});
 
   @override
-  State<BottomNav> createState() => _BottomNavState();
+  State<BottomNav> createState() => BottomNavState();
 }
 
 class DataFuture {
@@ -34,7 +34,7 @@ class DataFuture {
   });
 }
 
-class _BottomNavState extends State<BottomNav> {
+class BottomNavState extends State<BottomNav> {
   int _currentIndex = 0;
 
   final ProfileService _profileService = ProfileService();
@@ -50,10 +50,15 @@ class _BottomNavState extends State<BottomNav> {
     _dataFuture = _loadStaticData();
   }
 
+  void changeTab(int index) {
+    setState(() {
+      _currentIndex = index;
+    });
+  }
+
   Future<DataFuture> _loadStaticData() async {
     final categories = await _categoryService.getAllCategories();
     final stories = await _storyService.getAllStories();
-
 
     return DataFuture(
       categories: categories,

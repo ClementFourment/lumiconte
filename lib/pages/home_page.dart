@@ -3,7 +3,10 @@ import 'package:lumiconte/constants/avatars.dart';
 import 'package:lumiconte/models/category_model.dart';
 import 'package:lumiconte/models/story_model.dart';
 import 'package:lumiconte/models/profile_model.dart';
+import 'package:lumiconte/navigation/bottom_nav.dart';
 import 'package:lumiconte/widget/b2_image.dart';
+import 'package:lumiconte/widget/story_search_bar.dart';
+import 'package:lumiconte/pages/story/story_page.dart';
 import 'package:go_router/go_router.dart';
 
 class HomePage extends StatefulWidget {
@@ -61,11 +64,18 @@ class _HomePageState extends State<HomePage> {
                     ),
                   ),
                   const SizedBox(width: 10),
-                  CircleAvatar(
-                    radius: 22,
-                    backgroundColor: colorScheme.surfaceContainerHigh,
-                    backgroundImage: AssetImage(
-                      widget.profile.avatarPath ?? AppAvatars.defaultAvatar,
+                  GestureDetector(
+                    onTap: () {
+                      context
+                          .findAncestorStateOfType<BottomNavState>()
+                          ?.changeTab(2);
+                    },
+                    child: CircleAvatar(
+                      radius: 22,
+                      backgroundColor: colorScheme.surfaceContainerHigh,
+                      backgroundImage: AssetImage(
+                        widget.profile.avatarPath ?? AppAvatars.defaultAvatar,
+                      ),
                     ),
                   )
                 ],
@@ -74,30 +84,38 @@ class _HomePageState extends State<HomePage> {
               const SizedBox(height: 20),
 
               // Barre de Recherche
-              TextField(
-                style: textTheme.bodyMedium?.copyWith(
-                  color: colorScheme.onSurface,
-                ),
-                decoration: InputDecoration(
-                  hintText: "Rechercher une histoire...",
-                  hintStyle: TextStyle(
-                    color: colorScheme.onSurfaceVariant.withOpacity(0.7),
-                  ),
-                  prefixIcon: Icon(
-                    Icons.search,
-                    color: colorScheme.onSurfaceVariant,
-                  ),
-                  filled: true,
-                  fillColor: colorScheme.surfaceContainerHigh,
-                  contentPadding: const EdgeInsets.symmetric(
-                    vertical: 12,
-                    horizontal: 20,
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(30),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
+              StorySearchBar(
+                onStorySelected: (story) {
+                  Navigator.push(
+                    context,
+                    PageRouteBuilder(
+                      transitionDuration: const Duration(milliseconds: 300),
+                      reverseTransitionDuration:
+                          const Duration(milliseconds: 250),
+                      pageBuilder: (_, __, ___) => StoryPage(
+                        story: story,
+                        profile: widget.profile,
+                      ),
+                      transitionsBuilder: (_, animation, __, child) {
+                        final curved = CurvedAnimation(
+                          parent: animation,
+                          curve: Curves.easeOut,
+                        );
+
+                        return FadeTransition(
+                          opacity: curved,
+                          child: SlideTransition(
+                            position: Tween<Offset>(
+                              begin: const Offset(0, 0.03),
+                              end: Offset.zero,
+                            ).animate(curved),
+                            child: child,
+                          ),
+                        );
+                      },
+                    ),
+                  );
+                },
               ),
 
               const SizedBox(height: 24),
@@ -186,21 +204,6 @@ class _HomePageState extends State<HomePage> {
                       style: sectionTitleStyle,
                     ),
                   ),
-                  TextButton(
-                    onPressed: () {},
-                    style: TextButton.styleFrom(
-                      padding: EdgeInsets.zero,
-                      minimumSize: const Size(50, 30),
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    ),
-                    child: Text(
-                      "Voir tout",
-                      style: TextStyle(
-                        color: colorScheme.primary,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  )
                 ],
               ),
 
