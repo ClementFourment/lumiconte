@@ -332,28 +332,6 @@ class _StoryPageState extends State<StoryPage> {
         accentColor: const Color(0xFF7C3AED),
       );
     }
-
-    switch (settings.readTheme) {
-      case 'dark':
-        return _ThemeColors(
-          backgroundColor: const Color(0xFF0F172A),
-          textColor: Colors.white,
-          accentColor: const Color(0xFFA78BFA),
-        );
-      case 'naturel':
-        return _ThemeColors(
-          backgroundColor: const Color(0xFFFAF5F0),
-          textColor: const Color(0xFF1F2937),
-          accentColor: const Color(0xFFC084FC),
-        );
-      case 'light':
-      default:
-        return _ThemeColors(
-          backgroundColor: Colors.white,
-          textColor: const Color(0xFF1F2937),
-          accentColor: const Color(0xFF7C3AED),
-        );
-    }
   }
 
   void _goToNextPage() {
@@ -390,7 +368,6 @@ class _StoryPageState extends State<StoryPage> {
           settingsDoc.data() as Map<String, dynamic>,
           settingsDoc.id,
         );
-        final themeColors = _getThemeColors(settings);
 
         final storyParams = StoryViewParams(
           currentPageText: _pages[_currentPage],
@@ -402,7 +379,6 @@ class _StoryPageState extends State<StoryPage> {
           isLoading: _isLoading,
           audioPosition: _audioPosition,
           audioDuration: _audioDuration,
-          themeColors: themeColors,
           fontSize: settings.fontSize.toDouble(),
           isDyslexia: settings.dyslexia,
           image: widget.story.image,

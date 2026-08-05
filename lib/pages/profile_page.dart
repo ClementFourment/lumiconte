@@ -66,9 +66,7 @@ class _ProfilePageState extends State<ProfilePage> {
         if (mounted && snapshot.docs.isNotEmpty) {
           final rawData =
               snapshot.docs.first.data() as Map<String, dynamic>? ?? {};
-          final isDark = rawData['isDarkMode'] ??
-              rawData['darkMode'] ??
-              appSettings.isDarkMode;
+          final isDark = rawData['theme'] == 'dark' ?? appSettings.isDarkMode;
 
           if (appSettings.isDarkMode != isDark) {
             appSettings.toggleDarkMode(widget.profileId, isDark);
@@ -157,8 +155,9 @@ class _ProfilePageState extends State<ProfilePage> {
           return StreamBuilder<QuerySnapshot>(
             stream: _readingProgressCollection.snapshots(),
             builder: (context, progressSnapshot) {
-              final int storiesReadCount =
-                  progressSnapshot.hasData ? progressSnapshot.data!.docs.length : 0;
+              final int storiesReadCount = progressSnapshot.hasData
+                  ? progressSnapshot.data!.docs.length
+                  : 0;
 
               return StreamBuilder<QuerySnapshot>(
                 stream: _settingsCollection.snapshots(),
@@ -195,17 +194,15 @@ class _ProfilePageState extends State<ProfilePage> {
                       final DateTime now = DateTime.now();
                       final DateTime today =
                           DateTime(now.year, now.month, now.day);
-                      final DateTime lastReadDay = DateTime(
-                          lastReadDate.year,
-                          lastReadDate.month,
-                          lastReadDate.day);
+                      final DateTime lastReadDay = DateTime(lastReadDate.year,
+                          lastReadDate.month, lastReadDate.day);
                       final int daysDifference =
                           today.difference(lastReadDay).inDays;
 
                       if (daysDifference > 1) {
                         if (settings.streak != 0) {
-                          Future.microtask(() =>
-                              _updateSetting(settingsDocId, 'streak', 0));
+                          Future.microtask(
+                              () => _updateSetting(settingsDocId, 'streak', 0));
                         }
                         streakDisplay = '0 jour';
                       } else {
@@ -247,13 +244,13 @@ class _ProfilePageState extends State<ProfilePage> {
                                 backgroundColor: theme.colorScheme.primary
                                     .withValues(alpha: 0.2),
                                 backgroundImage: AssetImage(
-                                  profile.avatarPath ?? AppAvatars.defaultAvatar,
+                                  profile.avatarPath ??
+                                      AppAvatars.defaultAvatar,
                                 ),
                               ),
                               const SizedBox(width: 20),
                               Column(
-                                crossAxisAlignment:
-                                    CrossAxisAlignment.start,
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
                                     profile.name,
@@ -277,8 +274,7 @@ class _ProfilePageState extends State<ProfilePage> {
                           ),
                         ),
                         Padding(
-                          padding:
-                              const EdgeInsets.symmetric(horizontal: 20),
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -296,14 +292,12 @@ class _ProfilePageState extends State<ProfilePage> {
                                 mainAxisAlignment:
                                     MainAxisAlignment.spaceBetween,
                                 children: [
-                                  _buildStatCard(
-                                      context,
-                                      'Histoires\nlues',
+                                  _buildStatCard(context, 'Histoires\nlues',
                                       '$storiesReadCount'),
-                                  _buildStatCard(context,
-                                      'Temps de\nlecture', timeDisplay),
-                                  _buildStatCard(context,
-                                      'Série en\ncours', streakDisplay),
+                                  _buildStatCard(context, 'Temps de\nlecture',
+                                      timeDisplay),
+                                  _buildStatCard(context, 'Série en\ncours',
+                                      streakDisplay),
                                 ],
                               ),
                               const SizedBox(height: 28),
@@ -337,8 +331,8 @@ class _ProfilePageState extends State<ProfilePage> {
                                             style: TextStyle(
                                               fontSize: 15,
                                               fontWeight: FontWeight.w500,
-                                              color: theme
-                                                  .colorScheme.onSurface,
+                                              color:
+                                                  theme.colorScheme.onSurface,
                                             ),
                                           ),
                                           DropdownButtonHideUnderline(
@@ -349,41 +343,33 @@ class _ProfilePageState extends State<ProfilePage> {
                                                 size: 14,
                                                 color: theme
                                                     .colorScheme.onSurface
-                                                    .withValues(
-                                                        alpha: 0.4),
+                                                    .withValues(alpha: 0.4),
                                               ),
                                               style: TextStyle(
                                                 fontSize: 14,
-                                                color: theme
-                                                    .colorScheme.onSurface,
+                                                color:
+                                                    theme.colorScheme.onSurface,
                                               ),
                                               dropdownColor:
                                                   AppTheme.getCardColor(
                                                       context),
-                                              onChanged:
-                                                  (String? newValue) {
+                                              onChanged: (String? newValue) {
                                                 if (newValue != null &&
-                                                    settingsDocId
-                                                        .isNotEmpty) {
-                                                  _updateSetting(
-                                                      settingsDocId,
-                                                      'langage',
-                                                      newValue);
+                                                    settingsDocId.isNotEmpty) {
+                                                  _updateSetting(settingsDocId,
+                                                      'langage', newValue);
                                                 }
                                               },
                                               items: const [
                                                 DropdownMenuItem(
                                                     value: 'fr',
-                                                    child: Text(
-                                                        'Français  ')),
+                                                    child: Text('Français  ')),
                                                 DropdownMenuItem(
                                                     value: 'en',
-                                                    child:
-                                                        Text('English  ')),
+                                                    child: Text('English  ')),
                                                 DropdownMenuItem(
                                                     value: 'es',
-                                                    child:
-                                                        Text('Español  ')),
+                                                    child: Text('Español  ')),
                                               ],
                                             ),
                                           )
@@ -417,9 +403,8 @@ class _ProfilePageState extends State<ProfilePage> {
                                               value: appSettings
                                                   .isNotificationsEnabled,
                                               onChanged: (bool newValue) {
-                                                appSettings
-                                                    .toggleNotifications(
-                                                        newValue);
+                                                appSettings.toggleNotifications(
+                                                    newValue);
                                               },
                                               activeColor: AppTheme.accentColor,
                                             ),
@@ -427,8 +412,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                               height: 1,
                                               indent: 16,
                                               endIndent: 16,
-                                              color: theme
-                                                  .colorScheme.onSurface
+                                              color: theme.colorScheme.onSurface
                                                   .withValues(alpha: 0.08),
                                             ),
                                             // Mode Nuit
@@ -446,10 +430,6 @@ class _ProfilePageState extends State<ProfilePage> {
                                               onChanged: (bool newValue) {
                                                 appSettings.toggleDarkMode(
                                                     widget.profileId, newValue);
-                                                if (settingsDocId.isNotEmpty) {
-                                                  _updateSetting(settingsDocId,
-                                                      'isDarkMode', newValue);
-                                                }
                                               },
                                               activeColor: AppTheme.accentColor,
                                             ),
@@ -504,8 +484,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                       onTap: () {
                                         Navigator.of(context).push(
                                           MaterialPageRoute(
-                                            builder: (context) =>
-                                                RewardsPage(
+                                            builder: (context) => RewardsPage(
                                               userId: _uid ?? '',
                                               profileId: widget.profileId,
                                             ),
@@ -527,10 +506,8 @@ class _ProfilePageState extends State<ProfilePage> {
                                       onTap: () {
                                         Navigator.of(context).push(
                                           MaterialPageRoute(
-                                            builder: (context) =>
-                                                SettingsPage(
-                                                    profileId:
-                                                        widget.profileId),
+                                            builder: (context) => SettingsPage(
+                                                profileId: widget.profileId),
                                           ),
                                         );
                                       },
@@ -563,10 +540,8 @@ class _ProfilePageState extends State<ProfilePage> {
                                       onTap: () {
                                         Navigator.of(context).push(
                                           MaterialPageRoute(
-                                            builder: (context) =>
-                                                FeedbackPage(
-                                                    profileId:
-                                                        widget.profileId),
+                                            builder: (context) => FeedbackPage(
+                                                profileId: widget.profileId),
                                           ),
                                         );
                                       },
@@ -619,13 +594,12 @@ class _ProfilePageState extends State<ProfilePage> {
                                 width: double.infinity,
                                 child: OutlinedButton.icon(
                                   style: OutlinedButton.styleFrom(
-                                    side: BorderSide(
-                                        color: Colors.red.shade400),
+                                    side:
+                                        BorderSide(color: Colors.red.shade400),
                                     padding: const EdgeInsets.symmetric(
                                         vertical: 14),
                                     shape: RoundedRectangleBorder(
-                                      borderRadius:
-                                          BorderRadius.circular(12),
+                                      borderRadius: BorderRadius.circular(12),
                                     ),
                                   ),
                                   onPressed: _handleSignOut,

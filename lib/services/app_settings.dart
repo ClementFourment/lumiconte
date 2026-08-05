@@ -86,7 +86,8 @@ class AppSettings extends ChangeNotifier {
         final data = userDoc.data();
         if (data != null) {
           // 👈 Récupère la valeur ou retombe sur true par défaut
-          _isNotificationsEnabled = data['notificationsEnabled'] as bool? ?? true;
+          _isNotificationsEnabled =
+              data['notificationsEnabled'] as bool? ?? true;
           notifyListeners(); // 👈 Notifie l'UI pour positionner le Switch à droite
         }
       }
@@ -127,8 +128,7 @@ class AppSettings extends ChangeNotifier {
     }
 
     notifyListeners();
-    await _updateSettingsInFirestore(
-        profileId, {'theme': newTheme, 'darkMode': value});
+    await _updateSettingsInFirestore(profileId, {'theme': newTheme});
   }
 
   /// Alterne les notifications de manière globale au niveau de l'utilisateur (`users/{uid}`)
