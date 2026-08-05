@@ -119,8 +119,9 @@ class _ManageProfilesPageState extends State<ManageProfilesPage> {
                               borderRadius: BorderRadius.circular(12),
                             ),
                           ),
-                          validator: (v) =>
-                              v == null || v.trim().isEmpty ? 'Entrez un nom' : null,
+                          validator: (v) => v == null || v.trim().isEmpty
+                              ? 'Entrez un nom'
+                              : null,
                         ),
                         const SizedBox(height: 16),
                         TextFormField(
@@ -299,7 +300,7 @@ class _ManageProfilesPageState extends State<ManageProfilesPage> {
 
         if (settingsSnapshot.docs.isNotEmpty) {
           final data = settingsSnapshot.docs.first.data();
-          final bool isDark = data['isDarkMode'] ?? data['darkMode'] ?? false;
+          final bool isDark = data['theme'] == 'dark';
           appSettings.toggleDarkMode(profileId, isDark);
         }
 

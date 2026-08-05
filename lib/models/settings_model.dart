@@ -3,8 +3,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 class SettingsModel {
   final String id;
   final int fontSize;
-  final String theme;     // Thème de l'application (ex: light, dark)
-  final String readTheme; // Thème de lecture (ex: classic, dark, naturel)
+  final String theme; // Thème de l'application (ex: light, dark)
+  final String
+      readTheme; // Thème de lecture (ex: classic, immersive, manuscript)
   final bool dyslexia;
   final String langage;
   final int totalReadingTime;
@@ -38,8 +39,8 @@ class SettingsModel {
       fontSize: (data['fontSize'] as int?) ?? defaultFontSize,
       theme: (data['theme'] as String?) ?? defaultTheme,
       // On lit 'read_theme', ou 'readTheme', ou fallback sur 'theme' / valeur par défaut
-      readTheme: (data['read_theme'] as String?) ??
-          (data['readTheme'] as String?) ??
+      readTheme: (data['readTheme'] as String?) ??
+          (data['read_theme'] as String?) ??
           defaultReadTheme,
       dyslexia: (data['dyslexia'] as bool?) ?? defaultDyslexia,
       langage: (data['langage'] as String?) ??
@@ -48,10 +49,10 @@ class SettingsModel {
       totalReadingTime:
           (data['totalReadingTime'] as int?) ?? defaultTotalReadingTime,
       streak: (data['streak'] as int?) ?? defaultStreak,
-      stopRead: data['stopread'] != null
-          ? (data['stopread'] as Timestamp).toDate()
-          : (data['stopRead'] != null
-              ? (data['stopRead'] as Timestamp).toDate()
+      stopRead: data['stopRead'] != null
+          ? (data['stopRead'] as Timestamp).toDate()
+          : (data['stopread'] != null
+              ? (data['stopread'] as Timestamp).toDate()
               : null),
     );
   }
@@ -67,12 +68,12 @@ class SettingsModel {
     return {
       'fontSize': fontSize,
       'theme': theme,
-      'read_theme': readTheme,
+      'readTheme': readTheme,
       'dyslexia': dyslexia,
       'langage': langage,
       'totalReadingTime': totalReadingTime,
       'streak': streak,
-      'stopread': stopRead != null ? Timestamp.fromDate(stopRead!) : null,
+      'stopRead': stopRead != null ? Timestamp.fromDate(stopRead!) : null,
     };
   }
 

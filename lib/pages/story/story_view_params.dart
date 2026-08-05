@@ -10,7 +10,6 @@ class StoryViewParams {
   final bool isLoading;
   final Duration audioPosition;
   final Duration audioDuration;
-  final dynamic themeColors;
   final double fontSize;
   final bool isDyslexia;
   final String? image;
@@ -38,7 +37,6 @@ class StoryViewParams {
     required this.isLoading,
     required this.audioPosition,
     required this.audioDuration,
-    required this.themeColors,
     required this.fontSize,
     required this.isDyslexia,
     required this.image,

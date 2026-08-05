@@ -25,15 +25,18 @@ class HomePageLoader extends StatelessWidget {
     final profileService = ProfileService();
 
     if (uid == null) {
-      return const Scaffold(body: Center(child: Text('Utilisateur non connecté')));
+      return const Scaffold(
+          body: Center(child: Text('Utilisateur non connecté')));
     }
 
     // 1. Écoute en temps réel de l'utilisateur (pour activeProfileId)
     return StreamBuilder<DocumentSnapshot>(
-      stream: FirebaseFirestore.instance.collection('users').doc(uid).snapshots(),
+      stream:
+          FirebaseFirestore.instance.collection('users').doc(uid).snapshots(),
       builder: (context, userSnapshot) {
         if (userSnapshot.connectionState == ConnectionState.waiting) {
-          return const Scaffold(body: Center(child: CircularProgressIndicator()));
+          return const Scaffold(
+              body: Center(child: CircularProgressIndicator()));
         }
 
         final userData = userSnapshot.data?.data() as Map<String, dynamic>?;
@@ -44,7 +47,8 @@ class HomePageLoader extends StatelessWidget {
           stream: profileService.getUserProfilesStream(uid),
           builder: (context, profilesSnapshot) {
             if (profilesSnapshot.connectionState == ConnectionState.waiting) {
-              return const Scaffold(body: Center(child: CircularProgressIndicator()));
+              return const Scaffold(
+                  body: Center(child: CircularProgressIndicator()));
             }
 
             final profiles = profilesSnapshot.data ?? [];
@@ -75,9 +79,11 @@ class HomePageLoader extends StatelessWidget {
                   .collection('settings')
                   .snapshots(),
               builder: (context, settingsSnapshot) {
-                if (settingsSnapshot.hasData && settingsSnapshot.data!.docs.isNotEmpty) {
-                  final settingsData = settingsSnapshot.data!.docs.first.data() as Map<String, dynamic>;
-                  final bool isDarkMode = settingsData['isDarkMode'] ?? settingsData['darkMode'] ?? false;
+                if (settingsSnapshot.hasData &&
+                    settingsSnapshot.data!.docs.isNotEmpty) {
+                  final settingsData = settingsSnapshot.data!.docs.first.data()
+                      as Map<String, dynamic>;
+                  final bool isDarkMode = settingsData['theme'] == 'dark';
 
                   // Application automatique du thème du profil chargé
                   WidgetsBinding.instance.addPostFrameCallback((_) {
