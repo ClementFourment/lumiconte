@@ -77,10 +77,10 @@ final GoRouter appRouter = GoRouter(
         .collection('profiles')
         .get();
 
-    final hasActiveProfile = profiles.docs.isNotEmpty;
+    final hasProfiles = profiles.docs.isNotEmpty;
 
     // S'il n'a AUCUN profil actif, il doit obligatoirement en créer un
-    if (!hasActiveProfile) {
+    if (!hasProfiles) {
       if (!isProfileCreation) return '/create-profile';
       return null;
     }

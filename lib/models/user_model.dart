@@ -1,13 +1,17 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/widgets.dart';
+
 class UserModel {
   final String uid;
   final String email;
   final String? displayName;
   final String? photoUrl;
   final bool subscribed;
-  final bool notificationsEnabled; // 👈 Champ ajouté
+  final bool notificationsEnabled;
   final DateTime createdAt;
   final UserAuthProvider authProvider;
   final String? activeProfileId;
+  final Timestamp? lastProfileChangedAt;
 
   UserModel({
     required this.uid,
@@ -19,6 +23,7 @@ class UserModel {
     required this.createdAt,
     required this.authProvider,
     this.activeProfileId,
+    this.lastProfileChangedAt,
   });
 
   factory UserModel.fromMap(Map<String, dynamic> data, String uid) {
@@ -28,10 +33,11 @@ class UserModel {
       displayName: data['displayName'],
       photoUrl: data['photoUrl'],
       subscribed: data['subscribed'] ?? false,
-      notificationsEnabled: data['notificationsEnabled'] ??
-          true, // 👈 Lecture depuis Firestore (true par défaut)
+      notificationsEnabled: data['notificationsEnabled'] ?? true,
       createdAt: data['createdAt']?.toDate() ?? DateTime.now(),
-      authProvider: _parseAuthProvider(data['authProvider'] ?? 'google'),
+      authProvider: _parseAuthProvider(data['authProvider'] ?? 'unknown'),
+      activeProfileId: data['activeProfileId'],
+      lastProfileChangedAt: data['lastProfileChangedAt']?.toDate(),
     );
   }
 
@@ -45,6 +51,8 @@ class UserModel {
           notificationsEnabled, // 👈 Sauvegardé dans Firestore
       'createdAt': createdAt,
       'authProvider': authProvider.toString().split('.').last,
+      'activeProfileId': activeProfileId,
+      'lastProfileChangedAt': lastProfileChangedAt,
     };
   }
 
@@ -57,6 +65,8 @@ class UserModel {
     bool? notificationsEnabled,
     DateTime? createdAt,
     UserAuthProvider? authProvider,
+    String? activeProfileId,
+    Timestamp? lastProfileChangedAt,
   }) {
     return UserModel(
       uid: uid ?? this.uid,
@@ -67,6 +77,8 @@ class UserModel {
       notificationsEnabled: notificationsEnabled ?? this.notificationsEnabled,
       createdAt: createdAt ?? this.createdAt,
       authProvider: authProvider ?? this.authProvider,
+      activeProfileId: activeProfileId ?? this.activeProfileId,
+      lastProfileChangedAt: lastProfileChangedAt ?? this.lastProfileChangedAt,
     );
   }
 

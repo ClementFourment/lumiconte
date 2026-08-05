@@ -21,6 +21,7 @@ class UserService extends FirebaseService {
   Future<UserModel?> getUser(String userId) async {
     try {
       final data = await getData('users/$userId');
+
       if (data != null) {
         return UserModel.fromMap(data, userId);
       }
