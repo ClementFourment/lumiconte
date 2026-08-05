@@ -25,7 +25,6 @@ class AppRouterNotifier extends ChangeNotifier {
     _authSub = FirebaseAuth.instance.authStateChanges().listen((user) {
       _userDocSub?.cancel();
       if (user != null) {
-        // Écoute en temps réel le champ 'activeProfileId' du document user
         _userDocSub = FirebaseFirestore.instance
             .collection('users')
             .doc(user.uid)
@@ -71,15 +70,14 @@ final GoRouter appRouter = GoRouter(
       return null;
     }
 
-    // 3. Vérification du profil actif
-    final userDoc = await FirebaseFirestore.instance
+    // 3. Vérification s'il existe au moins un profil
+    final profiles = await FirebaseFirestore.instance
         .collection('users')
         .doc(user.uid)
+        .collection('profiles')
         .get();
 
-    final activeProfileId = userDoc.data()?['activeProfileId'] as String?;
-    final hasActiveProfile =
-        activeProfileId != null && activeProfileId.isNotEmpty;
+    final hasActiveProfile = profiles.docs.isNotEmpty;
 
     // S'il n'a AUCUN profil actif, il doit obligatoirement en créer un
     if (!hasActiveProfile) {

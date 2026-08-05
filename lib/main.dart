@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'config/firebase_options.dart';
-import 'config/router.dart';
+import 'package:lumiconte/config/firebase_options.dart';
+import 'package:lumiconte/config/router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:lumiconte/services/app_settings.dart';
-import 'package:lumiconte/theme/app_theme.dart'; // 🟣 Import de ton AppTheme
+import 'package:lumiconte/theme/app_theme.dart';
 
 final appSettings = AppSettings();
 
@@ -34,8 +34,10 @@ class LumiconteApp extends StatelessWidget {
     return ListenableBuilder(
       listenable: appSettings,
       builder: (context, child) {
-        final lightTextTheme = Typography.material2021(platform: TargetPlatform.android).black;
-        final darkTextTheme = Typography.material2021(platform: TargetPlatform.android).white;
+        final lightTextTheme =
+            Typography.material2021(platform: TargetPlatform.android).black;
+        final darkTextTheme =
+            Typography.material2021(platform: TargetPlatform.android).white;
 
         return MaterialApp.router(
           title: 'Lumiconte',
@@ -55,7 +57,7 @@ class LumiconteApp extends StatelessWidget {
               ),
             ),
           ),
-          
+
           // 🌙 THÈME SOMBRE (AppTheme avec 0xFF1E1B29 / 0xFF2D283E + tes polices Google)
           darkTheme: AppTheme.darkTheme.copyWith(
             textTheme: GoogleFonts.nunitoTextTheme(darkTextTheme).copyWith(

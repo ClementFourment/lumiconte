@@ -65,7 +65,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
   Future<void> _handleProfileRouting(String uid) async {
     final profiles = await _profileService.getUserProfiles(uid);
     if (!mounted) return;
-
+    debugPrint(profiles.isEmpty.toString());
     if (profiles.isEmpty) {
       context.go('/create-profile');
     } else {
@@ -320,7 +320,8 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                                       Expanded(
                                         child: Container(
                                           height: 1,
-                                          color: Colors.white.withValues(alpha: 0.1),
+                                          color: Colors.white
+                                              .withValues(alpha: 0.1),
                                         ),
                                       ),
                                       Padding(
@@ -330,8 +331,8 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                                           'ou',
                                           style: TextStyle(
                                             fontSize: 13,
-                                            color:
-                                                Colors.white.withValues(alpha: 0.5),
+                                            color: Colors.white
+                                                .withValues(alpha: 0.5),
                                             fontWeight: FontWeight.w500,
                                           ),
                                         ),
@@ -339,7 +340,8 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                                       Expanded(
                                         child: Container(
                                           height: 1,
-                                          color: Colors.white.withValues(alpha: 0.1),
+                                          color: Colors.white
+                                              .withValues(alpha: 0.1),
                                         ),
                                       ),
                                     ],
@@ -730,7 +732,8 @@ class _ParticlesPainter extends CustomPainter {
 
       final opacity = 0.3 + (math.sin(t * speed * 3 + y) + 1) / 2 * 0.4;
 
-      final paint = Paint()..color = Colors.white.withValues(alpha: opacity * 0.6);
+      final paint = Paint()
+        ..color = Colors.white.withValues(alpha: opacity * 0.6);
 
       canvas.drawCircle(Offset(x, y), 1.5, paint);
     }
