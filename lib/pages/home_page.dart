@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:lumiconte/constants/avatars.dart';
 import 'package:lumiconte/models/category_model.dart';
+import 'package:lumiconte/models/reading_progress_model.dart';
 import 'package:lumiconte/models/story_model.dart';
 import 'package:lumiconte/models/profile_model.dart';
 import 'package:lumiconte/navigation/bottom_nav.dart';
+import 'package:lumiconte/services/reading_progress_service.dart';
 import 'package:lumiconte/widget/b2_image.dart';
 import 'package:lumiconte/widget/story_search_bar.dart';
 import 'package:lumiconte/pages/story/story_page.dart';
 import 'package:go_router/go_router.dart';
+import 'package:lumiconte/widget/lantern_progress_bar.dart';
 
 class HomePage extends StatefulWidget {
   final ProfileModel profile;
@@ -26,6 +29,8 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  final ReadingProgressService _readingProgressService =
+      ReadingProgressService();
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -37,222 +42,309 @@ class _HomePageState extends State<HomePage> {
       fontSize: 18,
       color: colorScheme.onSurface,
     );
+    final latestStories = ([...widget.stories]..sort((a, b) {
+            final dateA = a.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+            final dateB = b.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+            return dateB.compareTo(dateA);
+          }))
+        .take(10)
+        .toList();
 
-    return Scaffold(
-      body: SafeArea(
-        child: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
-          padding:
-              const EdgeInsets.only(left: 20, right: 20, top: 15, bottom: 40),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Header
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return StreamBuilder<List<ReadingProgressModel>>(
+      stream: _readingProgressService.getUserReadingProgress(widget.profile.id),
+      builder: (context, snapshot) {
+        final readingProgress = snapshot.data ?? [];
+
+        final continueReading = readingProgress
+            .where((p) => p.progress > 0 && p.progress < 100)
+            .toList()
+          ..sort((a, b) => b.lastRead.compareTo(a.lastRead));
+        final continueStories = continueReading.map((progress) {
+          final story = widget.stories
+              .where(
+                (story) => story.id == progress.storyId,
+              )
+              .firstOrNull;
+
+          return {
+            "story": story,
+            "progress": progress,
+          };
+        }).toList();
+        return Scaffold(
+          body: SafeArea(
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              padding: const EdgeInsets.only(
+                  left: 20, right: 20, top: 15, bottom: 40),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    child: Text(
-                      "Bonjour ${widget.profile.name} !",
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 22,
-                        color: colorScheme.onSurface,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  GestureDetector(
-                    onTap: () {
-                      context
-                          .findAncestorStateOfType<BottomNavState>()
-                          ?.changeTab(2);
-                    },
-                    child: CircleAvatar(
-                      radius: 22,
-                      backgroundColor: colorScheme.surfaceContainerHigh,
-                      backgroundImage: AssetImage(
-                        widget.profile.avatarPath ?? AppAvatars.defaultAvatar,
-                      ),
-                    ),
-                  )
-                ],
-              ),
-
-              const SizedBox(height: 20),
-
-              // Barre de Recherche
-              StorySearchBar(
-                onStorySelected: (story) {
-                  Navigator.push(
-                    context,
-                    PageRouteBuilder(
-                      transitionDuration: const Duration(milliseconds: 300),
-                      reverseTransitionDuration:
-                          const Duration(milliseconds: 250),
-                      pageBuilder: (_, __, ___) => StoryPage(
-                        story: story,
-                        profile: widget.profile,
-                      ),
-                      transitionsBuilder: (_, animation, __, child) {
-                        final curved = CurvedAnimation(
-                          parent: animation,
-                          curve: Curves.easeOut,
-                        );
-
-                        return FadeTransition(
-                          opacity: curved,
-                          child: SlideTransition(
-                            position: Tween<Offset>(
-                              begin: const Offset(0, 0.03),
-                              end: Offset.zero,
-                            ).animate(curved),
-                            child: child,
+                  // Header
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          "Bonjour ${widget.profile.name} !",
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: textTheme.headlineSmall?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 22,
+                            color: colorScheme.onSurface,
                           ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      GestureDetector(
+                        onTap: () {
+                          context
+                              .findAncestorStateOfType<BottomNavState>()
+                              ?.changeTab(2);
+                        },
+                        child: CircleAvatar(
+                          radius: 22,
+                          backgroundColor: colorScheme.surfaceContainerHigh,
+                          backgroundImage: AssetImage(
+                            widget.profile.avatarPath ??
+                                AppAvatars.defaultAvatar,
+                          ),
+                        ),
+                      )
+                    ],
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  // Barre de Recherche
+                  StorySearchBar(
+                    onStorySelected: (story) {
+                      Navigator.push(
+                        context,
+                        PageRouteBuilder(
+                          transitionDuration: const Duration(milliseconds: 300),
+                          reverseTransitionDuration:
+                              const Duration(milliseconds: 250),
+                          pageBuilder: (_, __, ___) => StoryPage(
+                            story: story,
+                            profile: widget.profile,
+                          ),
+                          transitionsBuilder: (_, animation, __, child) {
+                            final curved = CurvedAnimation(
+                              parent: animation,
+                              curve: Curves.easeOut,
+                            );
+
+                            return FadeTransition(
+                              opacity: curved,
+                              child: SlideTransition(
+                                position: Tween<Offset>(
+                                  begin: const Offset(0, 0.03),
+                                  end: Offset.zero,
+                                ).animate(curved),
+                                child: child,
+                              ),
+                            );
+                          },
+                        ),
+                      );
+                    },
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // Reprendre la lecture Header
+                  if (continueStories.isNotEmpty)
+                    Text(
+                      "Reprendre la lecture",
+                      style: sectionTitleStyle,
+                    ),
+
+                  const SizedBox(height: 12),
+
+                  // Carte Continue
+                  if (continueStories.isNotEmpty) ...[
+                    SizedBox(
+                      height: 190,
+                      child: ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: continueStories.length,
+                        itemBuilder: (context, index) {
+                          final story =
+                              continueStories[index]["story"] as StoryModel;
+
+                          final progress = continueStories[index]["progress"]
+                              as ReadingProgressModel;
+
+                          return GestureDetector(
+                            onTap: () => context.push('/story', extra: {
+                              'story': story,
+                              'profile': widget.profile,
+                            }),
+                            child: _buildContinueCard(
+                              context,
+                              story,
+                              progress,
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                  ],
+
+                  const SizedBox(height: 24),
+
+                  // Histoires populaires Header
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          "Histoires populaires",
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: sectionTitleStyle,
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  // Histoires populaires Liste
+                  SizedBox(
+                    height: 175,
+                    child: ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: widget.stories.take(10).length,
+                      itemBuilder: (context, index) {
+                        final story = widget.stories[index];
+                        return GestureDetector(
+                          onTap: () => context.push('/story', extra: {
+                            'story': story,
+                            'profile': widget.profile,
+                          }),
+                          child: _buildStoryCard(context, story),
                         );
                       },
                     ),
-                  );
-                },
-              ),
+                  ),
 
-              const SizedBox(height: 24),
-
-              // Reprendre la lecture Header
-              Text(
-                "Reprendre la lecture",
-                style: sectionTitleStyle,
-              ),
-
-              const SizedBox(height: 12),
-
-              // Carte Continue
-              Container(
-                height: 145,
-                padding: const EdgeInsets.all(15),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      colorScheme.primaryContainer.withOpacity(0.6),
-                      colorScheme.surfaceContainerHigh,
+                  const SizedBox(height: 24),
+                  // Histoires populaires Header
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          "Nouveautés",
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: sectionTitleStyle,
+                        ),
+                      ),
                     ],
                   ),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: colorScheme.outlineVariant.withOpacity(0.3),
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(15),
-                      child: Image.asset(
-                        "assets/images/boy.png",
-                        width: 90,
-                        height: 115,
-                        fit: BoxFit.cover,
-                      ),
-                    ),
-                    const SizedBox(width: 15),
-                    Expanded(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            "Le petit prince\net la planète oubliée",
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: textTheme.titleSmall?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 15,
-                              color: colorScheme.onSurface,
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(10),
-                            child: LinearProgressIndicator(
-                              value: 0.56,
-                              minHeight: 8,
-                              backgroundColor:
-                                  colorScheme.surfaceContainerHighest,
-                              color: colorScheme.primary,
-                            ),
-                          ),
-                        ],
-                      ),
-                    )
-                  ],
-                ),
-              ),
 
-              const SizedBox(height: 24),
+                  const SizedBox(height: 12),
 
-              // Histoires populaires Header
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      "Histoires populaires",
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: sectionTitleStyle,
+                  // Histoires populaires Liste
+                  SizedBox(
+                    height: 175,
+                    child: ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: latestStories.length,
+                      itemBuilder: (context, index) {
+                        final story = latestStories[index];
+
+                        return GestureDetector(
+                          onTap: () => context.push(
+                            '/story',
+                            extra: {
+                              'story': story,
+                              'profile': widget.profile,
+                            },
+                          ),
+                          child: _buildStoryCard(context, story),
+                        );
+                      },
                     ),
                   ),
+
+                  const SizedBox(height: 24),
                 ],
               ),
-
-              const SizedBox(height: 12),
-
-              // Histoires populaires Liste
-              SizedBox(
-                height: 175,
-                child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: widget.stories.take(10).length,
-                  itemBuilder: (context, index) {
-                    final story = widget.stories[index];
-                    return GestureDetector(
-                      onTap: () => context.push('/story', extra: {
-                        'story': story,
-                        'profile': widget.profile,
-                      }),
-                      child: _buildStoryCard(context, story),
-                    );
-                  },
-                ),
-              ),
-
-              const SizedBox(height: 24),
-
-              // Catégories Header
-              Text(
-                "Catégories",
-                style: sectionTitleStyle,
-              ),
-
-              const SizedBox(height: 12),
-
-              // Catégories Liste
-              SizedBox(
-                height: 95,
-                child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: widget.categories.length,
-                  itemBuilder: (context, index) {
-                    final category = widget.categories[index];
-                    return _buildCategoryWidget(context, category);
-                  },
-                ),
-              ),
-            ],
+            ),
           ),
-        ),
+        );
+      },
+    );
+  }
+
+  Widget _buildContinueCard(
+    BuildContext context,
+    StoryModel story,
+    ReadingProgressModel progress,
+  ) {
+    return Container(
+      width: 220,
+      margin: const EdgeInsets.only(right: 14),
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          B2Image(
+            objectKey: story.image,
+            fit: BoxFit.cover,
+          ),
+          Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.bottomCenter,
+                end: Alignment.topCenter,
+                colors: [
+                  Colors.black87,
+                  Colors.transparent,
+                ],
+              ),
+            ),
+          ),
+          Positioned(
+            left: 12,
+            right: 12,
+            bottom: 12,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  story.name,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                LanternProgressBar(
+                  progress: progress.progress / 100,
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  "${progress.progress}% terminé",
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          )
+        ],
       ),
     );
   }

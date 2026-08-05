@@ -1,3 +1,5 @@
+import 'dart:ffi';
+
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -9,6 +11,7 @@ import 'package:lumiconte/pages/story/story_classic_view.dart';
 import 'package:lumiconte/pages/story/story_immersive_view.dart';
 import 'package:lumiconte/pages/story/story_manuscript_view.dart';
 import 'package:lumiconte/pages/story/story_view_params.dart';
+import 'package:lumiconte/services/reading_progress_service.dart';
 
 class StoryPage extends StatefulWidget {
   final StoryModel story;
@@ -30,10 +33,14 @@ class _StoryPageState extends State<StoryPage> {
   bool _isAudio = false;
   Duration _audioPosition = Duration.zero;
   Duration _audioDuration = Duration.zero;
+  bool _isProgressLoaded = false;
 
   B2Audio? _audio;
   late final String _uid;
   late final CollectionReference _settingsCollection;
+
+  final ReadingProgressService _readingProgressService =
+      ReadingProgressService();
 
   @override
   void initState() {
@@ -48,6 +55,91 @@ class _StoryPageState extends State<StoryPage> {
 
     _initializePages();
     _initializeAudio();
+
+    _loadReadingProgress();
+  }
+
+  Future<void> _loadReadingProgress() async {
+    try {
+      final progress = await _readingProgressService.getStoryProgress(
+        profileId: widget.profile.id,
+        storyId: widget.story.id,
+      );
+
+      if (progress != null) {
+        setState(() {
+          _currentPage = _calculatePageFromProgress(
+            progress.progress,
+          );
+          _isProgressLoaded = true;
+        });
+      } else {
+        await _updateReadingProgress(1);
+
+        setState(() {
+          _currentPage = 0;
+          _isProgressLoaded = true;
+        });
+      }
+    } catch (e) {
+      debugPrint('Erreur chargement progression : $e');
+      setState(() {
+        _isProgressLoaded = true;
+      });
+    }
+  }
+
+  int _calculatePageFromProgress(int progress) {
+    if (_pages.isEmpty) return 0;
+
+    final totalCharacters = _pages.fold(
+      0,
+      (sum, page) => sum + page.length,
+    );
+
+    final targetCharacters = totalCharacters * progress / 100;
+
+    int currentCharacters = 0;
+
+    for (int i = 0; i < _pages.length; i++) {
+      currentCharacters += _pages[i].length;
+
+      if (currentCharacters >= targetCharacters) {
+        return i;
+      }
+    }
+
+    return _pages.length - 1;
+  }
+
+  int _calculateProgress() {
+    if (_pages.isEmpty) return 1;
+
+    final totalCharacters = _pages.fold(
+      0,
+      (sum, page) => sum + page.length,
+    );
+
+    int readCharacters = 0;
+
+    // On ne compte que les pages déjà terminées
+    for (int i = 0; i < _currentPage; i++) {
+      readCharacters += _pages[i].length;
+    }
+
+    return ((readCharacters / totalCharacters) * 100).round().clamp(1, 100);
+  }
+
+  Future<void> _updateReadingProgress(int progress) async {
+    try {
+      await _readingProgressService.createOrUpdate(
+        profileId: widget.profile.id,
+        storyId: widget.story.id,
+        progress: progress,
+      );
+    } catch (e) {
+      debugPrint('Erreur update progress : $e');
+    }
   }
 
   void _initializePages() {
@@ -337,12 +429,14 @@ class _StoryPageState extends State<StoryPage> {
   void _goToNextPage() {
     if (_currentPage < _pages.length - 1) {
       setState(() => _currentPage++);
+      _updateReadingProgress(_calculateProgress());
     }
   }
 
   void _goToPreviousPage() {
     if (_currentPage > 0) {
       setState(() => _currentPage--);
+      _updateReadingProgress(_calculateProgress());
     }
   }
 
@@ -354,6 +448,13 @@ class _StoryPageState extends State<StoryPage> {
 
   @override
   Widget build(BuildContext context) {
+    if (!_isProgressLoaded) {
+      return const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
     return StreamBuilder<QuerySnapshot>(
       stream: _settingsCollection.snapshots(),
       builder: (context, snapshot) {
@@ -393,7 +494,6 @@ class _StoryPageState extends State<StoryPage> {
         );
         final bool isDarkTheme = settings.theme == 'dark';
 
-        debugPrint(settings.readTheme);
         switch (settings.readTheme) {
           case 'immersive':
             return StoryImmersiveView(
