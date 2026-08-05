@@ -7,6 +7,7 @@ class UserModel {
   final bool notificationsEnabled; // 👈 Champ ajouté
   final DateTime createdAt;
   final UserAuthProvider authProvider;
+  final String? activeProfileId;
 
   UserModel({
     required this.uid,
@@ -14,9 +15,10 @@ class UserModel {
     this.displayName,
     this.photoUrl,
     this.subscribed = false,
-    this.notificationsEnabled = true, // 👈 Valeur par défaut à true
+    this.notificationsEnabled = true,
     required this.createdAt,
     required this.authProvider,
+    this.activeProfileId,
   });
 
   factory UserModel.fromMap(Map<String, dynamic> data, String uid) {
@@ -26,7 +28,8 @@ class UserModel {
       displayName: data['displayName'],
       photoUrl: data['photoUrl'],
       subscribed: data['subscribed'] ?? false,
-      notificationsEnabled: data['notificationsEnabled'] ?? true, // 👈 Lecture depuis Firestore (true par défaut)
+      notificationsEnabled: data['notificationsEnabled'] ??
+          true, // 👈 Lecture depuis Firestore (true par défaut)
       createdAt: data['createdAt']?.toDate() ?? DateTime.now(),
       authProvider: _parseAuthProvider(data['authProvider'] ?? 'google'),
     );
@@ -38,7 +41,8 @@ class UserModel {
       'displayName': displayName,
       'photoUrl': photoUrl,
       'subscribed': subscribed,
-      'notificationsEnabled': notificationsEnabled, // 👈 Sauvegardé dans Firestore
+      'notificationsEnabled':
+          notificationsEnabled, // 👈 Sauvegardé dans Firestore
       'createdAt': createdAt,
       'authProvider': authProvider.toString().split('.').last,
     };
