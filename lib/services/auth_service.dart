@@ -1,4 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/rendering.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:lumiconte/models/user_model.dart';
 import 'firebase_service.dart';
@@ -53,15 +54,29 @@ class AuthService extends FirebaseService {
 
       if (firebaseUser == null) throw Exception("Erreur authentification");
 
-      // Créer ou mettre à jour le user dans Firestore
+      final existingUser = await _userService.getUser(firebaseUser.uid);
+      debugPrint("DEBUUUUUUUUUUUUUUUUUG");
+      debugPrint("DEBUUUUUUUUUUUUUUUUUG");
+      debugPrint("DEBUUUUUUUUUUUUUUUUUG");
+
+      debugPrint(existingUser?.activeProfileId.toString());        //PAS OKKKKK / NULL
+
+      debugPrint(existingUser?.lastProfileChangedAt.toString());   //PAS OKKKKK / NULL
+      
+      debugPrint("DEBUUUUUUUUUUUUUUUUUG");
+      debugPrint("DEBUUUUUUUUUUUUUUUUUG");
+      debugPrint("DEBUUUUUUUUUUUUUUUUUG");
       final userModel = UserModel(
         uid: firebaseUser.uid,
-        email: firebaseUser.email ?? '',
-        displayName: firebaseUser.displayName,
-        photoUrl: firebaseUser.photoURL,
-        subscribed: false,
-        createdAt: DateTime.now(),
+        email: firebaseUser.email ?? existingUser?.email ?? '',
+        displayName: firebaseUser.displayName ?? existingUser?.displayName,
+        photoUrl: firebaseUser.photoURL ?? existingUser?.photoUrl,
+        subscribed: existingUser?.subscribed ?? false,
+        createdAt: existingUser?.createdAt ?? DateTime.now(),
         authProvider: UserAuthProvider.google,
+        activeProfileId: existingUser?.activeProfileId,
+        lastProfileChangedAt: existingUser?.lastProfileChangedAt,
+        notificationsEnabled: existingUser?.notificationsEnabled ?? true,
       );
 
       await _userService.createOrUpdateUser(userModel);
@@ -121,6 +136,9 @@ class AuthService extends FirebaseService {
         subscribed: existingUser?.subscribed ?? false,
         createdAt: existingUser?.createdAt ?? DateTime.now(),
         authProvider: UserAuthProvider.apple,
+        activeProfileId: existingUser?.activeProfileId,
+        lastProfileChangedAt: existingUser?.lastProfileChangedAt,
+        notificationsEnabled: existingUser?.notificationsEnabled ?? true,
       );
 
       await _userService.createOrUpdateUser(userModel);
