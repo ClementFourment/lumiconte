@@ -6,6 +6,7 @@ import 'package:lumiconte/models/profile_model.dart';
 import 'package:lumiconte/models/story_model.dart';
 import 'package:lumiconte/models/reading_progress_model.dart';
 import 'package:lumiconte/widget/b2_image.dart';
+import 'package:lumiconte/widget/lantern_progress_bar.dart';
 import 'package:go_router/go_router.dart';
 
 class LibraryPage extends StatefulWidget {
@@ -466,11 +467,11 @@ class _LibraryPageState extends State<LibraryPage> {
                           height: 1.2,
                         ),
                       ),
-                      
+
                       // Affichage conditionnel de la barre si progress > 0
                       if (progress > 0.0) ...[
                         const SizedBox(height: 12),
-                        _LanternProgressBar(progress: progress),
+                        LanternProgressBar(progress: progress),
                       ],
                     ],
                   ),
@@ -479,127 +480,6 @@ class _LibraryPageState extends State<LibraryPage> {
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-// -----------------------------------------------------------------------------
-// BARRE DE PROGRESSION AVEC SOLEIL FIXE À LA FIN ET TIRETÉS PARTOUT
-// -----------------------------------------------------------------------------
-class _LanternProgressBar extends StatelessWidget {
-  final double progress; // 0.0 à 1.0
-
-  const _LanternProgressBar({required this.progress});
-
-  @override
-  Widget build(BuildContext context) {
-    const int totalMainDots = 4; // 4 grands points
-    const int dashesBetweenDots = 3; // 3 petits tirets entre chaque point
-    
-    final int totalSections = totalMainDots; 
-    final int totalSteps = totalSections * (dashesBetweenDots + 1);
-    final int currentStep = (progress * totalSteps).round().clamp(0, totalSteps);
-
-    final isSunActive = progress >= 0.95;
-
-    return Row(
-      children: [
-        // Partie pointillés et grands points
-        Expanded(
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: List.generate(totalMainDots, (dotIndex) {
-              final int mainDotStep = dotIndex * (dashesBetweenDots + 1) + 1;
-              final bool isDotActive = currentStep >= mainDotStep;
-
-              return Expanded(
-                child: Row(
-                  children: [
-                    // Grand point
-                    Container(
-                      width: 8,
-                      height: 8,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: isDotActive
-                            ? const Color(0xFFFFC107)
-                            : Colors.white.withAlpha(50),
-                        boxShadow: isDotActive
-                            ? [
-                                const BoxShadow(
-                                  color: Color(0xFFFFB300),
-                                  blurRadius: 4,
-                                  spreadRadius: 1,
-                                )
-                              ]
-                            : null,
-                      ),
-                    ),
-
-                    // Petits tirets
-                    Expanded(
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: List.generate(dashesBetweenDots, (dashIndex) {
-                          final int dashStep = mainDotStep + dashIndex + 1;
-                          final bool isDashActive = currentStep >= dashStep;
-
-                          return Container(
-                            width: 2,
-                            height: 2,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: isDashActive
-                                  ? const Color(0xFFFFC107)
-                                  : Colors.white.withAlpha(40),
-                            ),
-                          );
-                        }),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }),
-          ),
-        ),
-
-        const SizedBox(width: 2),
-
-        // Soleil fixe tout à droite
-        _GlowingLantern(isActive: isSunActive),
-      ],
-    );
-  }
-}
-
-class _GlowingLantern extends StatelessWidget {
-  final bool isActive;
-
-  const _GlowingLantern({required this.isActive});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: isActive
-          ? const BoxDecoration(
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: Color(0xFFFFB300),
-                  blurRadius: 8,
-                  spreadRadius: 2,
-                ),
-              ],
-            )
-          : null,
-      child: Icon(
-        Icons.light_mode_rounded,
-        size: 18,
-        color: isActive
-            ? const Color(0xFFFFE082)
-            : Colors.white.withAlpha(80),
       ),
     );
   }
