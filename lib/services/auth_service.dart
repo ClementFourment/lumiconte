@@ -53,19 +53,7 @@ class AuthService extends FirebaseService {
       final firebaseUser = userCredential.user;
 
       if (firebaseUser == null) throw Exception("Erreur authentification");
-
       final existingUser = await _userService.getUser(firebaseUser.uid);
-      debugPrint("DEBUUUUUUUUUUUUUUUUUG");
-      debugPrint("DEBUUUUUUUUUUUUUUUUUG");
-      debugPrint("DEBUUUUUUUUUUUUUUUUUG");
-
-      debugPrint(existingUser?.activeProfileId.toString());        //PAS OKKKKK / NULL
-
-      debugPrint(existingUser?.lastProfileChangedAt.toString());   //PAS OKKKKK / NULL
-      
-      debugPrint("DEBUUUUUUUUUUUUUUUUUG");
-      debugPrint("DEBUUUUUUUUUUUUUUUUUG");
-      debugPrint("DEBUUUUUUUUUUUUUUUUUG");
       final userModel = UserModel(
         uid: firebaseUser.uid,
         email: firebaseUser.email ?? existingUser?.email ?? '',
@@ -78,8 +66,8 @@ class AuthService extends FirebaseService {
         lastProfileChangedAt: existingUser?.lastProfileChangedAt,
         notificationsEnabled: existingUser?.notificationsEnabled ?? true,
       );
-
       await _userService.createOrUpdateUser(userModel);
+
       return userModel;
     } catch (e) {
       print('Erreur Google Sign In: $e');

@@ -11,7 +11,7 @@ class UserModel {
   final DateTime createdAt;
   final UserAuthProvider authProvider;
   final String? activeProfileId;
-  final Timestamp? lastProfileChangedAt;
+  final DateTime? lastProfileChangedAt;
 
   UserModel({
     required this.uid,
@@ -66,7 +66,7 @@ class UserModel {
     DateTime? createdAt,
     UserAuthProvider? authProvider,
     String? activeProfileId,
-    Timestamp? lastProfileChangedAt,
+    DateTime? lastProfileChangedAt,
   }) {
     return UserModel(
       uid: uid ?? this.uid,

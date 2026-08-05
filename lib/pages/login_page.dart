@@ -80,7 +80,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
     setState(() => _isLoading = true);
     try {
       final userModel = await _authService.signInWithGoogle();
-      final uid = userModel?.uid ?? FirebaseAuth.instance.currentUser?.uid;
+      final uid = userModel.uid; // ?? FirebaseAuth.instance.currentUser?.uid;
 
       if (uid != null) {
         await _handleProfileRouting(uid);
