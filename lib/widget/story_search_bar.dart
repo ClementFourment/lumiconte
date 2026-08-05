@@ -561,49 +561,49 @@ class _StoryResultTileState extends State<_StoryResultTile>
                             color: widget.colors.onSurface,
                           ),
                         ),
-                        if (widget.story.categoryIds.isNotEmpty)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 6),
-                            child: Wrap(
-                              spacing: 4,
-                              runSpacing: 4,
-                              children: widget.story.categoryIds
-                                  .take(2)
-                                  .map(
-                                    (category) => Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 8,
-                                        vertical: 2,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        gradient: LinearGradient(
-                                          colors: [
-                                            widget.colors.primary
-                                                .withValues(alpha: 0.12),
-                                            widget.colors.secondary
-                                                .withValues(alpha: 0.12),
-                                          ],
-                                        ),
-                                        borderRadius: BorderRadius.circular(12),
-                                        border: Border.all(
-                                          color: widget.colors.primary
-                                              .withValues(alpha: 0.15),
-                                          width: 0.5,
-                                        ),
-                                      ),
-                                      child: Text(
-                                        category,
-                                        style: textTheme.labelSmall?.copyWith(
-                                          color: widget.colors.primary,
-                                          fontWeight: FontWeight.w500,
-                                          fontSize: 10,
-                                        ),
-                                      ),
-                                    ),
-                                  )
-                                  .toList(),
-                            ),
-                          ),
+                        // if (widget.story.categoryIds.isNotEmpty)
+                        // Padding(
+                        //   padding: const EdgeInsets.only(top: 6),
+                        //   child: Wrap(
+                        //     spacing: 4,
+                        //     runSpacing: 4,
+                        //     children: widget.story.categoryIds
+                        //         .take(2)
+                        //         .map(
+                        //           (category) => Container(
+                        //             padding: const EdgeInsets.symmetric(
+                        //               horizontal: 8,
+                        //               vertical: 2,
+                        //             ),
+                        //             decoration: BoxDecoration(
+                        //               gradient: LinearGradient(
+                        //                 colors: [
+                        //                   widget.colors.primary
+                        //                       .withValues(alpha: 0.12),
+                        //                   widget.colors.secondary
+                        //                       .withValues(alpha: 0.12),
+                        //                 ],
+                        //               ),
+                        //               borderRadius: BorderRadius.circular(12),
+                        //               border: Border.all(
+                        //                 color: widget.colors.primary
+                        //                     .withValues(alpha: 0.15),
+                        //                 width: 0.5,
+                        //               ),
+                        //             ),
+                        //             child: Text(
+                        //               category,
+                        //               style: textTheme.labelSmall?.copyWith(
+                        //                 color: widget.colors.primary,
+                        //                 fontWeight: FontWeight.w500,
+                        //                 fontSize: 10,
+                        //               ),
+                        //             ),
+                        //           ),
+                        //         )
+                        //         .toList(),
+                        //   ),
+                        // ),
                       ],
                     ),
                   ),
