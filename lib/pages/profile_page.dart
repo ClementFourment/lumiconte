@@ -181,7 +181,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       settingsDoc.id,
                     );
 
-                    currentLangCode = settings.langage;
+                    currentLangCode = settings.language;
 
                     final int totalMinutes = settings.totalReadingTime;
                     if (totalMinutes < 60) {
@@ -361,7 +361,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                                 if (newValue != null &&
                                                     settingsDocId.isNotEmpty) {
                                                   _updateSetting(settingsDocId,
-                                                      'langage', newValue);
+                                                      'language', newValue);
                                                 }
                                               },
                                               items: const [

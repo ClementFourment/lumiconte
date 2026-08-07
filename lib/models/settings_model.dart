@@ -6,7 +6,7 @@ class SettingsModel {
   final String theme; // Thème de l'application (ex: light, dark)
   final String readTheme; // Thème de lecture (ex: classic, immersive, manuscript)
   final bool dyslexia;
-  final String langage;
+  final String language;
   final int totalReadingTime;
   final int streak;
   final DateTime? stopRead;
@@ -26,7 +26,7 @@ class SettingsModel {
     this.theme = defaultTheme,
     this.readTheme = defaultReadTheme,
     this.dyslexia = defaultDyslexia,
-    this.langage = defaultLangage,
+    this.language = defaultLangage,
     this.totalReadingTime = defaultTotalReadingTime,
     this.streak = defaultStreak,
     this.stopRead,
@@ -50,8 +50,8 @@ class SettingsModel {
       theme: map['theme'] as String? ?? defaultTheme,
       readTheme: map['readTheme'] as String? ?? defaultReadTheme,
       dyslexia: map['dyslexia'] as bool? ?? defaultDyslexia,
-      // Supporte 'langage' (FR) et 'language' (EN)
-      langage: map['langage'] as String? ?? map['language'] as String? ?? defaultLangage,
+
+      language: map['language'] as String? ?? defaultLangage,
       totalReadingTime: (map['totalReadingTime'] as num?)?.toInt() ?? defaultTotalReadingTime,
       streak: (map['streak'] as num?)?.toInt() ?? defaultStreak,
       stopRead: parsedStopRead,
@@ -71,7 +71,7 @@ class SettingsModel {
       'theme': theme,
       'readTheme': readTheme,
       'dyslexia': dyslexia,
-      'langage': langage,
+      'language': language,
       'totalReadingTime': totalReadingTime,
       'streak': streak,
       'stopRead': stopRead != null ? Timestamp.fromDate(stopRead!) : null,
@@ -96,7 +96,7 @@ class SettingsModel {
     String? theme,
     String? readTheme,
     bool? dyslexia,
-    String? langage,
+    String? language,
     int? totalReadingTime,
     int? streak,
     DateTime? stopRead,
@@ -107,7 +107,7 @@ class SettingsModel {
       theme: theme ?? this.theme,
       readTheme: readTheme ?? this.readTheme,
       dyslexia: dyslexia ?? this.dyslexia,
-      langage: langage ?? this.langage,
+      language: language ?? this.language,
       totalReadingTime: totalReadingTime ?? this.totalReadingTime,
       streak: streak ?? this.streak,
       stopRead: stopRead ?? this.stopRead,
@@ -116,5 +116,5 @@ class SettingsModel {
 
   @override
   String toString() =>
-      'SettingsModel(id: $id, fontSize: $fontSize, theme: $theme, readTheme: $readTheme, dyslexia: $dyslexia, langage: $langage, totalReadingTime: $totalReadingTime, streak: $streak, stopRead: $stopRead)';
+      'SettingsModel(id: $id, fontSize: $fontSize, theme: $theme, readTheme: $readTheme, dyslexia: $dyslexia, language: $language, totalReadingTime: $totalReadingTime, streak: $streak, stopRead: $stopRead)';
 }

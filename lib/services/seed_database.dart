@@ -76,7 +76,7 @@ Future<void> seedDatabase() async {
     fontSize: 18,
     theme: 'dark',
     dyslexia: true,
-    langage: 'fr',
+    language: 'fr',
     totalReadingTime: 120,
     streak: 3,
   );

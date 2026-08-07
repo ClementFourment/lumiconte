@@ -31,7 +31,7 @@ class SettingsService extends FirebaseService {
     String theme = SettingsModel.defaultTheme,
     String readTheme = SettingsModel.defaultReadTheme, // 👈 Nouveau : Thème de lecture
     bool dyslexia = SettingsModel.defaultDyslexia,
-    String langage = SettingsModel.defaultLangage,
+    String language = SettingsModel.defaultLangage,
     int totalReadingTime = SettingsModel.defaultTotalReadingTime,
     int streak = SettingsModel.defaultStreak,
     String settingsId = 'default',
@@ -43,7 +43,7 @@ class SettingsService extends FirebaseService {
         theme: theme,
         readTheme: readTheme, // 👈 Transmission au modèle
         dyslexia: dyslexia,
-        langage: langage,
+        language: language,
         totalReadingTime: totalReadingTime,
         streak: streak,
       );
