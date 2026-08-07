@@ -1,5 +1,3 @@
-import 'dart:ffi';
-
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -112,22 +110,32 @@ class _StoryPageState extends State<StoryPage> {
     return _pages.length - 1;
   }
 
-  int _calculateProgress() {
-    if (_pages.isEmpty) return 1;
+int _calculateProgress() {
+    if (_pages.isEmpty) return 0;
+
+    // Si on est sur la dernière page, on force directement à 100%
+    if (_currentPage >= _pages.length - 1) {
+      return 100;
+    }
 
     final totalCharacters = _pages.fold(
       0,
       (sum, page) => sum + page.length,
     );
 
-    int readCharacters = 0;
+    if (totalCharacters == 0) return 0;
 
-    // On ne compte que les pages déjà terminées
-    for (int i = 0; i < _currentPage; i++) {
+    int readCharacters = 0;
+    // On compte les caractères des pages lues + la page en cours
+    for (int i = 0; i <= _currentPage; i++) {
       readCharacters += _pages[i].length;
     }
 
-    return ((readCharacters / totalCharacters) * 100).round().clamp(1, 100);
+    // Calcul du pourcentage basé sur le nombre de caractères
+    final double percentage = (readCharacters / totalCharacters) * 100;
+
+    // On s'assure que ça reste entre 0 et 99 tant qu'on n'est pas sur la toute dernière page
+    return percentage.round().clamp(0, 99);
   }
 
   Future<void> _updateReadingProgress(int progress) async {

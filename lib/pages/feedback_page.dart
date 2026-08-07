@@ -5,7 +5,7 @@ import 'package:lumiconte/models/feedback_model.dart';
 import 'package:lumiconte/theme/app_theme.dart';
 
 class FeedbackPage extends StatefulWidget {
-  final String profileId; // ID du profil actif (ProfileModel.id)
+  final String profileId;
 
   const FeedbackPage({
     super.key,
@@ -49,79 +49,34 @@ class _FeedbackPageState extends State<FeedbackPage> {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) throw Exception('Utilisateur non connecté');
 
-      final String uid = user.uid;
-
       final profileFeedbackCollection = FirebaseFirestore.instance
           .collection('users')
-          .doc(uid)
+          .doc(user.uid)
           .collection('profiles')
           .doc(widget.profileId)
           .collection('feedbacks');
 
-      // --- SÉCURITÉ ANTI-SPAM VIA FeedbackModel ---
-      final allFeedbacksSnapshot = await profileFeedbackCollection.get(
-        const GetOptions(source: Source.server),
-      );
+      // Optimisation Firestore : On limite à 1 seul document trié par date
+      final lastFeedbackSnapshot = await profileFeedbackCollection
+          .orderBy('createdAt', descending: true)
+          .limit(1)
+          .get(const GetOptions(source: Source.server));
 
-      if (allFeedbacksSnapshot.docs.isNotEmpty) {
-        final feedbacks = allFeedbacksSnapshot.docs
-            .map((doc) => FeedbackModel.fromMap(doc.data(), doc.id))
-            .toList();
+      if (lastFeedbackSnapshot.docs.isNotEmpty) {
+        final lastFeedback = FeedbackModel.fromMap(
+          lastFeedbackSnapshot.docs.first.data(),
+          lastFeedbackSnapshot.docs.first.id,
+        );
 
-        feedbacks.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+        final difference = DateTime.now().difference(lastFeedback.createdAt);
 
-        final DateTime lastFeedbackDate = feedbacks.first.createdAt;
-        final difference = DateTime.now().difference(lastFeedbackDate);
-
-        if (difference.inMinutes >= 0 && difference.inMinutes < 5) {
+        if (difference.inMinutes < 5) {
           setState(() => _isSending = false);
-
-          if (mounted) {
-            final cardBg = AppTheme.getCardColor(context);
-            final isDark = Theme.of(context).brightness == Brightness.dark;
-
-            showDialog(
-              context: context,
-              barrierDismissible: false,
-              builder: (BuildContext context) {
-                return AlertDialog(
-                  backgroundColor: cardBg,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  title: Text(
-                    'Action bloquée',
-                    style: TextStyle(
-                      color: isDark ? Colors.white : Colors.black87,
-                    ),
-                  ),
-                  content: Text(
-                    'Pour éviter les abus, vous devez attendre 5 minutes entre chaque commentaire.',
-                    style: TextStyle(
-                      color: isDark ? Colors.white70 : Colors.black87,
-                    ),
-                  ),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      child: const Text(
-                        'D\'accord',
-                        style: TextStyle(
-                          color: AppTheme.accentColor,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ],
-                );
-              },
-            );
-          }
+          if (mounted) _showSpamDialog();
           return;
         }
       }
 
-      // --- CRÉATION ET ENVOI DU FEEDBACK VIA LE MODÈLE ---
       final newFeedback = FeedbackModel(
         id: '',
         message: _feedbackController.text.trim(),
@@ -154,6 +109,40 @@ class _FeedbackPageState extends State<FeedbackPage> {
     }
   }
 
+  void _showSpamDialog() {
+    final cardBg = AppTheme.getCardColor(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        backgroundColor: cardBg,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(
+          'Action bloquée',
+          style: TextStyle(color: isDark ? Colors.white : Colors.black87),
+        ),
+        content: Text(
+          'Pour éviter les abus, vous devez attendre 5 minutes entre chaque commentaire.',
+          style: TextStyle(color: isDark ? Colors.white70 : Colors.black87),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text(
+              'D\'accord',
+              style: TextStyle(
+                color: AppTheme.accentColor,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -161,19 +150,16 @@ class _FeedbackPageState extends State<FeedbackPage> {
 
     final primaryTextColor = isDark ? Colors.white : Colors.black87;
     final cardColor = AppTheme.getCardColor(context);
-    final backgroundColor = theme.scaffoldBackgroundColor; // 🟣 Prend le violet darkBg (0xFF1E1B29)
+    final backgroundColor = theme.scaffoldBackgroundColor;
 
     return Scaffold(
-      backgroundColor: backgroundColor, // 🔴 Force le fond général
+      backgroundColor: backgroundColor,
       appBar: AppBar(
-        backgroundColor: backgroundColor, // 🔴 Assure que l'AppBar n'a pas de fond noir
-        surfaceTintColor: Colors.transparent, // Désactive l'effet de surface Material 3
+        backgroundColor: backgroundColor,
+        surfaceTintColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(
-            Icons.arrow_back,
-            color: primaryTextColor,
-          ),
+          icon: Icon(Icons.arrow_back, color: primaryTextColor),
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: Text(
@@ -187,9 +173,7 @@ class _FeedbackPageState extends State<FeedbackPage> {
       ),
       body: _isSending
           ? const Center(
-              child: CircularProgressIndicator(
-                color: AppTheme.accentColor,
-              ),
+              child: CircularProgressIndicator(color: AppTheme.accentColor),
             )
           : SingleChildScrollView(
               padding: const EdgeInsets.all(24.0),
@@ -208,7 +192,7 @@ class _FeedbackPageState extends State<FeedbackPage> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Une idée, un bug ou une suggestion ? Écrivez-nous ci-dessous. Nous lisons tous vos messages.',
+                      'Une idée, un bug ou une suggestion ? Écrivez-nous ci-dessous.',
                       style: TextStyle(
                         fontSize: 14,
                         color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
@@ -222,30 +206,12 @@ class _FeedbackPageState extends State<FeedbackPage> {
                       style: TextStyle(color: primaryTextColor),
                       decoration: InputDecoration(
                         hintText: 'Écrivez votre message ici...',
-                        hintStyle: TextStyle(
-                          color: isDark
-                              ? Colors.grey.shade600
-                              : Colors.grey.shade400,
-                        ),
                         fillColor: cardColor,
                         filled: true,
                         counterText: '$_currentLength / $_maxCharacters',
-                        counterStyle: TextStyle(
-                          color: isDark
-                              ? Colors.grey.shade500
-                              : Colors.grey.shade600,
-                        ),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(16),
                           borderSide: BorderSide.none,
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: BorderSide(
-                            color: isDark
-                                ? Colors.white.withOpacity(0.05)
-                                : Colors.grey.shade200,
-                          ),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(16),

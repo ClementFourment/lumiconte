@@ -10,7 +10,7 @@ import 'package:lumiconte/models/reading_progress_model.dart';
 
 class AppSettings extends ChangeNotifier {
   bool _isDarkMode = false;
-  bool _isNotificationsEnabled = true; // Valeur par défaut
+  bool _isNotificationsEnabled = true;
   SettingsModel? _currentSettings;
 
   bool get isDarkMode => _isDarkMode;
@@ -22,14 +22,16 @@ class AppSettings extends ChangeNotifier {
 
   AppSettings() {
     _initNotifications();
-    _initAuthListener(); // 👈 Écoute dynamique du statut d'authentification
+    _initAuthListener();
   }
 
-  /// Écoute l'authentification : si l'utilisateur se connecte, on charge ses paramètres globaux
   void _initAuthListener() {
     FirebaseAuth.instance.authStateChanges().listen((user) {
       if (user != null) {
         _loadGlobalSettings();
+      } else {
+        _currentSettings = null;
+        notifyListeners();
       }
     });
   }
@@ -45,25 +47,21 @@ class AppSettings extends ChangeNotifier {
       tz.setLocalLocation(tz.getLocation('Europe/Paris'));
     }
 
-    const AndroidInitializationSettings initializationSettingsAndroid =
+    const initializationSettingsAndroid =
         AndroidInitializationSettings('@mipmap/ic_launcher');
 
-    const DarwinInitializationSettings initializationSettingsDarwin =
-        DarwinInitializationSettings(
+    const initializationSettingsDarwin = DarwinInitializationSettings(
       requestAlertPermission: true,
       requestBadgePermission: true,
       requestSoundPermission: true,
     );
 
-    const InitializationSettings initializationSettings =
-        InitializationSettings(
+    const initializationSettings = InitializationSettings(
       android: initializationSettingsAndroid,
       iOS: initializationSettingsDarwin,
     );
 
-    await _notificationsPlugin.initialize(
-      settings: initializationSettings,
-    );
+    await _notificationsPlugin.initialize(settings: initializationSettings);
 
     final androidPlugin =
         _notificationsPlugin.resolvePlatformSpecificImplementation<
@@ -74,7 +72,6 @@ class AppSettings extends ChangeNotifier {
     }
   }
 
-  /// Charge les paramètres globaux (`users/{uid}`)
   Future<void> _loadGlobalSettings() async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
@@ -82,43 +79,42 @@ class AppSettings extends ChangeNotifier {
     try {
       final userDoc =
           await FirebaseFirestore.instance.collection('users').doc(uid).get();
-      if (userDoc.exists) {
-        final data = userDoc.data();
-        if (data != null) {
-          // 👈 Récupère la valeur ou retombe sur true par défaut
-          _isNotificationsEnabled =
-              data['notificationsEnabled'] as bool? ?? true;
-          notifyListeners(); // 👈 Notifie l'UI pour positionner le Switch à droite
-        }
+      if (userDoc.exists && userDoc.data() != null) {
+        _isNotificationsEnabled =
+            userDoc.data()!['notificationsEnabled'] as bool? ?? true;
+        notifyListeners();
       }
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('Erreur chargement paramètres globaux: $e');
+    }
   }
 
-  /// Charge les paramètres Firestore spécifiques au profil
   Future<void> loadSettingsFromFirestore(String profileId) async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
 
-    // Recharge la valeur globale de la notification au passage
     await _loadGlobalSettings();
 
-    final snapshot = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(uid)
-        .collection('profiles')
-        .doc(profileId)
-        .collection('settings')
-        .get();
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .collection('profiles')
+          .doc(profileId)
+          .collection('settings')
+          .get();
 
-    if (snapshot.docs.isNotEmpty) {
-      final doc = snapshot.docs.first;
-      _currentSettings = SettingsModel.fromMap(doc.data(), doc.id);
-      _isDarkMode = _currentSettings?.theme == 'dark';
-      notifyListeners();
+      if (snapshot.docs.isNotEmpty) {
+        final doc = snapshot.docs.first;
+        _currentSettings = SettingsModel.fromMap(doc.data(), doc.id);
+        _isDarkMode = _currentSettings?.theme == 'dark';
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint('Erreur chargement settings profil: $e');
     }
   }
 
-  /// Alterne le mode sombre et met à jour le SettingsModel du profil
   Future<void> toggleDarkMode(String profileId, bool value) async {
     _isDarkMode = value;
     final newTheme = value ? 'dark' : 'light';
@@ -131,7 +127,6 @@ class AppSettings extends ChangeNotifier {
     await _updateSettingsInFirestore(profileId, {'theme': newTheme});
   }
 
-  /// Alterne les notifications de manière globale au niveau de l'utilisateur (`users/{uid}`)
   Future<void> toggleNotifications(bool value) async {
     _isNotificationsEnabled = value;
     notifyListeners();
@@ -149,10 +144,11 @@ class AppSettings extends ChangeNotifier {
       } else {
         await cancelReadingReminder();
       }
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('Erreur modification notifications: $e');
+    }
   }
 
-  /// Met à jour les champs de la collection settings du profil
   Future<void> _updateSettingsInFirestore(
       String profileId, Map<String, dynamic> updates) async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
@@ -171,12 +167,10 @@ class AppSettings extends ChangeNotifier {
     }
   }
 
-  /// Annule toutes les notifications
   Future<void> cancelReadingReminder() async {
     await _notificationsPlugin.cancelAll();
   }
 
-  /// Planifie une notification journalière à 19h30
   Future<void> scheduleReadingReminder() async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
@@ -212,8 +206,7 @@ class AppSettings extends ChangeNotifier {
         return;
       }
 
-      const AndroidNotificationDetails androidDetails =
-          AndroidNotificationDetails(
+      const androidDetails = AndroidNotificationDetails(
         'reading_reminder_channel',
         'Rappels de lecture',
         channelDescription: 'Notifications pour rappeler de finir son histoire',
@@ -221,8 +214,7 @@ class AppSettings extends ChangeNotifier {
         priority: Priority.high,
         playSound: true,
       );
-      const NotificationDetails platformDetails =
-          NotificationDetails(android: androidDetails);
+      const platformDetails = NotificationDetails(android: androidDetails);
 
       final tz.TZDateTime now = tz.TZDateTime.now(tz.local);
       tz.TZDateTime scheduledTime = tz.TZDateTime(
@@ -248,6 +240,8 @@ class AppSettings extends ChangeNotifier {
         androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
         matchDateTimeComponents: DateTimeComponents.time,
       );
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('Erreur programmation notification: $e');
+    }
   }
 }

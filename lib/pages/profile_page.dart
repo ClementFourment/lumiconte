@@ -155,9 +155,13 @@ class _ProfilePageState extends State<ProfilePage> {
           return StreamBuilder<QuerySnapshot>(
             stream: _readingProgressCollection.snapshots(),
             builder: (context, progressSnapshot) {
-              final int storiesReadCount = progressSnapshot.hasData
-                  ? progressSnapshot.data!.docs.length
-                  : 0;
+          final int storiesReadCount = progressSnapshot.hasData
+              ? progressSnapshot.data!.docs.where((doc) {
+                  final data = doc.data() as Map<String, dynamic>?;
+                  // On considère lue uniquement si progress == 100 (ou progress >= 100)
+                  return (data?['progress'] ?? 0) >= 100; 
+                }).length
+              : 0;
 
               return StreamBuilder<QuerySnapshot>(
                 stream: _settingsCollection.snapshots(),
@@ -177,7 +181,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       settingsDoc.id,
                     );
 
-                    currentLangCode = settings.langage;
+                    currentLangCode = settings.language;
 
                     final int totalMinutes = settings.totalReadingTime;
                     if (totalMinutes < 60) {
@@ -357,7 +361,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                                 if (newValue != null &&
                                                     settingsDocId.isNotEmpty) {
                                                   _updateSetting(settingsDocId,
-                                                      'langage', newValue);
+                                                      'language', newValue);
                                                 }
                                               },
                                               items: const [

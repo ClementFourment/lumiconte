@@ -17,7 +17,7 @@ Future<void> seedDatabase() async {
   final category = CategoryModel(
     id: '',
     name: 'Aventure',
-    image: 'assets/images/boy.png',
+    image: 'assets/images/boy_avatar.png',
     description: 'Histoires d\'aventure',
     ageGroup: '6-8',
   );
@@ -76,7 +76,7 @@ Future<void> seedDatabase() async {
     fontSize: 18,
     theme: 'dark',
     dyslexia: true,
-    langage: 'fr',
+    language: 'fr',
     totalReadingTime: 120,
     streak: 3,
   );

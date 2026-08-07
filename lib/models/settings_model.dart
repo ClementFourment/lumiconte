@@ -4,10 +4,9 @@ class SettingsModel {
   final String id;
   final int fontSize;
   final String theme; // Thème de l'application (ex: light, dark)
-  final String
-      readTheme; // Thème de lecture (ex: classic, immersive, manuscript)
+  final String readTheme; // Thème de lecture (ex: classic, immersive, manuscript)
   final bool dyslexia;
-  final String langage;
+  final String language;
   final int totalReadingTime;
   final int streak;
   final DateTime? stopRead;
@@ -15,9 +14,9 @@ class SettingsModel {
   // Valeurs par défaut centralisées
   static const int defaultFontSize = 16;
   static const String defaultTheme = 'light';
-  static const String defaultReadTheme = 'classic'; // 👈 Changé à 'classic'
+  static const String defaultReadTheme = 'classic';
   static const bool defaultDyslexia = false;
-  static const String defaultLangage = 'fr';
+  static const String defaultLanguage = 'fr';
   static const int defaultTotalReadingTime = 0;
   static const int defaultStreak = 0;
 
@@ -27,39 +26,41 @@ class SettingsModel {
     this.theme = defaultTheme,
     this.readTheme = defaultReadTheme,
     this.dyslexia = defaultDyslexia,
-    this.langage = defaultLangage,
+    this.language = defaultLanguage,
     this.totalReadingTime = defaultTotalReadingTime,
     this.streak = defaultStreak,
     this.stopRead,
   });
 
-  factory SettingsModel.fromMap(Map<String, dynamic> data, String docId) {
+  factory SettingsModel.fromMap(Map<String, dynamic>? data, String docId) {
+    final map = data ?? {};
+
+    // 1. Gestion propre et simplifiée de stopRead (supporte 'stopRead' et 'stopread' sans doublon de cast)
+    final rawStopRead = map['stopRead'] ?? map['stopread'];
+    DateTime? parsedStopRead;
+    if (rawStopRead is Timestamp) {
+      parsedStopRead = rawStopRead.toDate();
+    } else if (rawStopRead is String) {
+      parsedStopRead = DateTime.tryParse(rawStopRead);
+    }
+
     return SettingsModel(
       id: docId,
-      fontSize: (data['fontSize'] as int?) ?? defaultFontSize,
-      theme: (data['theme'] as String?) ?? defaultTheme,
-      // On lit 'read_theme', ou 'readTheme', ou fallback sur 'theme' / valeur par défaut
-      readTheme: (data['readTheme'] as String?) ??
-          (data['read_theme'] as String?) ??
-          defaultReadTheme,
-      dyslexia: (data['dyslexia'] as bool?) ?? defaultDyslexia,
-      langage: (data['langage'] as String?) ??
-          (data['language'] as String?) ??
-          defaultLangage,
-      totalReadingTime:
-          (data['totalReadingTime'] as int?) ?? defaultTotalReadingTime,
-      streak: (data['streak'] as int?) ?? defaultStreak,
-      stopRead: data['stopRead'] != null
-          ? (data['stopRead'] as Timestamp).toDate()
-          : (data['stopread'] != null
-              ? (data['stopread'] as Timestamp).toDate()
-              : null),
+      fontSize: (map['fontSize'] as num?)?.toInt() ?? defaultFontSize,
+      theme: map['theme'] as String? ?? defaultTheme,
+      readTheme: map['readTheme'] as String? ?? defaultReadTheme,
+      dyslexia: map['dyslexia'] as bool? ?? defaultDyslexia,
+
+      language: map['language'] as String? ?? defaultLanguage,
+      totalReadingTime: (map['totalReadingTime'] as num?)?.toInt() ?? defaultTotalReadingTime,
+      streak: (map['streak'] as num?)?.toInt() ?? defaultStreak,
+      stopRead: parsedStopRead,
     );
   }
 
   factory SettingsModel.fromSnapshot(DocumentSnapshot doc) {
     return SettingsModel.fromMap(
-      doc.data() as Map<String, dynamic>? ?? {},
+      doc.data() as Map<String, dynamic>?,
       doc.id,
     );
   }
@@ -70,14 +71,14 @@ class SettingsModel {
       'theme': theme,
       'readTheme': readTheme,
       'dyslexia': dyslexia,
-      'langage': langage,
+      'language': language,
       'totalReadingTime': totalReadingTime,
       'streak': streak,
       'stopRead': stopRead != null ? Timestamp.fromDate(stopRead!) : null,
     };
   }
 
-  /// Getters utilitaires pour l'affichage propre
+  /// Getters utilitaires
   String get formattedReadingTime {
     if (totalReadingTime < 60) return '$totalReadingTime min';
     final hours = totalReadingTime ~/ 60;
@@ -95,7 +96,7 @@ class SettingsModel {
     String? theme,
     String? readTheme,
     bool? dyslexia,
-    String? langage,
+    String? language,
     int? totalReadingTime,
     int? streak,
     DateTime? stopRead,
@@ -106,7 +107,7 @@ class SettingsModel {
       theme: theme ?? this.theme,
       readTheme: readTheme ?? this.readTheme,
       dyslexia: dyslexia ?? this.dyslexia,
-      langage: langage ?? this.langage,
+      language: language ?? this.language,
       totalReadingTime: totalReadingTime ?? this.totalReadingTime,
       streak: streak ?? this.streak,
       stopRead: stopRead ?? this.stopRead,
@@ -115,5 +116,5 @@ class SettingsModel {
 
   @override
   String toString() =>
-      'SettingsModel(id: $id, fontSize: $fontSize, theme: $theme, readTheme: $readTheme, dyslexia: $dyslexia, langage: $langage, totalReadingTime: $totalReadingTime, streak: $streak, stopRead: $stopRead)';
+      'SettingsModel(id: $id, fontSize: $fontSize, theme: $theme, readTheme: $readTheme, dyslexia: $dyslexia, language: $language, totalReadingTime: $totalReadingTime, streak: $streak, stopRead: $stopRead)';
 }

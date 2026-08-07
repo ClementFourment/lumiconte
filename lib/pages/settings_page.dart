@@ -647,7 +647,7 @@ class _SettingsPageState extends State<SettingsPage> {
     final bool isSelected = currentTheme == themeKey;
 
     return GestureDetector(
-      onTap: () => _updateSetting(settingsId, 'read_theme', themeKey),
+      onTap: () => _updateSetting(settingsId, 'readTheme', themeKey),
       child: Column(
         children: [
           Container(
