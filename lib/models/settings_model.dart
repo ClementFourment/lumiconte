@@ -16,7 +16,7 @@ class SettingsModel {
   static const String defaultTheme = 'light';
   static const String defaultReadTheme = 'classic';
   static const bool defaultDyslexia = false;
-  static const String defaultLangage = 'fr';
+  static const String defaultLanguage = 'fr';
   static const int defaultTotalReadingTime = 0;
   static const int defaultStreak = 0;
 
@@ -26,7 +26,7 @@ class SettingsModel {
     this.theme = defaultTheme,
     this.readTheme = defaultReadTheme,
     this.dyslexia = defaultDyslexia,
-    this.language = defaultLangage,
+    this.language = defaultLanguage,
     this.totalReadingTime = defaultTotalReadingTime,
     this.streak = defaultStreak,
     this.stopRead,
@@ -51,7 +51,7 @@ class SettingsModel {
       readTheme: map['readTheme'] as String? ?? defaultReadTheme,
       dyslexia: map['dyslexia'] as bool? ?? defaultDyslexia,
 
-      language: map['language'] as String? ?? defaultLangage,
+      language: map['language'] as String? ?? defaultLanguage,
       totalReadingTime: (map['totalReadingTime'] as num?)?.toInt() ?? defaultTotalReadingTime,
       streak: (map['streak'] as num?)?.toInt() ?? defaultStreak,
       stopRead: parsedStopRead,
