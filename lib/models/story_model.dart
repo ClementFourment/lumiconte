@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 class StoryModel {
   final String id;
   final String name;
@@ -7,7 +9,7 @@ class StoryModel {
   final List<Map<String, String>>? audio;
   final String? audioTimes;
   final List<String> categoryIds;
-  final String? type; // 'original' ou 'generated'
+  final String? type;
   final String? createdByProfileId;
   final DateTime? createdAt;
 
@@ -25,27 +27,38 @@ class StoryModel {
     this.createdAt,
   });
 
-  factory StoryModel.fromMap(Map<String, dynamic> data, String docId) {
+  factory StoryModel.fromMap(Map<String, dynamic>? data, String docId) {
+    final map = data ?? {};
+
+    // Cast sécurisé du tableau Audio
+    List<Map<String, String>>? parsedAudio;
+    if (map['audio'] != null && map['audio'] is List) {
+      parsedAudio = (map['audio'] as List).map((item) {
+        if (item is Map) {
+          return item.map((key, value) => MapEntry(key.toString(), value.toString()));
+        }
+        return <String, String>{};
+      }).toList();
+    }
+
+    // Cast sécurisé de la date
+    DateTime? parsedDate;
+    if (map['createdAt'] is Timestamp) {
+      parsedDate = (map['createdAt'] as Timestamp).toDate();
+    }
+
     return StoryModel(
       id: docId,
-      name: data['name'] ?? '',
-      content: data['content'] ?? '',
-      image: data['image'],
-      illustrations: data['illustrations'],
-      audio: data['audio'] != null
-          ? (data['audio'] as List<dynamic>)
-              .map((item) => Map<String, String>.from(item as Map))
-              .toList()
-          : null, // Accepte null si l'audio n'existe pas
-      audioTimes: data['audioTimes'],
-      categoryIds: data['categoryIds'] != null
-          ? List<String>.from(data['categoryIds'])
-          : [],
-      type: data['type'] ?? 'original',
-      createdByProfileId: data['createdByProfileId'],
-      createdAt: data['createdAt'] != null
-          ? (data['createdAt'] as dynamic).toDate()
-          : null,
+      name: map['name'] as String? ?? '',
+      content: map['content'] as String? ?? '',
+      image: map['image'] as String?,
+      illustrations: map['illustrations'] as String?,
+      audio: parsedAudio,
+      audioTimes: map['audioTimes'] as String?,
+      categoryIds: List<String>.from(map['categoryIds'] ?? []),
+      type: map['type'] as String? ?? 'original',
+      createdByProfileId: map['createdByProfileId'] as String? ?? '',
+      createdAt: parsedDate,
     );
   }
 
@@ -60,7 +73,7 @@ class StoryModel {
       'categoryIds': categoryIds,
       'type': type,
       'createdByProfileId': createdByProfileId,
-      'createdAt': createdAt,
+      'createdAt': createdAt != null ? Timestamp.fromDate(createdAt!) : null,
     };
   }
 }

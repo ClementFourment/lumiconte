@@ -13,38 +13,32 @@ class FeedbackModel {
     this.platform = 'Android/iOS',
   });
 
-  /// Factory pour instancier depuis un document Firestore
-  factory FeedbackModel.fromMap(Map<String, dynamic> map, String id) {
+  factory FeedbackModel.fromMap(Map<String, dynamic>? map, String id) {
+    final data = map ?? {};
+    final rawDate = data['createdAt'];
+
+    DateTime parsedDate;
+    if (rawDate is Timestamp) {
+      parsedDate = rawDate.toDate();
+    } else if (rawDate is String) {
+      parsedDate = DateTime.tryParse(rawDate) ?? DateTime.now();
+    } else {
+      parsedDate = DateTime.now();
+    }
+
     return FeedbackModel(
       id: id,
-      message: map['message'] as String? ?? '',
-      createdAt: map['createdAt'] is Timestamp
-          ? (map['createdAt'] as Timestamp).toDate()
-          : DateTime.tryParse(map['createdAt']?.toString() ?? '') ?? DateTime.now(),
-      platform: map['platform'] as String? ?? 'Android/iOS',
+      message: data['message'] as String? ?? '',
+      createdAt: parsedDate,
+      platform: data['platform'] as String? ?? 'Android/iOS',
     );
   }
 
-  /// Convertit l'objet pour l'enregistrement Firestore
   Map<String, dynamic> toMap() {
     return {
       'message': message,
       'createdAt': Timestamp.fromDate(createdAt),
       'platform': platform,
     };
-  }
-
-  FeedbackModel copyWith({
-    String? id,
-    String? message,
-    DateTime? createdAt,
-    String? platform,
-  }) {
-    return FeedbackModel(
-      id: id ?? this.id,
-      message: message ?? this.message,
-      createdAt: createdAt ?? this.createdAt,
-      platform: platform ?? this.platform,
-    );
   }
 }

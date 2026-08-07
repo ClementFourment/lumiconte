@@ -303,7 +303,7 @@ class _HeroAssetsSection extends StatelessWidget {
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(80),
                     child: Image.asset(
-                      'assets/images/boy.png',
+                      'assets/images/boy_avatar.png',
                       width: 220,
                       height: 220,
                       fit: BoxFit.cover,

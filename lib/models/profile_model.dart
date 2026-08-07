@@ -19,34 +19,32 @@ class ProfileModel {
     required this.createdAt,
   });
 
-  /// Factory pour lire un document Firestore
   factory ProfileModel.fromMap(
     Map<String, dynamic>? data,
     String docId,
     String userId,
   ) {
     final map = data ?? {};
+    final rawDate = map['createdAt'];
 
     return ProfileModel(
       id: docId,
       userId: userId,
-      name: map['name'] ?? '',
-      age: map['age'] ?? 0,
-      avatarPath: map['avatarPath'], // null si non encore renseigné
+      name: map['name'] as String? ?? '',
+      age: (map['age'] as num?)?.toInt() ?? 0,
+      avatarPath: map['avatarPath'] as String?,
       interestIds: List<String>.from(map['interests'] ?? []),
-      createdAt: (map['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      createdAt: rawDate is Timestamp ? rawDate.toDate() : DateTime.now(),
     );
   }
 
-  /// Map pour l'écriture dans Firestore (Création / Mise à jour)
   Map<String, dynamic> toMap() {
     final map = <String, dynamic>{
       'name': name,
       'age': age,
-      'createdAt': FieldValue.serverTimestamp(),
+      'createdAt': Timestamp.fromDate(createdAt), // Corrige la perte de date d'origine
     };
 
-    // On n'ajoute ces champs à Firestore QUE s'ils contiennent de l'information
     if (avatarPath != null && avatarPath!.isNotEmpty) {
       map['avatarPath'] = avatarPath;
     }
@@ -56,26 +54,5 @@ class ProfileModel {
     }
 
     return map;
-  }
-
-  /// Pratique pour modifier un champ du profil sans devoir tout réécrire
-  ProfileModel copyWith({
-    String? id,
-    String? userId,
-    String? name,
-    int? age,
-    String? avatarPath,
-    List<String>? interestIds,
-    DateTime? createdAt,
-  }) {
-    return ProfileModel(
-      id: id ?? this.id,
-      userId: userId ?? this.userId,
-      name: name ?? this.name,
-      age: age ?? this.age,
-      avatarPath: avatarPath ?? this.avatarPath,
-      interestIds: interestIds ?? this.interestIds,
-      createdAt: createdAt ?? this.createdAt,
-    );
   }
 }

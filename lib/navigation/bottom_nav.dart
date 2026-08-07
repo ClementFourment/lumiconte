@@ -74,6 +74,8 @@ class BottomNavState extends State<BottomNav> {
       );
     }
 
+    final colorScheme = Theme.of(context).colorScheme;
+
     return FutureBuilder<DataFuture>(
       future: _dataFuture,
       builder: (context, staticSnapshot) {
@@ -92,7 +94,6 @@ class BottomNavState extends State<BottomNav> {
         final categories = staticSnapshot.data!.categories;
         final stories = staticSnapshot.data!.stories;
 
-        // Écoute en temps réel du profil actif enregistré sur l'utilisateur
         return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
           stream: FirebaseFirestore.instance
               .collection('users')
@@ -102,7 +103,6 @@ class BottomNavState extends State<BottomNav> {
             final activeProfileId =
                 userSnapshot.data?.data()?['activeProfileId'] as String?;
 
-            // Écoute en temps réel de tous les profils rattachés
             return StreamBuilder<List<ProfileModel>>(
               stream: _profileService.getUserProfilesStream(_uid!),
               builder: (context, profilesSnapshot) {
@@ -121,7 +121,6 @@ class BottomNavState extends State<BottomNav> {
                   );
                 }
 
-                // Résolution du profil actif
                 ProfileModel activeProfile;
                 if (activeProfileId != null) {
                   activeProfile = profiles.firstWhere(
@@ -132,8 +131,6 @@ class BottomNavState extends State<BottomNav> {
                   activeProfile = profiles.first;
                 }
 
-                // Utilisation des ValueKey basées sur activeProfile.id
-                // pour forcer la reconstruction si le profil actif change.
                 final pages = [
                   HomePage(
                     key: ValueKey('home_${activeProfile.id}'),
@@ -154,23 +151,28 @@ class BottomNavState extends State<BottomNav> {
                 ];
 
                 return Scaffold(
-                  body: pages[_currentIndex],
+                  body: IndexedStack(
+                    index: _currentIndex,
+                    children: pages,
+                  ),
                   bottomNavigationBar: BottomNavigationBar(
-                    fixedColor: AppTheme.getNavBarFixedColor(context),
+                    backgroundColor: AppTheme.getCardColor(context),
+                    selectedItemColor: colorScheme.primary,
+                    unselectedItemColor: colorScheme.onSurface.withValues(alpha: 0.6),
                     currentIndex: _currentIndex,
                     onTap: (value) => setState(() => _currentIndex = value),
                     type: BottomNavigationBarType.fixed,
                     items: const [
                       BottomNavigationBarItem(
-                        icon: Icon(Icons.home),
+                        icon: Icon(Icons.home_rounded),
                         label: "Accueil",
                       ),
                       BottomNavigationBarItem(
-                        icon: Icon(Icons.menu_book),
+                        icon: Icon(Icons.menu_book_rounded),
                         label: "Bibliothèque",
                       ),
                       BottomNavigationBarItem(
-                        icon: Icon(Icons.person),
+                        icon: Icon(Icons.person_rounded),
                         label: "Profil",
                       ),
                     ],

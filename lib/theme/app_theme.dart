@@ -7,7 +7,6 @@ class AppTheme {
   static const Color lightBg = Color(0xFFF8F9FA);
   static const Color lightCard = Colors.white;
 
-  // 🟣 Tes couleurs exactes :
   static const Color darkBg = Color(0xFF1E1B29); // Fond de l'app (violet nuit)
   static const Color darkCard = Color(0xFF2D283E); // Cartes / Surface
 
@@ -18,24 +17,17 @@ class AppTheme {
         : lightCard;
   }
 
-  static Color getNavBarFixedColor(BuildContext context) {
-    return Theme.of(context).brightness == Brightness.dark
-        ? accentColor
-        : accentColor;
-  }
-
   // --- THÈME CLAIR ---
   static ThemeData lightTheme = ThemeData(
     useMaterial3: true,
     brightness: Brightness.light,
     scaffoldBackgroundColor: lightBg,
     primaryColor: accentColor,
-    // Désactive les reflets bleus au clic :
-    splashColor: accentColor.withOpacity(0.2),
-    highlightColor: accentColor.withOpacity(0.1),
+    splashColor: accentColor.withValues(alpha: 0.2),
+    highlightColor: accentColor.withValues(alpha: 0.1),
     colorScheme: const ColorScheme.light(
       primary: accentColor,
-      secondary: accentColor, // Évite le bleu par défaut
+      secondary: accentColor,
       surface: lightCard,
       onSurface: Colors.black87,
     ),
@@ -51,21 +43,25 @@ class AppTheme {
         fontWeight: FontWeight.bold,
       ),
     ),
+    cardTheme: CardThemeData(
+      color: lightCard,
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+    ),
   );
 
   // --- THÈME SOMBRE ---
   static ThemeData darkTheme = ThemeData(
     useMaterial3: true,
     brightness: Brightness.dark,
-    scaffoldBackgroundColor: darkBg, // 0xFF1E1B29
+    scaffoldBackgroundColor: darkBg,
     primaryColor: accentColor,
-    // Désactive les reflets bleus au clic :
-    splashColor: accentColor.withOpacity(0.2),
-    highlightColor: accentColor.withOpacity(0.1),
+    splashColor: accentColor.withValues(alpha: 0.2),
+    highlightColor: accentColor.withValues(alpha: 0.1),
     colorScheme: const ColorScheme.dark(
       primary: accentColor,
-      secondary: accentColor, // Évite le bleu par défaut
-      surface: darkCard, // 0xFF2D283E
+      secondary: accentColor,
+      surface: darkCard,
       onSurface: Colors.white,
     ),
     appBarTheme: const AppBarTheme(
@@ -79,6 +75,11 @@ class AppTheme {
         fontSize: 18,
         fontWeight: FontWeight.bold,
       ),
+    ),
+    cardTheme: CardThemeData(
+      color: darkCard,
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
     ),
   );
 }

@@ -169,13 +169,14 @@ class StorageService {
   static const String _emptyPayloadHash =
       'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855';
 
-  static String _regionFromHost(String host) {
-    final parts = host.split('.');
-    if (parts.length < 3) {
-      throw ArgumentError('Host inattendu, région introuvable: $host');
-    }
-    return parts[2]; // [bucket, s3, region, backblazeb2, com]
+// Extrait corrigé de _regionFromHost
+static String _regionFromHost(String host) {
+  final parts = host.split('.');
+  if (parts.length < 4) {
+    return 'us-west-004'; // Région B2 par défaut si URL personnalisée
   }
+  return parts[2];
+}
 
   static String _formatAmzDate(DateTime d) {
     String two(int n) => n.toString().padLeft(2, '0');
