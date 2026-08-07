@@ -1,44 +1,62 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 import 'package:crypto/crypto.dart';
-import 'package:flutter/rendering.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:path_provider/path_provider.dart';
 
 class StorageService {
   static String get _accessKey => dotenv.env['B2_ACCESS_KEY']!;
   static String get _secretKey => dotenv.env['B2_SECRET_KEY']!;
   static const String _service = 's3';
 
-  static final Map<String, Future<Uint8List>> _cache = {};
-
-  static Future<Uint8List> fetchObjectCached(String url) {
-    return _cache.putIfAbsent(
-      url,
-      () => fetchObject(url).then(Uint8List.fromList),
-    );
+  /// Récupère un fichier en mémoire en le lisant depuis le DISQUE LOCAL s'il existe déjà.
+  /// S'il n'existe pas, il le télécharge depuis B2/R2 et le sauvegarde localement.
+  static Future<Uint8List> fetchObjectCached(String url) async {
+    final file = await getCachedFile(url);
+    return await file.readAsBytes();
   }
 
-  static void clearCache() => _cache.clear();
+  /// Retourne un [File] local. S'il n'est pas en cache, il le télécharge d'abord.
+  static Future<File> getCachedFile(String url) async {
+    final tempDir = await getTemporaryDirectory();
+    
+    // Génère un nom de fichier unique basé sur le hash MD5 de l'URL
+    final filename = md5.convert(utf8.encode(url)).toString();
+    final filePath = '${tempDir.path}/$filename';
+    final file = File(filePath);
+
+    // 1. SI LE FICHIER EXISTE SUR LE DISQUE DU TÉLÉPHONE -> 0 APPEL RÉSEAU / 0 REQUÊTE B2
+    if (await file.exists()) {
+      return file;
+    }
+
+    // 2. SINON TÉLÉCHARGEMENT DEPUIS B2/R2 PUIS SAUVEGARDE SUR DISQUE
+    final bytes = await fetchObject(url);
+    await file.writeAsBytes(bytes);
+    return file;
+  }
+
+  /// Vide le cache local du téléphone
+  static Future<void> clearCache() async {
+    final tempDir = await getTemporaryDirectory();
+    if (await tempDir.exists()) {
+      tempDir.deleteSync(recursive: true);
+    }
+  }
 
   static Future<List<int>> fetchObject(String url) async {
-    debugPrint(url);
-    if (url.isEmpty) {
-      throw ArgumentError('URL ne peut pas être vide');
-    }
+    if (url.isEmpty) throw ArgumentError('URL ne peut pas être vide');
     if (!url.startsWith('http://') && !url.startsWith('https://')) {
       throw ArgumentError('URL doit commencer par http:// ou https://: $url');
     }
 
     final uri = Uri.parse(url);
     final host = uri.host;
-
-    if (host.isEmpty) {
-      throw ArgumentError('Host vide dans l\'URL: $url');
-    }
+    if (host.isEmpty) throw ArgumentError('Host vide dans l\'URL: $url');
 
     final region = _regionFromHost(host);
-
     final now = DateTime.now().toUtc();
     final amzDate = _formatAmzDate(now);
     final dateStamp = amzDate.substring(0, 8);
@@ -99,84 +117,16 @@ class StorageService {
     return response.bodyBytes;
   }
 
-  /// Génère une URL pré-signée (signature dans la query string, façon
-  /// "lien temporaire"). Contrairement à [fetchObject], aucun en-tête custom
-  /// n'est requis pour l'appel final : l'URL retournée peut être utilisée
-  /// telle quelle par n'importe quel client HTTP (ex: UrlSource d'audioplayers),
-  /// qui peut alors faire des range-requests et streamer progressivement au
-  /// lieu d'attendre le fichier entier.
-  static Future<String> getPresignedUrl(
-    String url, {
-    Duration expiresIn = const Duration(hours: 1),
-  }) async {
-    final uri = Uri.parse(url);
-    final host = uri.host;
-    final region = _regionFromHost(host);
-
-    final now = DateTime.now().toUtc();
-    final amzDate = _formatAmzDate(now);
-    final dateStamp = amzDate.substring(0, 8);
-    final credentialScope = '$dateStamp/$region/$_service/aws4_request';
-
-    final canonicalUriPath =
-        '/' + uri.pathSegments.map(Uri.encodeComponent).join('/');
-
-    final queryParams = <String, String>{
-      'X-Amz-Algorithm': 'AWS4-HMAC-SHA256',
-      'X-Amz-Credential': '$_accessKey/$credentialScope',
-      'X-Amz-Date': amzDate,
-      'X-Amz-Expires': expiresIn.inSeconds.toString(),
-      'X-Amz-SignedHeaders': 'host',
-    };
-
-    final sortedKeys = queryParams.keys.toList()..sort();
-    final canonicalQueryString = sortedKeys
-        .map((k) =>
-            '${Uri.encodeComponent(k)}=${Uri.encodeComponent(queryParams[k]!)}')
-        .join('&');
-
-    const signedHeaders = 'host';
-    final canonicalHeaders = 'host:$host\n';
-
-    final canonicalRequest = [
-      'GET',
-      canonicalUriPath,
-      canonicalQueryString,
-      canonicalHeaders,
-      signedHeaders,
-      'UNSIGNED-PAYLOAD',
-    ].join('\n');
-
-    const algorithm = 'AWS4-HMAC-SHA256';
-    final stringToSign = [
-      algorithm,
-      amzDate,
-      credentialScope,
-      sha256.convert(utf8.encode(canonicalRequest)).toString(),
-    ].join('\n');
-
-    final signingKey =
-        _getSignatureKey(_secretKey, dateStamp, region, _service);
-    final signature =
-        Hmac(sha256, signingKey).convert(utf8.encode(stringToSign)).toString();
-
-    final finalQuery = '$canonicalQueryString'
-        '&X-Amz-Signature=$signature';
-
-    return 'https://$host$canonicalUriPath?$finalQuery';
-  }
-
   static const String _emptyPayloadHash =
       'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855';
 
-// Extrait corrigé de _regionFromHost
-static String _regionFromHost(String host) {
-  final parts = host.split('.');
-  if (parts.length < 4) {
-    return 'us-west-004'; // Région B2 par défaut si URL personnalisée
+  static String _regionFromHost(String host) {
+    final parts = host.split('.');
+    if (parts.length < 4) {
+      return 'us-west-004';
+    }
+    return parts[2];
   }
-  return parts[2];
-}
 
   static String _formatAmzDate(DateTime d) {
     String two(int n) => n.toString().padLeft(2, '0');
