@@ -33,6 +33,11 @@ dependencies:
   flutter_timezone: ^5.1.0
   cached_network_image: ^3.4.1
   path_provider: ^2.1.2
+  audio_service: ^0.18.15
+  audio_session: ^0.1.16
+  just_audio: ^0.9.36
+
+
 
 dev_dependencies:
   flutter_test:
