@@ -286,7 +286,7 @@ class _HeroAssetsSection extends StatelessWidget {
                 child: // Shadow drop
                     Container(
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(80),
+                    borderRadius: BorderRadius.circular(100),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withOpacity(0.25),
@@ -301,9 +301,9 @@ class _HeroAssetsSection extends StatelessWidget {
                     ],
                   ),
                   child: ClipRRect(
-                    borderRadius: BorderRadius.circular(80),
+                    borderRadius: BorderRadius.circular(100),
                     child: Image.asset(
-                      'assets/images/boy_avatar.png',
+                      'assets/images/boy_onboarding.png',
                       width: 220,
                       height: 220,
                       fit: BoxFit.cover,

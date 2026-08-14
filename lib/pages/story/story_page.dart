@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:audio_service/audio_service.dart';
 import 'package:lumiconte/models/profile_model.dart';
 import 'package:lumiconte/models/story_model.dart';
 import 'package:lumiconte/models/settings_model.dart';
@@ -10,6 +11,8 @@ import 'package:lumiconte/pages/story/story_immersive_view.dart';
 import 'package:lumiconte/pages/story/story_manuscript_view.dart';
 import 'package:lumiconte/pages/story/story_view_params.dart';
 import 'package:lumiconte/services/reading_progress_service.dart';
+import 'package:lumiconte/services/audio_background_service.dart';
+import 'package:lumiconte/services/audio_notification_service.dart';
 
 class StoryPage extends StatefulWidget {
   final StoryModel story;
@@ -40,6 +43,10 @@ class _StoryPageState extends State<StoryPage> {
   final ReadingProgressService _readingProgressService =
       ReadingProgressService();
 
+  // Services pour l'audio en arrière-plan
+  late AudioBackgroundService _audioBackgroundService;
+  late AudioNotificationService _audioNotificationService;
+
   @override
   void initState() {
     super.initState();
@@ -51,10 +58,36 @@ class _StoryPageState extends State<StoryPage> {
         .doc(widget.profile.id)
         .collection('settings');
 
+    // Initialiser les services d'audio en arrière-plan
+    _audioBackgroundService = AudioBackgroundService();
+    _audioNotificationService = AudioNotificationService();
+    _initializeBackgroundAudioService();
+
     _initializePages();
     _initializeAudio();
 
     _loadReadingProgress();
+  }
+
+  /// Initialiser le service d'audio en arrière-plan
+  Future<void> _initializeBackgroundAudioService() async {
+    try {
+      // Initialiser le service audio
+      await _audioBackgroundService.init();
+      await _audioNotificationService.init();
+
+      // Écouter l'état de lecture depuis le service
+      _audioBackgroundService.playbackState.listen((playbackState) {
+        if (mounted) {
+          setState(() {
+            _isPlaying = playbackState.playing;
+            _audioPosition = playbackState.position;
+          });
+        }
+      });
+    } catch (e) {
+      debugPrint('Erreur initialisation service audio: $e');
+    }
   }
 
   Future<void> _loadReadingProgress() async {
@@ -110,10 +143,9 @@ class _StoryPageState extends State<StoryPage> {
     return _pages.length - 1;
   }
 
-int _calculateProgress() {
+  int _calculateProgress() {
     if (_pages.isEmpty) return 0;
 
-    // Si on est sur la dernière page, on force directement à 100%
     if (_currentPage >= _pages.length - 1) {
       return 100;
     }
@@ -126,15 +158,12 @@ int _calculateProgress() {
     if (totalCharacters == 0) return 0;
 
     int readCharacters = 0;
-    // On compte les caractères des pages lues + la page en cours
     for (int i = 0; i <= _currentPage; i++) {
       readCharacters += _pages[i].length;
     }
 
-    // Calcul du pourcentage basé sur le nombre de caractères
     final double percentage = (readCharacters / totalCharacters) * 100;
 
-    // On s'assure que ça reste entre 0 et 99 tant qu'on n'est pas sur la toute dernière page
     return percentage.round().clamp(0, 99);
   }
 
@@ -196,6 +225,8 @@ int _calculateProgress() {
       _audio!.onPositionChanged.listen((position) {
         if (mounted && !_isSeeking) {
           setState(() => _audioPosition = position);
+          // Mettre à jour la notification avec la position
+          _updateAudioNotification();
         }
       });
       _audio!.onDurationChanged.listen((duration) {
@@ -215,7 +246,10 @@ int _calculateProgress() {
         _isSeeking = true;
       });
       await _audio?.seekToStart();
-      if (mounted) setState(() => _isSeeking = false);
+      if (mounted) {
+        setState(() => _isSeeking = false);
+        _updateAudioNotification();
+      }
     } catch (e) {
       debugPrint('Erreur fin audio: $e');
       if (mounted) setState(() => _isSeeking = false);
@@ -226,8 +260,10 @@ int _calculateProgress() {
     setState(() => _isSeeking = true);
     try {
       await _audio?.seek(Duration(seconds: value.toInt()));
-      if (mounted)
+      if (mounted) {
         setState(() => _audioPosition = Duration(seconds: value.toInt()));
+        _updateAudioNotification();
+      }
     } catch (e) {
       debugPrint('Erreur seek: $e');
     } finally {
@@ -239,6 +275,7 @@ int _calculateProgress() {
     if (_isPlaying) {
       await _audio?.pause();
       setState(() => _isPlaying = false);
+      _updateAudioNotification();
       return;
     }
 
@@ -258,7 +295,10 @@ int _calculateProgress() {
     setState(() => _isLoading = true);
     try {
       await _audio?.play();
-      if (mounted) setState(() => _isPlaying = true);
+      if (mounted) {
+        setState(() => _isPlaying = true);
+        _updateAudioNotification();
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -270,7 +310,27 @@ int _calculateProgress() {
     }
   }
 
-  // Algorithmes de texte / dyslexie (restent ici car c'est de la logique pure)
+  /// Mettre à jour la notification de lecture audio
+  void _updateAudioNotification() {
+    if (!_isAudio) return;
+
+    final progress = _audioDuration.inSeconds > 0
+        ? ((_audioPosition.inSeconds / _audioDuration.inSeconds) * 100)
+            .toInt()
+            .clamp(0, 100)
+        : 0;
+
+    _audioNotificationService.showPlaybackProgressNotification(
+      title: widget.story.name,
+      subtitle: _isPlaying ? 'En cours de lecture...' : 'En pause',
+      isPlaying: _isPlaying,
+      progress: progress,
+      position: _audioPosition,
+      duration: _audioDuration,
+    );
+  }
+
+  // Algorithmes de texte / dyslexie (inchangé)
   List<TextSpan> _parseWordToDyslexiaSpans(
     String word,
     TextStyle baseDysStyle,
@@ -451,6 +511,8 @@ int _calculateProgress() {
   @override
   void dispose() {
     _audio?.dispose();
+    // Masquer la notification quand on quitte la page
+    _audioNotificationService.hideNotification();
     super.dispose();
   }
 
