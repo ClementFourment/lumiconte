@@ -63,7 +63,7 @@ class _StoryPageState extends State<StoryPage> {
     _initializeBackgroundAudioService();
 
     // Initialisation de la synchro JSON
-   _syncService.initializeFromStory(widget.story, maxCharsPerPage: 150);
+    _syncService.initializeFromStory(widget.story, maxCharsPerPage: 150);
 
     _initializePages();
     _initializeAudio();
@@ -168,13 +168,6 @@ class _StoryPageState extends State<StoryPage> {
   }
 
   void _initializePages() {
-    // Si la synchronisation JSON est disponible, utiliser sa pagination
-    if (_syncService.pages.isNotEmpty) {
-      _pages = _syncService.pages.map((p) => p.fullText).toList();
-      return;
-    }
-
-    // Sinon, découpage classique par nombre de caractères
     final rawText = widget.story.content
         .replaceAll(r'\n', '\n\n')
         .replaceAll(RegExp(r'[ \t]+'), ' ')
@@ -189,7 +182,7 @@ class _StoryPageState extends State<StoryPage> {
     const int maxCharsPerPage = 150;
     final sentenceRegExp = RegExp(r'[^.!?]+[.!?]+[\s»"”\)]*');
     Iterable<RegExpMatch> matches = sentenceRegExp.allMatches(text);
-    
+
     List<String> units = matches.map((m) => m.group(0)!.trim()).toList();
     if (units.isEmpty) units = [text.trim()];
 

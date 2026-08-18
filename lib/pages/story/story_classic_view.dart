@@ -21,14 +21,6 @@ class StoryClassicView extends StatefulWidget {
 }
 
 class _StoryClassicViewState extends State<StoryClassicView> {
-  late String? _currentImageUrl;
-
-  @override
-  void initState() {
-    super.initState();
-    _currentImageUrl = widget.params.image;
-  }
-
   @override
   Widget build(BuildContext context) {
     final Color backgroundColor =
@@ -306,7 +298,6 @@ class _StoryClassicViewState extends State<StoryClassicView> {
 
   /// Rend le texte avec surlignage mot par mot si la synchronisation existe, sinon rendu standard
   Widget _buildTextContent(Color defaultTextColor) {
-    // Si nous avons les données JSON de synchronisation audio
     if (widget.params.currentSegments.isNotEmpty) {
       final double currentTimeInSeconds =
           widget.params.audioPosition.inMilliseconds / 1000.0;
@@ -358,19 +349,22 @@ class _StoryClassicViewState extends State<StoryClassicView> {
   }
 
   Widget _buildStoryImage() {
+    String? imageUrl = widget.params.image;
+
     final pattern = RegExp(r'\[img:(\d+)\]');
     final match = pattern.firstMatch(widget.params.currentPageText);
 
     if (match != null &&
-        widget.params.illustrationsPath != '' &&
-        widget.params.illustrationsPath?.isNotEmpty == true) {
+        widget.params.illustrationsPath != null &&
+        widget.params.illustrationsPath!.isNotEmpty) {
       final imgNumber = match.group(1);
-      _currentImageUrl =
-          '${widget.params.illustrationsPath}/img$imgNumber.webp';
+      imageUrl = '${widget.params.illustrationsPath}/img$imgNumber.webp';
     }
+
     return SizedBox.expand(
       child: B2Image(
-        objectKey: _currentImageUrl,
+        key: ValueKey(imageUrl),
+        objectKey: imageUrl,
         width: double.infinity,
         height: double.infinity,
         fit: BoxFit.cover,
