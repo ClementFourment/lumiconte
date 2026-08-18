@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lumiconte/models/audio_sync_model.dart';
 
 class StoryViewParams {
   final String currentPageText;
@@ -14,6 +15,7 @@ class StoryViewParams {
   final bool isDyslexia;
   final String? image;
   final String? illustrationsPath;
+  final List<SegmentTiming> currentSegments; // <-- Ajout des segments synchronisés
   final VoidCallback onBack;
   final VoidCallback onToggleFavorite;
   final VoidCallback onNextPage;
@@ -41,6 +43,7 @@ class StoryViewParams {
     required this.isDyslexia,
     required this.image,
     required this.illustrationsPath,
+    this.currentSegments = const [],
     required this.onBack,
     required this.onToggleFavorite,
     required this.onNextPage,

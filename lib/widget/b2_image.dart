@@ -4,6 +4,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 class B2Image extends StatelessWidget {
   final String? objectKey;
   final BoxFit fit;
+  final Alignment alignment; // 1. Ajout de l'alignement
   final double? width;
   final double? height;
   final BorderRadius? borderRadius;
@@ -14,6 +15,7 @@ class B2Image extends StatelessWidget {
     super.key,
     required this.objectKey,
     this.fit = BoxFit.cover,
+    this.alignment = const Alignment(0.0, -0.25), // 2. Valeur par défaut décalée de 5% vers le haut
     this.width,
     this.height,
     this.borderRadius,
@@ -32,6 +34,7 @@ class B2Image extends StatelessWidget {
     Widget image = CachedNetworkImage(
       imageUrl: url,
       fit: fit,
+      alignment: alignment, // 3. Transmission à CachedNetworkImage
       width: width,
       height: height,
       placeholder: (context, url) =>

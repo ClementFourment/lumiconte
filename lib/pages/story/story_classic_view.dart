@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:lumiconte/models/audio_sync_model.dart';
 import 'package:lumiconte/pages/story/story_view_params.dart';
 import 'package:lumiconte/widget/b2_image.dart';
 
@@ -24,15 +25,8 @@ class _StoryClassicViewState extends State<StoryClassicView> {
 
   @override
   void initState() {
-    debugPrint('classic');
     super.initState();
     _currentImageUrl = widget.params.image;
-  }
-
-  void updateImageUrl(String newUrl) {
-    setState(() {
-      _currentImageUrl = newUrl;
-    });
   }
 
   @override
@@ -57,7 +51,7 @@ class _StoryClassicViewState extends State<StoryClassicView> {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           child: Column(
             children: [
-              // 1. App Bar supérieure
+              // 1. App Bar
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -68,7 +62,6 @@ class _StoryClassicViewState extends State<StoryClassicView> {
                     iconColor: textColor,
                   ),
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       _CircleIconButton(
                         icon: widget.params.isFavorite
@@ -80,8 +73,7 @@ class _StoryClassicViewState extends State<StoryClassicView> {
                             ? const Color(0xFFEF4444)
                             : textColor,
                       ),
-                      const Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 6)),
+                      const SizedBox(width: 6),
                       _CircleIconButton(
                         icon: Icons.settings,
                         onPressed: () => context.push('/settings', extra: {
@@ -116,23 +108,21 @@ class _StoryClassicViewState extends State<StoryClassicView> {
                     borderRadius: BorderRadius.circular(28),
                     child: LayoutBuilder(
                       builder: (context, constraints) {
-                        // Calcul dynamique de la position de la jonction (40% pour l'image)
                         final double junctionTop =
-                            (constraints.maxHeight * 0.4) - 20;
+                            (constraints.maxHeight * 0.5) - 20;
 
                         return Stack(
                           children: [
-                            // Structure interne en Flex (40% image / 60% texte)
                             Column(
                               children: [
-                                // Image : 40% du conteneur
+                                // Image
                                 Expanded(
-                                  flex: 4,
+                                  flex: 5,
                                   child: _buildStoryImage(),
                                 ),
-                                // Texte : 60% du conteneur
+                                // Texte
                                 Expanded(
-                                  flex: 6,
+                                  flex: 5,
                                   child: GestureDetector(
                                     onHorizontalDragEnd: (details) {
                                       if (details.primaryVelocity! > 0) {
@@ -143,7 +133,6 @@ class _StoryClassicViewState extends State<StoryClassicView> {
                                     },
                                     child: Column(
                                       children: [
-                                        // Zone de texte scrollable
                                         Expanded(
                                           child: SingleChildScrollView(
                                             padding: const EdgeInsets.fromLTRB(
@@ -152,27 +141,15 @@ class _StoryClassicViewState extends State<StoryClassicView> {
                                               child: AnimatedSwitcher(
                                                 duration: const Duration(
                                                     milliseconds: 300),
-                                                child: RichText(
-                                                  key: ValueKey(widget
-                                                      .params.currentPageIndex),
-                                                  textAlign: TextAlign.center,
-                                                  text: widget.params
-                                                      .buildColorizedText(
-                                                    text: _getCleanPageText(
-                                                        widget.params
-                                                            .currentPageText),
-                                                    baseFontSize:
-                                                        widget.params.fontSize,
-                                                    defaultTextColor: textColor,
-                                                    isDyslexiaEnabled: widget
-                                                        .params.isDyslexia,
-                                                  ),
+                                                child: KeyedSubtree(
+                                                  key: ValueKey(widget.params.currentPageIndex),
+                                                  child: _buildTextContent(textColor),
                                                 ),
                                               ),
                                             ),
                                           ),
                                         ),
-                                        // Compteur de pages séparé en bas, sans chevauchement
+                                        // Page Counter
                                         Padding(
                                           padding: const EdgeInsets.only(
                                               bottom: 12, top: 4),
@@ -193,7 +170,7 @@ class _StoryClassicViewState extends State<StoryClassicView> {
                               ],
                             ),
 
-                            // Boutons Flottants < et > positionnés exactement à la jonction (40%)
+                            // Controls Flottants
                             Positioned(
                               top: junctionTop,
                               left: 12,
@@ -323,6 +300,59 @@ class _StoryClassicViewState extends State<StoryClassicView> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  /// Rend le texte avec surlignage mot par mot si la synchronisation existe, sinon rendu standard
+  Widget _buildTextContent(Color defaultTextColor) {
+    // Si nous avons les données JSON de synchronisation audio
+    if (widget.params.currentSegments.isNotEmpty) {
+      final double currentTimeInSeconds =
+          widget.params.audioPosition.inMilliseconds / 1000.0;
+
+      return Wrap(
+        alignment: WrapAlignment.center,
+        spacing: 4.0,
+        runSpacing: 6.0,
+        children: widget.params.currentSegments.expand((segment) {
+          return segment.words.map((wordTiming) {
+            final bool isActive = currentTimeInSeconds >= wordTiming.start &&
+                currentTimeInSeconds <= wordTiming.end;
+
+            return AnimatedContainer(
+              duration: const Duration(milliseconds: 80),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 3.0, vertical: 1.0),
+              decoration: BoxDecoration(
+                color: isActive
+                    ? const Color(0xFFF59E0B).withOpacity(0.4)
+                    : Colors.transparent,
+                borderRadius: BorderRadius.circular(4.0),
+              ),
+              child: Text(
+                wordTiming.word,
+                style: TextStyle(
+                  fontSize: widget.params.fontSize,
+                  fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+                  color: isActive ? Colors.amber.shade900 : defaultTextColor,
+                  height: 1.5,
+                ),
+              ),
+            );
+          });
+        }).toList(),
+      );
+    }
+
+    // Affichage standard en mode dyslexie ou texte simple
+    return RichText(
+      textAlign: TextAlign.center,
+      text: widget.params.buildColorizedText(
+        text: _getCleanPageText(widget.params.currentPageText),
+        baseFontSize: widget.params.fontSize,
+        defaultTextColor: defaultTextColor,
+        isDyslexiaEnabled: widget.params.isDyslexia,
       ),
     );
   }

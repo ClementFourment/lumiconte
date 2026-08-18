@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:audio_service/audio_service.dart';
 import 'package:lumiconte/models/profile_model.dart';
 import 'package:lumiconte/models/story_model.dart';
 import 'package:lumiconte/models/settings_model.dart';
+import 'package:lumiconte/models/audio_sync_model.dart';
 import 'package:lumiconte/widget/b2_audio.dart';
 import 'package:lumiconte/pages/story/story_classic_view.dart';
 import 'package:lumiconte/pages/story/story_immersive_view.dart';
@@ -13,6 +13,7 @@ import 'package:lumiconte/pages/story/story_view_params.dart';
 import 'package:lumiconte/services/reading_progress_service.dart';
 import 'package:lumiconte/services/audio_background_service.dart';
 import 'package:lumiconte/services/audio_notification_service.dart';
+import 'package:lumiconte/services/story_sync_service.dart';
 
 class StoryPage extends StatefulWidget {
   final StoryModel story;
@@ -26,6 +27,8 @@ class StoryPage extends StatefulWidget {
 
 class _StoryPageState extends State<StoryPage> {
   late List<String> _pages;
+  final StorySyncService _syncService = StorySyncService();
+
   int _currentPage = 0;
   bool _isFavorite = false;
   bool _isPlaying = false;
@@ -40,10 +43,7 @@ class _StoryPageState extends State<StoryPage> {
   late final String _uid;
   late final CollectionReference _settingsCollection;
 
-  final ReadingProgressService _readingProgressService =
-      ReadingProgressService();
-
-  // Services pour l'audio en arrière-plan
+  final ReadingProgressService _readingProgressService = ReadingProgressService();
   late AudioBackgroundService _audioBackgroundService;
   late AudioNotificationService _audioNotificationService;
 
@@ -58,35 +58,46 @@ class _StoryPageState extends State<StoryPage> {
         .doc(widget.profile.id)
         .collection('settings');
 
-    // Initialiser les services d'audio en arrière-plan
     _audioBackgroundService = AudioBackgroundService();
     _audioNotificationService = AudioNotificationService();
     _initializeBackgroundAudioService();
 
+    // Initialisation de la synchro JSON
+   _syncService.initializeFromStory(widget.story, maxCharsPerPage: 150);
+
     _initializePages();
     _initializeAudio();
-
     _loadReadingProgress();
   }
 
-  /// Initialiser le service d'audio en arrière-plan
   Future<void> _initializeBackgroundAudioService() async {
     try {
-      // Initialiser le service audio
       await _audioBackgroundService.init();
       await _audioNotificationService.init();
 
-      // Écouter l'état de lecture depuis le service
       _audioBackgroundService.playbackState.listen((playbackState) {
         if (mounted) {
           setState(() {
             _isPlaying = playbackState.playing;
             _audioPosition = playbackState.position;
           });
+          _checkPageChangeForAudio(_audioPosition);
         }
       });
     } catch (e) {
       debugPrint('Erreur initialisation service audio: $e');
+    }
+  }
+
+  void _checkPageChangeForAudio(Duration position) {
+    if (_syncService.pages.isNotEmpty && _isPlaying) {
+      final double currentTimeInSeconds = position.inMilliseconds / 1000.0;
+      final targetPage = _syncService.getPageIndexForTime(currentTimeInSeconds);
+      if (targetPage != _currentPage && targetPage < _pages.length) {
+        setState(() {
+          _currentPage = targetPage;
+        });
+      }
     }
   }
 
@@ -99,14 +110,11 @@ class _StoryPageState extends State<StoryPage> {
 
       if (progress != null) {
         setState(() {
-          _currentPage = _calculatePageFromProgress(
-            progress.progress,
-          );
+          _currentPage = _calculatePageFromProgress(progress.progress);
           _isProgressLoaded = true;
         });
       } else {
         await _updateReadingProgress(1);
-
         setState(() {
           _currentPage = 0;
           _isProgressLoaded = true;
@@ -114,47 +122,28 @@ class _StoryPageState extends State<StoryPage> {
       }
     } catch (e) {
       debugPrint('Erreur chargement progression : $e');
-      setState(() {
-        _isProgressLoaded = true;
-      });
+      setState(() => _isProgressLoaded = true);
     }
   }
 
   int _calculatePageFromProgress(int progress) {
     if (_pages.isEmpty) return 0;
-
-    final totalCharacters = _pages.fold(
-      0,
-      (sum, page) => sum + page.length,
-    );
-
+    final totalCharacters = _pages.fold(0, (sum, page) => sum + page.length);
     final targetCharacters = totalCharacters * progress / 100;
 
     int currentCharacters = 0;
-
     for (int i = 0; i < _pages.length; i++) {
       currentCharacters += _pages[i].length;
-
-      if (currentCharacters >= targetCharacters) {
-        return i;
-      }
+      if (currentCharacters >= targetCharacters) return i;
     }
-
     return _pages.length - 1;
   }
 
   int _calculateProgress() {
     if (_pages.isEmpty) return 0;
+    if (_currentPage >= _pages.length - 1) return 100;
 
-    if (_currentPage >= _pages.length - 1) {
-      return 100;
-    }
-
-    final totalCharacters = _pages.fold(
-      0,
-      (sum, page) => sum + page.length,
-    );
-
+    final totalCharacters = _pages.fold(0, (sum, page) => sum + page.length);
     if (totalCharacters == 0) return 0;
 
     int readCharacters = 0;
@@ -163,7 +152,6 @@ class _StoryPageState extends State<StoryPage> {
     }
 
     final double percentage = (readCharacters / totalCharacters) * 100;
-
     return percentage.round().clamp(0, 99);
   }
 
@@ -180,6 +168,13 @@ class _StoryPageState extends State<StoryPage> {
   }
 
   void _initializePages() {
+    // Si la synchronisation JSON est disponible, utiliser sa pagination
+    if (_syncService.pages.isNotEmpty) {
+      _pages = _syncService.pages.map((p) => p.fullText).toList();
+      return;
+    }
+
+    // Sinon, découpage classique par nombre de caractères
     final rawText = widget.story.content
         .replaceAll(r'\n', '\n\n')
         .replaceAll(RegExp(r'[ \t]+'), ' ')
@@ -190,49 +185,38 @@ class _StoryPageState extends State<StoryPage> {
     _pages = _splitTextIntoPages(rawText);
   }
 
-List<String> _splitTextIntoPages(String text) {
-  const int maxCharsPerPage = 150;
+  List<String> _splitTextIntoPages(String text) {
+    const int maxCharsPerPage = 150;
+    final sentenceRegExp = RegExp(r'[^.!?]+[.!?]+[\s»"”\)]*');
+    Iterable<RegExpMatch> matches = sentenceRegExp.allMatches(text);
+    
+    List<String> units = matches.map((m) => m.group(0)!.trim()).toList();
+    if (units.isEmpty) units = [text.trim()];
 
-  // 1. Découpage intelligent par phrases en conservant les guillemets collés à la fin
-  final sentenceRegExp = RegExp(r'[^.!?]+[.!?]+[\s»"”\)]*');
-  Iterable<RegExpMatch> matches = sentenceRegExp.allMatches(text);
-  
-  List<String> units = matches.map((m) => m.group(0)!.trim()).toList();
+    final pages = <String>[];
+    String currentPage = '';
 
-  // Sécurité si aucune ponctuation n'est trouvée
-  if (units.isEmpty) {
-    units = [text.trim()];
-  }
+    for (var unit in units) {
+      if (currentPage.isEmpty) {
+        currentPage = unit;
+        continue;
+      }
 
-  final pages = <String>[];
-  String currentPage = '';
+      final testPage = '$currentPage $unit';
+      final bool endsWithQuote = RegExp(r'[»"”\)]\s*$').hasMatch(unit);
+      final int allowedLimit = endsWithQuote ? maxCharsPerPage + 25 : maxCharsPerPage;
 
-  for (var unit in units) {
-    if (currentPage.isEmpty) {
-      currentPage = unit;
-      continue;
+      if (testPage.length > allowedLimit) {
+        pages.add(currentPage.trim());
+        currentPage = unit;
+      } else {
+        currentPage = testPage;
+      }
     }
 
-    final testPage = '$currentPage $unit';
-
-    // 2. Si l'unité ferme une citation, on tolère un très léger dépassement (ex: 175 chars max)
-    final bool endsWithQuote = RegExp(r'[»"”\)]\s*$').hasMatch(unit);
-    final int allowedLimit = endsWithQuote ? maxCharsPerPage + 25 : maxCharsPerPage;
-
-    if (testPage.length > allowedLimit) {
-      pages.add(currentPage.trim());
-      currentPage = unit;
-    } else {
-      currentPage = testPage;
-    }
+    if (currentPage.isNotEmpty) pages.add(currentPage.trim());
+    return pages.isEmpty ? [text] : pages;
   }
-
-  if (currentPage.isNotEmpty) {
-    pages.add(currentPage.trim());
-  }
-
-  return pages.isEmpty ? [text] : pages;
-}
 
   void _initializeAudio() {
     _isAudio = widget.story.audio?.isNotEmpty == true &&
@@ -248,14 +232,12 @@ List<String> _splitTextIntoPages(String text) {
       _audio!.onPositionChanged.listen((position) {
         if (mounted && !_isSeeking) {
           setState(() => _audioPosition = position);
-          // Mettre à jour la notification avec la position
+          _checkPageChangeForAudio(position);
           _updateAudioNotification();
         }
       });
       _audio!.onDurationChanged.listen((duration) {
-        if (mounted) {
-          setState(() => _audioDuration = duration);
-        }
+        if (mounted) setState(() => _audioDuration = duration);
       });
     }
   }
@@ -333,7 +315,6 @@ List<String> _splitTextIntoPages(String text) {
     }
   }
 
-  /// Mettre à jour la notification de lecture audio
   void _updateAudioNotification() {
     if (!_isAudio) return;
 
@@ -353,7 +334,6 @@ List<String> _splitTextIntoPages(String text) {
     );
   }
 
-  // Algorithmes de texte / dyslexie (inchangé)
   List<TextSpan> _parseWordToDyslexiaSpans(
     String word,
     TextStyle baseDysStyle,
@@ -364,10 +344,7 @@ List<String> _splitTextIntoPages(String text) {
     final Color colorSilent = defaultTextColor.withOpacity(0.35);
 
     if (word.trim().isEmpty) {
-      return [
-        TextSpan(
-            text: word, style: baseDysStyle.copyWith(color: defaultTextColor))
-      ];
+      return [TextSpan(text: word, style: baseDysStyle.copyWith(color: defaultTextColor))];
     }
 
     final matchStart = RegExp(r'^[^a-zA-ZÀ-ÿ«»]+').firstMatch(word);
@@ -380,39 +357,29 @@ List<String> _splitTextIntoPages(String text) {
     if (prefix.length + suffix.length < word.length) {
       cleanWord = word.substring(prefix.length, word.length - suffix.length);
     } else {
-      return [
-        TextSpan(
-            text: word, style: baseDysStyle.copyWith(color: defaultTextColor))
-      ];
+      return [TextSpan(text: word, style: baseDysStyle.copyWith(color: defaultTextColor))];
     }
 
     if (cleanWord.isEmpty) {
-      return [
-        TextSpan(
-            text: word, style: baseDysStyle.copyWith(color: defaultTextColor))
-      ];
+      return [TextSpan(text: word, style: baseDysStyle.copyWith(color: defaultTextColor))];
     }
 
     String silentLetters = '';
-    final silentMatch = RegExp(r'(ts|ds|es|[stdxega])$', caseSensitive: false)
-        .firstMatch(cleanWord);
+    final silentMatch = RegExp(r'(ts|ds|es|[stdxega])$', caseSensitive: false).firstMatch(cleanWord);
 
     if (silentMatch != null &&
         cleanWord.length > 2 &&
-        !['les', 'des', 'mes', 'tes', 'ses', 'est']
-            .contains(cleanWord.toLowerCase())) {
+        !['les', 'des', 'mes', 'tes', 'ses', 'est'].contains(cleanWord.toLowerCase())) {
       String potentialSilent = silentMatch.group(0) ?? '';
       if (cleanWord.length > potentialSilent.length) {
         silentLetters = potentialSilent;
-        cleanWord =
-            cleanWord.substring(0, cleanWord.length - silentLetters.length);
+        cleanWord = cleanWord.substring(0, cleanWord.length - silentLetters.length);
       }
     }
 
     List<TextSpan> wordSpans = [];
     if (prefix.isNotEmpty) {
-      wordSpans.add(TextSpan(
-          text: prefix, style: baseDysStyle.copyWith(color: defaultTextColor)));
+      wordSpans.add(TextSpan(text: prefix, style: baseDysStyle.copyWith(color: defaultTextColor)));
     }
 
     List<String> syllables = [];
@@ -457,8 +424,7 @@ List<String> _splitTextIntoPages(String text) {
     }
 
     if (suffix.isNotEmpty) {
-      wordSpans.add(TextSpan(
-          text: suffix, style: baseDysStyle.copyWith(color: defaultTextColor)));
+      wordSpans.add(TextSpan(text: suffix, style: baseDysStyle.copyWith(color: defaultTextColor)));
     }
 
     return wordSpans;
@@ -497,24 +463,13 @@ List<String> _splitTextIntoPages(String text) {
     List<String> words = text.split(' ');
 
     for (int i = 0; i < words.length; i++) {
-      allSpans.addAll(
-          _parseWordToDyslexiaSpans(words[i], baseDysStyle, defaultTextColor));
+      allSpans.addAll(_parseWordToDyslexiaSpans(words[i], baseDysStyle, defaultTextColor));
       if (i < words.length - 1) {
         allSpans.add(TextSpan(text: ' ', style: baseDysStyle));
       }
     }
 
     return TextSpan(children: allSpans);
-  }
-
-  dynamic _getThemeColors(SettingsModel settings) {
-    if (settings.dyslexia) {
-      return _ThemeColors(
-        backgroundColor: Colors.white,
-        textColor: const Color(0xFF2B261F),
-        accentColor: const Color(0xFF7C3AED),
-      );
-    }
   }
 
   void _goToNextPage() {
@@ -534,7 +489,6 @@ List<String> _splitTextIntoPages(String text) {
   @override
   void dispose() {
     _audio?.dispose();
-    // Masquer la notification quand on quitte la page
     _audioNotificationService.hideNotification();
     super.dispose();
   }
@@ -543,18 +497,16 @@ List<String> _splitTextIntoPages(String text) {
   Widget build(BuildContext context) {
     if (!_isProgressLoaded) {
       return const Scaffold(
-        body: Center(
-          child: CircularProgressIndicator(),
-        ),
+        body: Center(child: CircularProgressIndicator()),
       );
     }
     return StreamBuilder<QuerySnapshot>(
       stream: _settingsCollection.snapshots(),
       builder: (context, snapshot) {
         if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-          return Scaffold(
+          return const Scaffold(
             backgroundColor: Colors.white,
-            body: const Center(child: CircularProgressIndicator()),
+            body: Center(child: CircularProgressIndicator()),
           );
         }
         final settingsDoc = snapshot.data!.docs.first;
@@ -563,8 +515,12 @@ List<String> _splitTextIntoPages(String text) {
           settingsDoc.id,
         );
 
+        final currentSegments = (_syncService.pages.isNotEmpty && _currentPage < _syncService.pages.length)
+            ? _syncService.pages[_currentPage].segments
+            : <SegmentTiming>[];
+
         final storyParams = StoryViewParams(
-          currentPageText: _pages[_currentPage],
+          currentPageText: _pages.isNotEmpty ? _pages[_currentPage] : '',
           currentPageIndex: _currentPage,
           totalPages: _pages.length,
           isFavorite: _isFavorite,
@@ -577,6 +533,7 @@ List<String> _splitTextIntoPages(String text) {
           isDyslexia: settings.dyslexia,
           image: widget.story.image,
           illustrationsPath: widget.story.illustrations,
+          currentSegments: currentSegments,
           onBack: () => Navigator.pop(context),
           onToggleFavorite: () => setState(() => _isFavorite = !_isFavorite),
           onNextPage: _goToNextPage,
@@ -606,16 +563,4 @@ List<String> _splitTextIntoPages(String text) {
       },
     );
   }
-}
-
-class _ThemeColors {
-  final Color backgroundColor;
-  final Color textColor;
-  final Color accentColor;
-
-  _ThemeColors({
-    required this.backgroundColor,
-    required this.textColor,
-    required this.accentColor,
-  });
 }
