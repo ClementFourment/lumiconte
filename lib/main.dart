@@ -4,25 +4,45 @@ import 'package:lumiconte/config/firebase_options.dart';
 import 'package:lumiconte/config/router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:lumiconte/services/app_settings.dart';
 import 'package:lumiconte/theme/app_theme.dart';
 
-final appSettings = AppSettings();
+late final AppSettings appSettings;
 
 void main() async {
+  print("1. Starter main");
   WidgetsFlutterBinding.ensureInitialized();
-  await dotenv.load();
+  
+  print("2. Avant dotenv");
+  await dotenv.load();  
 
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+print("3. Avant Firebase");
+  try {
+    if (Firebase.apps.isEmpty) {
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+      print("Firebase initialisé avec succès : [DEFAULT]");
+    } else {
+      print("Firebase était déjà prêt dans cet isolate.");
+    }
+  } catch (e) {
+    print("Log d'info : Firebase déjà actif ($e)");
+  }
 
-  FirebaseFirestore.instance.settings = const Settings(
-    persistenceEnabled: true,
-    cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
-  );
+  // 🟢 AJOUT OBLIGATOIRE :
+  // Attend que l'application Firebase soit réellement disponible
+  while (Firebase.apps.isEmpty) {
+    await Future.delayed(const Duration(milliseconds: 50));
+  }
 
+  print("4. Instanciation de AppSettings");
+  appSettings = AppSettings();
+  
+  print("5. Initialisation asynchrone des services");
+  await appSettings.init();
+  
+  print("6. Lancement runApp");
   runApp(const LumiconteApp());
 }
 
@@ -45,7 +65,7 @@ class LumiconteApp extends StatelessWidget {
           debugShowCheckedModeBanner: false,
           themeMode: appSettings.isDarkMode ? ThemeMode.dark : ThemeMode.light,
 
-          // ☀️ THÈME CLAIR (AppTheme + tes polices Google)
+          // ☀️ THÈME CLAIR
           theme: AppTheme.lightTheme.copyWith(
             textTheme: GoogleFonts.nunitoTextTheme(lightTextTheme).copyWith(
               titleLarge: GoogleFonts.aBeeZee(
@@ -58,7 +78,7 @@ class LumiconteApp extends StatelessWidget {
             ),
           ),
 
-          // 🌙 THÈME SOMBRE (AppTheme avec 0xFF1E1B29 / 0xFF2D283E + tes polices Google)
+          // 🌙 THÈME SOMBRE
           darkTheme: AppTheme.darkTheme.copyWith(
             textTheme: GoogleFonts.nunitoTextTheme(darkTextTheme).copyWith(
               titleLarge: GoogleFonts.aBeeZee(

@@ -126,26 +126,28 @@ class _StoryImmersiveViewState extends State<StoryImmersiveView> {
 
                   const Spacer(),
 
-                  // Texte de l'histoire
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 300),
-                      child: RichText(
-                        key: ValueKey(widget.params.currentPageIndex),
-                        textAlign: TextAlign.left,
-                        text: widget.params.buildColorizedText(
-                          text:
-                              _getCleanPageText(widget.params.currentPageText),
-                          baseFontSize: widget.params.fontSize,
-                          defaultTextColor: textColor,
-                          isDyslexiaEnabled: widget.params.isDyslexia,
+                  // Texte de l'histoire rendu scrollable pour éviter le chevauchement avec la pagination
+                  Expanded(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 300),
+                        child: RichText(
+                          key: ValueKey(widget.params.currentPageIndex),
+                          textAlign: TextAlign.left,
+                          text: widget.params.buildColorizedText(
+                            text: _getCleanPageText(
+                                widget.params.currentPageText),
+                            baseFontSize: widget.params.fontSize,
+                            defaultTextColor: textColor,
+                            isDyslexiaEnabled: widget.params.isDyslexia,
+                          ),
                         ),
                       ),
                     ),
                   ),
 
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 12),
 
                   // Compteur de pages
                   Text(
@@ -219,7 +221,8 @@ class _StoryImmersiveViewState extends State<StoryImmersiveView> {
                                         .toDouble()
                                     : 1,
                                 value: widget.params.audioPosition.inSeconds
-                                    .clamp(0,
+                                    .clamp(
+                                        0,
                                         widget.params.audioDuration.inSeconds)
                                     .toDouble(),
                                 onChanged: (_) {},

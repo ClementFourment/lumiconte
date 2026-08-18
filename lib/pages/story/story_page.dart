@@ -183,7 +183,10 @@ class _StoryPageState extends State<StoryPage> {
     final rawText = widget.story.content
         .replaceAll(r'\n', '\n\n')
         .replaceAll(RegExp(r'[ \t]+'), ' ')
+        .replaceAll(RegExp(r'«\s*'), '«\u00A0')
+        .replaceAll(RegExp(r'\s*»'), '\u00A0»')
         .trim();
+
     _pages = _splitTextIntoPages(rawText);
   }
 
@@ -196,6 +199,8 @@ class _StoryPageState extends State<StoryPage> {
     for (var sentence in sentences) {
       final testPage =
           currentPage.isEmpty ? sentence : '$currentPage $sentence';
+
+      // Si ajouter la phrase dépasse le seuil et qu'on a déjà du contenu dans la page
       if (testPage.length > charsPerPage && currentPage.isNotEmpty) {
         pages.add(currentPage.trim());
         currentPage = sentence;
@@ -347,8 +352,8 @@ class _StoryPageState extends State<StoryPage> {
       ];
     }
 
-    final matchStart = RegExp(r'^[^a-zA-ZÀ-ÿ]+').firstMatch(word);
-    final matchEnd = RegExp(r'[^a-zA-ZÀ-ÿ]+$').firstMatch(word);
+    final matchStart = RegExp(r'^[^a-zA-ZÀ-ÿ«»]+').firstMatch(word);
+    final matchEnd = RegExp(r'[^a-zA-ZÀ-ÿ«»]+$').firstMatch(word);
 
     String prefix = matchStart?.group(0) ?? '';
     String suffix = matchEnd?.group(0) ?? '';

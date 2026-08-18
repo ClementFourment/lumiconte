@@ -11,6 +11,7 @@ import 'package:lumiconte/widget/story_search_bar.dart';
 import 'package:lumiconte/pages/story/story_page.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lumiconte/widget/lantern_progress_bar.dart';
+import 'package:lumiconte/main.dart';
 
 class HomePage extends StatefulWidget {
   final ProfileModel profile;
@@ -28,9 +29,18 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
+
 class _HomePageState extends State<HomePage> {
   final ReadingProgressService _readingProgressService =
       ReadingProgressService();
+      @override
+void initState() {
+  super.initState();
+  // Demande les permissions une fois l'écran et l'Activity Android affichés
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    appSettings.requestNotificationPermissions();
+  });
+}
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);

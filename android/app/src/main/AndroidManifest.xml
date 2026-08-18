@@ -2,21 +2,12 @@
     package="com.example.lumiconte">
 
     <!-- ==================== PERMISSIONS ==================== -->
-    <!-- Notifications -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-    
-    <!-- Audio en arrière-plan -->
     <uses-permission android:name="android.permission.INTERNET" />
-    
-    <!-- Gestion des services de premier plan -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
-    
-    <!-- Alarmes et réveil du téléphone -->
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
-    
-    <!-- Vibrations et démarrage -->
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
@@ -24,6 +15,11 @@
         android:label="lumiconte"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
+
+        <!-- 🟢 Meta-data requis pour flutter_local_notifications -->
+        <meta-data
+            android:name="com.dexterous.flutterlocalnotifications.default_notification_channel_id"
+            android:value="reading_reminder_channel" />
 
         <!-- ==================== ACTIVITÉ PRINCIPALE ==================== -->
         <activity
@@ -46,7 +42,6 @@
         </activity>
 
         <!-- ==================== SERVICE D'AUDIO ==================== -->
-        <!-- Service pour maintenir la lecture audio en arrière-plan -->
         <service
             android:name="com.ryanheise.audioservice.AudioService"
             android:foregroundServiceType="mediaPlayback"
@@ -57,7 +52,6 @@
         </service>
 
         <!-- ==================== NOTIFICATIONS ==================== -->
-        <!-- Receivers pour les notifications planifiées -->
         <receiver 
             android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver" 
             android:exported="false" />

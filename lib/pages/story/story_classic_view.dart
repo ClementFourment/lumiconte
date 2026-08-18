@@ -35,6 +35,7 @@ class _StoryClassicViewState extends State<StoryClassicView> {
     });
   }
 
+  @override
   Widget build(BuildContext context) {
     final Color backgroundColor =
         widget.isDark ? const Color(0xFF161224) : const Color(0xFFF3F4F6);
@@ -79,8 +80,8 @@ class _StoryClassicViewState extends State<StoryClassicView> {
                             ? const Color(0xFFEF4444)
                             : textColor,
                       ),
-                      Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 6)),
+                      const Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 6)),
                       _CircleIconButton(
                         icon: Icons.settings,
                         onPressed: () => context.push('/settings', extra: {
@@ -140,49 +141,48 @@ class _StoryClassicViewState extends State<StoryClassicView> {
                                         widget.params.onNextPage();
                                       }
                                     },
-                                    child: Stack(
+                                    child: Column(
                                       children: [
-                                        Center(
+                                        // Zone de texte scrollable
+                                        Expanded(
                                           child: SingleChildScrollView(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 28,
-                                              vertical: 16,
-                                            ),
-                                            child: AnimatedSwitcher(
-                                              duration: const Duration(
-                                                  milliseconds: 300),
-                                              child: RichText(
-                                                key: ValueKey(widget
-                                                    .params.currentPageIndex),
-                                                textAlign: TextAlign.center,
-                                                text: widget.params
-                                                    .buildColorizedText(
-                                                  text: _getCleanPageText(widget
-                                                      .params.currentPageText),
-                                                  baseFontSize:
-                                                      widget.params.fontSize,
-                                                  defaultTextColor: textColor,
-                                                  isDyslexiaEnabled:
-                                                      widget.params.isDyslexia,
+                                            padding: const EdgeInsets.fromLTRB(
+                                                28, 16, 28, 12),
+                                            child: Center(
+                                              child: AnimatedSwitcher(
+                                                duration: const Duration(
+                                                    milliseconds: 300),
+                                                child: RichText(
+                                                  key: ValueKey(widget
+                                                      .params.currentPageIndex),
+                                                  textAlign: TextAlign.center,
+                                                  text: widget.params
+                                                      .buildColorizedText(
+                                                    text: _getCleanPageText(
+                                                        widget.params
+                                                            .currentPageText),
+                                                    baseFontSize:
+                                                        widget.params.fontSize,
+                                                    defaultTextColor: textColor,
+                                                    isDyslexiaEnabled: widget
+                                                        .params.isDyslexia,
+                                                  ),
                                                 ),
                                               ),
                                             ),
                                           ),
                                         ),
-                                        // Compteur de pages ancré en bas de la carte
-                                        Positioned(
-                                          bottom: 16,
-                                          left: 0,
-                                          right: 0,
-                                          child: Center(
-                                            child: Text(
-                                              '${widget.params.currentPageIndex + 1} / ${widget.params.totalPages}',
-                                              style: TextStyle(
-                                                fontSize: 13,
-                                                fontWeight: FontWeight.w600,
-                                                color: subtleTextColor,
-                                                letterSpacing: 1.5,
-                                              ),
+                                        // Compteur de pages séparé en bas, sans chevauchement
+                                        Padding(
+                                          padding: const EdgeInsets.only(
+                                              bottom: 12, top: 4),
+                                          child: Text(
+                                            '${widget.params.currentPageIndex + 1} / ${widget.params.totalPages}',
+                                            style: TextStyle(
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w600,
+                                              color: subtleTextColor,
+                                              letterSpacing: 1.5,
                                             ),
                                           ),
                                         ),
@@ -309,7 +309,8 @@ class _StoryClassicViewState extends State<StoryClassicView> {
                                     .toDouble()
                                 : 1,
                             value: widget.params.audioPosition.inSeconds
-                                .clamp(0, widget.params.audioDuration.inSeconds)
+                                .clamp(
+                                    0, widget.params.audioDuration.inSeconds)
                                 .toDouble(),
                             onChanged: (_) {},
                             onChangeEnd: widget.params.onSeekAudio,
