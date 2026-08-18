@@ -190,31 +190,49 @@ class _StoryPageState extends State<StoryPage> {
     _pages = _splitTextIntoPages(rawText);
   }
 
-  List<String> _splitTextIntoPages(String text) {
-    const int charsPerPage = 150;
-    final sentences = text.split(RegExp(r'(?<=[.!?])\s+'));
-    final pages = <String>[];
-    String currentPage = '';
+List<String> _splitTextIntoPages(String text) {
+  const int maxCharsPerPage = 150;
 
-    for (var sentence in sentences) {
-      final testPage =
-          currentPage.isEmpty ? sentence : '$currentPage $sentence';
+  // 1. Découpage intelligent par phrases en conservant les guillemets collés à la fin
+  final sentenceRegExp = RegExp(r'[^.!?]+[.!?]+[\s»"”\)]*');
+  Iterable<RegExpMatch> matches = sentenceRegExp.allMatches(text);
+  
+  List<String> units = matches.map((m) => m.group(0)!.trim()).toList();
 
-      // Si ajouter la phrase dépasse le seuil et qu'on a déjà du contenu dans la page
-      if (testPage.length > charsPerPage && currentPage.isNotEmpty) {
-        pages.add(currentPage.trim());
-        currentPage = sentence;
-      } else {
-        currentPage = testPage;
-      }
-    }
-
-    if (currentPage.isNotEmpty) {
-      pages.add(currentPage.trim());
-    }
-
-    return pages.isEmpty ? [text] : pages;
+  // Sécurité si aucune ponctuation n'est trouvée
+  if (units.isEmpty) {
+    units = [text.trim()];
   }
+
+  final pages = <String>[];
+  String currentPage = '';
+
+  for (var unit in units) {
+    if (currentPage.isEmpty) {
+      currentPage = unit;
+      continue;
+    }
+
+    final testPage = '$currentPage $unit';
+
+    // 2. Si l'unité ferme une citation, on tolère un très léger dépassement (ex: 175 chars max)
+    final bool endsWithQuote = RegExp(r'[»"”\)]\s*$').hasMatch(unit);
+    final int allowedLimit = endsWithQuote ? maxCharsPerPage + 25 : maxCharsPerPage;
+
+    if (testPage.length > allowedLimit) {
+      pages.add(currentPage.trim());
+      currentPage = unit;
+    } else {
+      currentPage = testPage;
+    }
+  }
+
+  if (currentPage.isNotEmpty) {
+    pages.add(currentPage.trim());
+  }
+
+  return pages.isEmpty ? [text] : pages;
+}
 
   void _initializeAudio() {
     _isAudio = widget.story.audio?.isNotEmpty == true &&
