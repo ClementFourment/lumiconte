@@ -1,8 +1,12 @@
+import 'dart:ffi';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class StoryModel {
   final String id;
   final String name;
+  final int? age_min;
+  final int? age_max;
   final String content;
   final String? image;
   final String? illustrations;
@@ -16,6 +20,8 @@ class StoryModel {
   StoryModel({
     required this.id,
     required this.name,
+    required this.age_min,
+    required this.age_max,
     required this.content,
     this.image,
     this.illustrations,
@@ -35,7 +41,8 @@ class StoryModel {
     if (map['audio'] != null && map['audio'] is List) {
       parsedAudio = (map['audio'] as List).map((item) {
         if (item is Map) {
-          return item.map((key, value) => MapEntry(key.toString(), value.toString()));
+          return item
+              .map((key, value) => MapEntry(key.toString(), value.toString()));
         }
         return <String, String>{};
       }).toList();
@@ -50,6 +57,8 @@ class StoryModel {
     return StoryModel(
       id: docId,
       name: map['name'] as String? ?? '',
+      age_min: map['age_min'] as int? ?? null,
+      age_max: map['age_max'] as int? ?? null,
       content: map['content'] as String? ?? '',
       image: map['image'] as String?,
       illustrations: map['illustrations'] as String?,

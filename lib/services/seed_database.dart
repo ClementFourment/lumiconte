@@ -37,6 +37,8 @@ Future<void> seedDatabase() async {
   final story = StoryModel(
     id: '',
     name: 'Mission Lune',
+    age_min: 1,
+    age_max: 10,
     content:
         'bla bla bla la mmission lune bla bla aller sur la lune owi la lune ca brille',
     image: 'lien_image_story',
