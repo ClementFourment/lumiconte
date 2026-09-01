@@ -29,18 +29,18 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
-
 class _HomePageState extends State<HomePage> {
   final ReadingProgressService _readingProgressService =
       ReadingProgressService();
-      @override
-void initState() {
-  super.initState();
-  // Demande les permissions une fois l'écran et l'Activity Android affichés
-  WidgetsBinding.instance.addPostFrameCallback((_) {
-    appSettings.requestNotificationPermissions();
-  });
-}
+  @override
+  void initState() {
+    super.initState();
+    // Demande les permissions une fois l'écran et l'Activity Android affichés
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      appSettings.requestNotificationPermissions();
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -59,6 +59,13 @@ void initState() {
           }))
         .take(10)
         .toList();
+    final int profileAge = widget.profile.age;
+    final adaptedFromAgeStories = widget.stories.where((story) {
+      final int ageMin = story.age_min ?? 0;
+      final int ageMax = story.age_max ?? 99;
+
+      return profileAge >= ageMin && profileAge <= ageMax;
+    }).toList();
 
     return StreamBuilder<List<ReadingProgressModel>>(
       stream: _readingProgressService.getUserReadingProgress(widget.profile.id),
@@ -204,84 +211,12 @@ void initState() {
                     const SizedBox(height: 24),
                   ],
 
-                  const SizedBox(height: 24),
-
-                  // Histoires populaires Header
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          "Histoires populaires",
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: sectionTitleStyle,
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 12),
-
-                  // Histoires populaires Liste
-                  SizedBox(
-                    height: 175,
-                    child: ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: widget.stories.take(10).length,
-                      itemBuilder: (context, index) {
-                        final story = widget.stories[index];
-                        return GestureDetector(
-                          onTap: () => context.push('/story', extra: {
-                            'story': story,
-                            'profile': widget.profile,
-                          }),
-                          child: _buildStoryCard(context, story),
-                        );
-                      },
-                    ),
-                  ),
-
-                  const SizedBox(height: 24),
-                  // Histoires populaires Header
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          "Nouveautés",
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: sectionTitleStyle,
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 12),
-
-                  // Histoires populaires Liste
-                  SizedBox(
-                    height: 175,
-                    child: ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: latestStories.length,
-                      itemBuilder: (context, index) {
-                        final story = latestStories[index];
-
-                        return GestureDetector(
-                          onTap: () => context.push(
-                            '/story',
-                            extra: {
-                              'story': story,
-                              'profile': widget.profile,
-                            },
-                          ),
-                          child: _buildStoryCard(context, story),
-                        );
-                      },
-                    ),
-                  ),
-
-                  const SizedBox(height: 24),
+                  if (adaptedFromAgeStories.isNotEmpty)
+                    _carrousel(
+                        context, "Adapté à ton âge", adaptedFromAgeStories),
+                  _carrousel(context, "Histoires populaires",
+                      widget.stories.sublist(0, 10)),
+                  _carrousel(context, "Nouveautés", latestStories),
                 ],
               ),
             ),
@@ -406,45 +341,49 @@ void initState() {
     );
   }
 
-  Widget _buildCategoryWidget(BuildContext context, CategoryModel category) {
+  Widget _carrousel(
+      BuildContext context, String titleText, List<StoryModel> stories) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final textTheme = theme.textTheme;
+
+    final sectionTitleStyle = textTheme.titleMedium?.copyWith(
+      fontWeight: FontWeight.bold,
+      fontSize: 18,
+      color: colorScheme.onSurface,
+    );
 
     return Container(
-      width: 85,
-      margin: const EdgeInsets.only(right: 12),
-      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
-      decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: colorScheme.outlineVariant.withOpacity(0.2),
-        ),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          ClipOval(
-            child: B2Image(
-              objectKey: category.image,
-              width: 40,
-              height: 40,
-              fit: BoxFit.cover,
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              titleText,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: sectionTitleStyle,
             ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            category.name,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
-            style: theme.textTheme.labelMedium?.copyWith(
-              fontWeight: FontWeight.w600,
-              color: colorScheme.onSurface,
+            const SizedBox(height: 12),
+            SizedBox(
+              height: 175,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                itemCount: stories.length,
+                itemBuilder: (context, index) {
+                  final story = stories[index];
+                  return GestureDetector(
+                    onTap: () => context.push('/story', extra: {
+                      'story': story,
+                      'profile': widget.profile,
+                    }),
+                    child: _buildStoryCard(context, story),
+                  );
+                },
+              ),
             ),
-          ),
-        ],
-      ),
-    );
+            const SizedBox(height: 24),
+          ],
+        ));
   }
 }
