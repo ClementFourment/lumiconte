@@ -92,90 +92,99 @@ class _HomePageState extends State<HomePage> {
           body: SafeArea(
             child: SingleChildScrollView(
               physics: const BouncingScrollPhysics(),
-              padding: const EdgeInsets.only(
-                  left: 20, right: 20, top: 15, bottom: 40),
+              padding: const EdgeInsets.only(top: 15, bottom: 40),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Header
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          "Bonjour ${widget.profile.name} !",
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: textTheme.headlineSmall?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 22,
-                            color: colorScheme.onSurface,
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            "Bonjour ${widget.profile.name} !",
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: textTheme.headlineSmall?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 22,
+                              color: colorScheme.onSurface,
+                            ),
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 10),
-                      GestureDetector(
-                        onTap: () {
-                          context
-                              .findAncestorStateOfType<BottomNavState>()
-                              ?.changeTab(2);
-                        },
-                        child: CircleAvatar(
-                          radius: 22,
-                          backgroundColor: colorScheme.surfaceContainerHigh,
-                          backgroundImage: AssetImage(
-                            widget.profile.avatarPath ??
-                                AppAvatars.defaultAvatar,
+                        const SizedBox(width: 10),
+                        GestureDetector(
+                          onTap: () {
+                            context
+                                .findAncestorStateOfType<BottomNavState>()
+                                ?.changeTab(2);
+                          },
+                          child: CircleAvatar(
+                            radius: 22,
+                            backgroundColor: colorScheme.surfaceContainerHigh,
+                            backgroundImage: AssetImage(
+                              widget.profile.avatarPath ??
+                                  AppAvatars.defaultAvatar,
+                            ),
                           ),
-                        ),
-                      )
-                    ],
+                        )
+                      ],
+                    ),
                   ),
 
                   const SizedBox(height: 20),
 
                   // Barre de Recherche
-                  StorySearchBar(
-                    onStorySelected: (story) {
-                      Navigator.push(
-                        context,
-                        PageRouteBuilder(
-                          transitionDuration: const Duration(milliseconds: 300),
-                          reverseTransitionDuration:
-                              const Duration(milliseconds: 250),
-                          pageBuilder: (_, __, ___) => StoryPage(
-                            story: story,
-                            profile: widget.profile,
-                          ),
-                          transitionsBuilder: (_, animation, __, child) {
-                            final curved = CurvedAnimation(
-                              parent: animation,
-                              curve: Curves.easeOut,
-                            );
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: StorySearchBar(
+                      onStorySelected: (story) {
+                        Navigator.push(
+                          context,
+                          PageRouteBuilder(
+                            transitionDuration:
+                                const Duration(milliseconds: 300),
+                            reverseTransitionDuration:
+                                const Duration(milliseconds: 250),
+                            pageBuilder: (_, __, ___) => StoryPage(
+                              story: story,
+                              profile: widget.profile,
+                            ),
+                            transitionsBuilder: (_, animation, __, child) {
+                              final curved = CurvedAnimation(
+                                parent: animation,
+                                curve: Curves.easeOut,
+                              );
 
-                            return FadeTransition(
-                              opacity: curved,
-                              child: SlideTransition(
-                                position: Tween<Offset>(
-                                  begin: const Offset(0, 0.03),
-                                  end: Offset.zero,
-                                ).animate(curved),
-                                child: child,
-                              ),
-                            );
-                          },
-                        ),
-                      );
-                    },
+                              return FadeTransition(
+                                opacity: curved,
+                                child: SlideTransition(
+                                  position: Tween<Offset>(
+                                    begin: const Offset(0, 0.03),
+                                    end: Offset.zero,
+                                  ).animate(curved),
+                                  child: child,
+                                ),
+                              );
+                            },
+                          ),
+                        );
+                      },
+                    ),
                   ),
 
                   const SizedBox(height: 24),
 
                   // Reprendre la lecture Header
                   if (continueStories.isNotEmpty)
-                    Text(
-                      "Reprendre la lecture",
-                      style: sectionTitleStyle,
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: Text(
+                        "Reprendre la lecture",
+                        style: sectionTitleStyle,
+                      ),
                     ),
 
                   const SizedBox(height: 12),
@@ -186,6 +195,8 @@ class _HomePageState extends State<HomePage> {
                       height: 190,
                       child: ListView.builder(
                         scrollDirection: Axis.horizontal,
+                        physics: const BouncingScrollPhysics(),
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
                         itemCount: continueStories.length,
                         itemBuilder: (context, index) {
                           final story =
@@ -358,17 +369,22 @@ class _HomePageState extends State<HomePage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              titleText,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: sectionTitleStyle,
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Text(
+                titleText,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: sectionTitleStyle,
+              ),
             ),
             const SizedBox(height: 12),
             SizedBox(
               height: 175,
               child: ListView.builder(
                 scrollDirection: Axis.horizontal,
+                physics: const BouncingScrollPhysics(),
+                padding: const EdgeInsets.symmetric(horizontal: 20),
                 itemCount: stories.length,
                 itemBuilder: (context, index) {
                   final story = stories[index];
