@@ -20,9 +20,13 @@ class AppSettings extends ChangeNotifier {
   final FlutterLocalNotificationsPlugin _notificationsPlugin =
       FlutterLocalNotificationsPlugin();
 
-  AppSettings() {
-    _initNotifications();
+  // Constructeur purgé de tout appel prématuré à Firebase
+  AppSettings();
+
+  // 🟢 Méthode d'initialisation explicite appelée après Firebase.initializeApp()
+  Future<void> init() async {
     _initAuthListener();
+    await initNotifications();
   }
 
   void _initAuthListener() {
@@ -36,7 +40,8 @@ class AppSettings extends ChangeNotifier {
     });
   }
 
-  Future<void> _initNotifications() async {
+  // Uniquement l'initialisation technique des notifications
+  Future<void> initNotifications() async {
     tz.initializeTimeZones();
 
     try {
@@ -62,13 +67,20 @@ class AppSettings extends ChangeNotifier {
     );
 
     await _notificationsPlugin.initialize(settings: initializationSettings);
+  }
 
+  Future<void> requestNotificationPermissions() async {
     final androidPlugin =
         _notificationsPlugin.resolvePlatformSpecificImplementation<
             AndroidFlutterLocalNotificationsPlugin>();
+
     if (androidPlugin != null) {
-      await androidPlugin.requestNotificationsPermission();
-      await androidPlugin.requestExactAlarmsPermission();
+      try {
+        await androidPlugin.requestNotificationsPermission();
+        await androidPlugin.requestExactAlarmsPermission();
+      } catch (e) {
+        debugPrint('Demande de permission reportée: $e');
+      }
     }
   }
 

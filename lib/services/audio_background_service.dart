@@ -26,7 +26,10 @@ class AudioBackgroundService extends BaseAudioHandler
     // Écouter les changements de position
     _audioPlayer.positionStream.listen((position) {
       playbackState.add(
-        playbackState.value.copyWith(updatePosition: position),
+        playbackState.value.copyWith(
+          updatePosition: position,
+          bufferedPosition: _audioPlayer.bufferedPosition,
+        ),
       );
     });
 
@@ -35,21 +38,22 @@ class AudioBackgroundService extends BaseAudioHandler
       final currentState = playbackState.value;
       playbackState.add(
         currentState.copyWith(
-          updatePosition: duration ?? Duration.zero,
+          updatePosition: _audioPlayer.position,
+          bufferedPosition: _audioPlayer.bufferedPosition,
         ),
       );
     });
 
     // Écouter l'état de lecture
     _audioPlayer.playingStream.listen((isPlaying) {
-      if (isPlaying) {
-        playbackState.add(
-          playbackState.value.copyWith(
-            playing: true,
-            processingState: AudioProcessingState.ready,
-          ),
-        );
-      }
+      playbackState.add(
+        playbackState.value.copyWith(
+          playing: isPlaying,
+          processingState: isPlaying
+              ? AudioProcessingState.ready
+              : playbackState.value.processingState,
+        ),
+      );
     });
 
     // Initialiser l'état de lecture
@@ -104,7 +108,9 @@ class AudioBackgroundService extends BaseAudioHandler
   Future<void> pause() async {
     try {
       playbackState.add(
-        playbackState.value.copyWith(playing: false),
+        playbackState.value.copyWith(
+          playing: false,
+        ),
       );
       await _audioPlayer.pause();
     } catch (e) {
@@ -117,7 +123,9 @@ class AudioBackgroundService extends BaseAudioHandler
     try {
       await _audioPlayer.seek(position);
       playbackState.add(
-        playbackState.value.copyWith(updatePosition: position),
+        playbackState.value.copyWith(
+          updatePosition: position,
+        ),
       );
     } catch (e) {
       debugPrint('Erreur seek: $e');

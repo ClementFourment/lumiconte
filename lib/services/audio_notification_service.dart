@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:flutter/foundation.dart';
-import 'package:audio_service/audio_service.dart';
 
 /// Service pour gérer les notifications de lecture audio
 class AudioNotificationService {
@@ -19,6 +17,9 @@ class AudioNotificationService {
   static const String _channelId = 'lumiconte_audio_playback';
   static const String _channelName = 'Lumiconte Audio Playback';
   static const int _notificationId = 1;
+
+  // Horodatage pour brider les mises à jour et respecter la limite Android (5.0/sec)
+  DateTime _lastNotificationUpdate = DateTime.fromMillisecondsSinceEpoch(0);
 
   /// Initialiser le service de notification
   Future<void> init() async {
@@ -124,7 +125,7 @@ class AudioNotificationService {
           showsUserInterface: false,
         ),
       ],
-      styleInformation: MediaStyleInformation(
+      styleInformation: const MediaStyleInformation(
         htmlFormatContent: true,
         htmlFormatTitle: true,
       ),
@@ -156,8 +157,17 @@ class AudioNotificationService {
     required int progress, // 0-100
     required Duration position,
     required Duration duration,
+    bool forceUpdate = false,
   }) async {
     if (!_isInitialized) await init();
+
+    // Throttling : bloque les mises à jour si appelées il y a moins d'une seconde
+    final now = DateTime.now();
+    if (!forceUpdate &&
+        now.difference(_lastNotificationUpdate).inMilliseconds < 1000) {
+      return;
+    }
+    _lastNotificationUpdate = now;
 
     // Format du temps
     final positionStr = _formatDuration(position);
@@ -189,7 +199,7 @@ class AudioNotificationService {
           showsUserInterface: false,
         ),
       ],
-      styleInformation: MediaStyleInformation(
+      styleInformation: const MediaStyleInformation(
         htmlFormatContent: true,
         htmlFormatTitle: true,
       ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:lumiconte/models/audio_sync_model.dart';
 import 'package:lumiconte/pages/story/story_view_params.dart';
 import 'package:lumiconte/widget/b2_image.dart';
 
@@ -48,7 +49,7 @@ class _StoryImmersiveViewState extends State<StoryImmersiveView> {
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // 1. Image en plein écran (sans bordure ni délimitation de carte)
+          // 1. Image en plein écran
           GestureDetector(
             onHorizontalDragEnd: (details) {
               if (details.primaryVelocity! > 0) {
@@ -81,7 +82,7 @@ class _StoryImmersiveViewState extends State<StoryImmersiveView> {
             ),
           ),
 
-          // 2. Contenu superposé (SafeArea pour l'UI)
+          // 2. Contenu superposé
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -126,26 +127,21 @@ class _StoryImmersiveViewState extends State<StoryImmersiveView> {
 
                   const Spacer(),
 
-                  // Texte de l'histoire
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 300),
-                      child: RichText(
-                        key: ValueKey(widget.params.currentPageIndex),
-                        textAlign: TextAlign.left,
-                        text: widget.params.buildColorizedText(
-                          text:
-                              _getCleanPageText(widget.params.currentPageText),
-                          baseFontSize: widget.params.fontSize,
-                          defaultTextColor: textColor,
-                          isDyslexiaEnabled: widget.params.isDyslexia,
+                  // Texte de l'histoire avec support du surlignage synchronisé
+                  Expanded(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 300),
+                        child: KeyedSubtree(
+                          key: ValueKey(widget.params.currentPageIndex),
+                          child: _buildTextContent(textColor),
                         ),
                       ),
                     ),
                   ),
 
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 12),
 
                   // Compteur de pages
                   Text(
@@ -160,7 +156,7 @@ class _StoryImmersiveViewState extends State<StoryImmersiveView> {
 
                   const SizedBox(height: 16),
 
-                  // 3. Barre Audio Fondue (sans container opaque)
+                  // 3. Barre Audio
                   if (widget.params.isAudio)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 8.0),
@@ -219,7 +215,8 @@ class _StoryImmersiveViewState extends State<StoryImmersiveView> {
                                         .toDouble()
                                     : 1,
                                 value: widget.params.audioPosition.inSeconds
-                                    .clamp(0,
+                                    .clamp(
+                                        0,
                                         widget.params.audioDuration.inSeconds)
                                     .toDouble(),
                                 onChanged: (_) {},
@@ -235,6 +232,57 @@ class _StoryImmersiveViewState extends State<StoryImmersiveView> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  /// Rend le texte avec surlignage mot par mot si la synchronisation existe, sinon rendu standard
+  Widget _buildTextContent(Color defaultTextColor) {
+    if (widget.params.currentSegments.isNotEmpty) {
+      final double currentTimeInSeconds =
+          widget.params.audioPosition.inMilliseconds / 1000.0;
+
+      return Wrap(
+        alignment: WrapAlignment.start,
+        spacing: 4.0,
+        runSpacing: 6.0,
+        children: widget.params.currentSegments.expand((segment) {
+          return segment.words.map((wordTiming) {
+            final bool isActive = currentTimeInSeconds >= wordTiming.start &&
+                currentTimeInSeconds <= wordTiming.end;
+
+            return AnimatedContainer(
+              duration: const Duration(milliseconds: 80),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 3.0, vertical: 1.0),
+              decoration: BoxDecoration(
+                color: isActive
+                    ? const Color(0xFFF59E0B).withOpacity(0.4)
+                    : Colors.transparent,
+                borderRadius: BorderRadius.circular(4.0),
+              ),
+              child: Text(
+                wordTiming.word,
+                style: TextStyle(
+                  fontSize: widget.params.fontSize,
+                  fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+                  color: isActive ? Colors.amber.shade300 : defaultTextColor,
+                  height: 1.5,
+                ),
+              ),
+            );
+          });
+        }).toList(),
+      );
+    }
+
+    return RichText(
+      textAlign: TextAlign.left,
+      text: widget.params.buildColorizedText(
+        text: _getCleanPageText(widget.params.currentPageText),
+        baseFontSize: widget.params.fontSize,
+        defaultTextColor: defaultTextColor,
+        isDyslexiaEnabled: widget.params.isDyslexia,
       ),
     );
   }
