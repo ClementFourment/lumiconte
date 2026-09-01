@@ -111,7 +111,7 @@ void initState() {
                         onTap: () {
                           context
                               .findAncestorStateOfType<BottomNavState>()
-                              ?.changeTab(2);
+                              ?.changeTab(3);
                         },
                         child: CircleAvatar(
                           radius: 22,

@@ -13,10 +13,11 @@ class AuthService extends FirebaseService {
   final serverClientId =
       '211519231124-ln545r0eq2fhfj1no5ijdrpis9j7u8bj.apps.googleusercontent.com';
 
-  final GoogleSignIn _googleSignIn = GoogleSignIn.instance;
-  final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
-  late UserService _userService;
+  // ⚡ Utilisation de getters dynamiques pour éviter les crashs à l'instanciation
+  GoogleSignIn get _googleSignIn => GoogleSignIn.instance;
+  FirebaseAuth get _firebaseAuth => FirebaseAuth.instance;
 
+  late UserService _userService;
   bool _initialized = false;
 
   AuthService() {
@@ -26,8 +27,7 @@ class AuthService extends FirebaseService {
   Future<void> _ensureInitialized() async {
     if (_initialized) return;
     await _googleSignIn.initialize(
-      serverClientId: serverClientId, // requis sur Android
-      // clientId: clientId, // utile pour iOS/Web si besoin
+      serverClientId: serverClientId,
     );
     _initialized = true;
   }
@@ -38,7 +38,6 @@ class AuthService extends FirebaseService {
       await _ensureInitialized();
 
       final GoogleSignInAccount googleUser = await _googleSignIn.authenticate();
-
       final GoogleSignInAuthentication googleAuth = googleUser.authentication;
 
       if (googleAuth.idToken == null) {
@@ -75,6 +74,7 @@ class AuthService extends FirebaseService {
     }
   }
 
+  // 🍏 Apple Sign In
   Future<UserModel> signInWithApple() async {
     try {
       final rawNonce = _generateNonce();
@@ -99,7 +99,6 @@ class AuthService extends FirebaseService {
 
       if (firebaseUser == null) throw Exception("Erreur authentification");
 
-      // Apple ne fournit le nom que lors de la toute première connexion
       String? displayName = firebaseUser.displayName;
       if (displayName == null &&
           (appleCredential.givenName != null ||
@@ -112,15 +111,13 @@ class AuthService extends FirebaseService {
         }
       }
 
-      // Si l'utilisateur existe déjà dans Firestore, on ne veut pas
-      // écraser ses données avec des valeurs vides à la 2e connexion
       final existingUser = await _userService.getUser(firebaseUser.uid);
 
       final userModel = UserModel(
         uid: firebaseUser.uid,
         email: firebaseUser.email ?? existingUser?.email ?? '',
         displayName: displayName ?? existingUser?.displayName,
-        photoUrl: existingUser?.photoUrl, // Apple ne fournit pas de photo
+        photoUrl: existingUser?.photoUrl,
         subscribed: existingUser?.subscribed ?? false,
         createdAt: existingUser?.createdAt ?? DateTime.now(),
         authProvider: UserAuthProvider.apple,
@@ -194,7 +191,6 @@ class AuthService extends FirebaseService {
   // 🚪 Sign Out
   Future<void> signOut() async {
     try {
-      print('ok');
       await _googleSignIn.signOut();
       await _firebaseAuth.signOut();
     } catch (e) {
