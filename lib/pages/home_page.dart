@@ -114,22 +114,22 @@ class _HomePageState extends State<HomePage> {
                             ),
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 10),
-                      GestureDetector(
-                        onTap: () {
-                          context
-                              .findAncestorStateOfType<BottomNavState>()
-                              ?.changeTab(3);
-                        },
-                        child: CircleAvatar(
-                          radius: 22,
-                          backgroundColor: colorScheme.surfaceContainerHigh,
-                          backgroundImage: AssetImage(
-                            widget.profile.avatarPath ??
-                                AppAvatars.defaultAvatar,
+                        const SizedBox(width: 10),
+                        GestureDetector(
+                          onTap: () {
+                            context
+                                .findAncestorStateOfType<BottomNavState>()
+                                ?.changeTab(3);
+                          },
+                          child: CircleAvatar(
+                            radius: 22,
+                            backgroundColor: colorScheme.surfaceContainerHigh,
+                            backgroundImage: AssetImage(
+                              widget.profile.avatarPath ??
+                                  AppAvatars.defaultAvatar,
+                            ),
                           ),
-                        )
+                        ),
                       ],
                     ),
                   ),
