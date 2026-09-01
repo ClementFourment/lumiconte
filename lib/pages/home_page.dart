@@ -32,6 +32,7 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   final ReadingProgressService _readingProgressService =
       ReadingProgressService();
+
   @override
   void initState() {
     super.initState();
@@ -52,6 +53,7 @@ class _HomePageState extends State<HomePage> {
       fontSize: 18,
       color: colorScheme.onSurface,
     );
+
     final latestStories = ([...widget.stories]..sort((a, b) {
             final dateA = a.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
             final dateB = b.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
@@ -59,6 +61,7 @@ class _HomePageState extends State<HomePage> {
           }))
         .take(10)
         .toList();
+
     final int profileAge = widget.profile.age;
     final adaptedFromAgeStories = widget.stories.where((story) {
       final int ageMin = story.age_min ?? 0;
@@ -76,6 +79,7 @@ class _HomePageState extends State<HomePage> {
             .where((p) => p.progress > 0 && p.progress < 100)
             .toList()
           ..sort((a, b) => b.lastRead.compareTo(a.lastRead));
+
         final continueStories = continueReading.map((progress) {
           final story = widget.stories
               .where(
@@ -88,6 +92,7 @@ class _HomePageState extends State<HomePage> {
             "progress": progress,
           };
         }).toList();
+
         return Scaffold(
           body: SafeArea(
             child: SingleChildScrollView(
@@ -114,22 +119,22 @@ class _HomePageState extends State<HomePage> {
                             ),
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 10),
-                      GestureDetector(
-                        onTap: () {
-                          context
-                              .findAncestorStateOfType<BottomNavState>()
-                              ?.changeTab(3);
-                        },
-                        child: CircleAvatar(
-                          radius: 22,
-                          backgroundColor: colorScheme.surfaceContainerHigh,
-                          backgroundImage: AssetImage(
-                            widget.profile.avatarPath ??
-                                AppAvatars.defaultAvatar,
+                        const SizedBox(width: 10),
+                        GestureDetector(
+                          onTap: () {
+                            context
+                                .findAncestorStateOfType<BottomNavState>()
+                                ?.changeTab(3);
+                          },
+                          child: CircleAvatar(
+                            radius: 22,
+                            backgroundColor: colorScheme.surfaceContainerHigh,
+                            backgroundImage: AssetImage(
+                              widget.profile.avatarPath ??
+                                  AppAvatars.defaultAvatar,
+                            ),
                           ),
-                        )
+                        ),
                       ],
                     ),
                   ),

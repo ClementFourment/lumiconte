@@ -21,7 +21,6 @@ class _SettingsPageState extends State<SettingsPage> {
   late final String _uid;
   late final CollectionReference _settingsCollection;
 
-  // Chemin vers ton image locale d'aperçu
   static const String _localPreviewImageAsset = 'assets/images/preview_cover.webp';
 
   @override
@@ -36,12 +35,10 @@ class _SettingsPageState extends State<SettingsPage> {
         .collection('settings');
   }
 
-  /// Met à jour un seul champ du document settings
   Future<void> _updateSetting(String docId, String key, dynamic value) async {
     await _settingsCollection.doc(docId).update({key: value});
   }
 
-  // 🧪 Algorithme de découpage en syllabes et détection des lettres muettes
   List<TextSpan> _parseWordToDyslexiaSpans(
     String word,
     TextStyle baseDysStyle,
@@ -63,7 +60,6 @@ class _SettingsPageState extends State<SettingsPage> {
 
     String prefix = matchStart?.group(0) ?? '';
     String suffix = matchEnd?.group(0) ?? '';
-
     String cleanWord = word;
 
     if (prefix.length + suffix.length < word.length) {
@@ -198,12 +194,10 @@ class _SettingsPageState extends State<SettingsPage> {
     return TextSpan(children: allSpans);
   }
 
-  /// Construit le composant d'aperçu central selon la vue réellement sélectionnée
   Widget _buildPreviewBox(SettingsModel settings, bool isDark) {
     const String sampleText =
         'Il y était une fois, dans une ville de Perse, deux frères nommés Kassim et Ali-Baba.';
 
-    // Si le mode dyslexie est activé, retour à un affichage clair lisible
     if (settings.dyslexia) {
       return Container(
         width: double.infinity,
@@ -225,7 +219,6 @@ class _SettingsPageState extends State<SettingsPage> {
       );
     }
 
-    // 1. MODE IMMERSIF : Image d'illustration locale + gradient sombre + texte en bas
     if (settings.readTheme == 'immersive') {
       return Container(
         height: 180,
@@ -238,7 +231,6 @@ class _SettingsPageState extends State<SettingsPage> {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            // Image locale en arrière-plan avec fallback d'erreur
             Image.asset(
               _localPreviewImageAsset,
               fit: BoxFit.cover,
@@ -253,7 +245,6 @@ class _SettingsPageState extends State<SettingsPage> {
                 );
               },
             ),
-            // Gradient sombre fondu vers le bas
             DecoratedBox(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
@@ -269,7 +260,6 @@ class _SettingsPageState extends State<SettingsPage> {
                 ),
               ),
             ),
-            // Texte positionné en bas
             Positioned(
               bottom: 12,
               left: 16,
@@ -289,7 +279,6 @@ class _SettingsPageState extends State<SettingsPage> {
       );
     }
 
-    // 2. MODE MANUSCRIT : Style parchemin, cadre intérieur, ornements et lettrine
     if (settings.readTheme == 'manuscript') {
       const pageColor = Color(0xFFFAF6EB);
       const textColor = Color(0xFF2E2418);
@@ -306,7 +295,6 @@ class _SettingsPageState extends State<SettingsPage> {
         ),
         child: Column(
           children: [
-            // Ornement supérieur
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: const [
@@ -316,8 +304,6 @@ class _SettingsPageState extends State<SettingsPage> {
               ],
             ),
             const SizedBox(height: 8),
-
-            // Petite miniature cadre photo
             Container(
               height: 50,
               width: 90,
@@ -336,8 +322,6 @@ class _SettingsPageState extends State<SettingsPage> {
               ),
             ),
             const SizedBox(height: 10),
-
-            // Texte avec lettrine stylisée Garamond
             Row(
               crossAxisAlignment: CrossAxisAlignment.baseline,
               textBaseline: TextBaseline.alphabetic,
@@ -356,7 +340,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   child: RichText(
                     textAlign: TextAlign.justify,
                     text: _buildColorizedText(
-                      text: sampleText.substring(1), // Retrait du 'I' initial
+                      text: sampleText.substring(1),
                       baseFontSize: settings.fontSize.toDouble(),
                       defaultTextColor: const Color(0xFF32271B),
                       isDyslexiaEnabled: false,
@@ -369,8 +353,6 @@ class _SettingsPageState extends State<SettingsPage> {
               ],
             ),
             const SizedBox(height: 8),
-
-            // Ornement inférieur
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: const [
@@ -382,7 +364,6 @@ class _SettingsPageState extends State<SettingsPage> {
       );
     }
 
-    // 3. MODE CLASSIQUE (Par défaut) : Layout coupé (Image en haut, texte sur fond sombre en bas)
     return Container(
       width: double.infinity,
       clipBehavior: Clip.antiAlias,
@@ -393,7 +374,6 @@ class _SettingsPageState extends State<SettingsPage> {
       ),
       child: Column(
         children: [
-          // Partie haute (Image locale)
           Container(
             height: 90,
             width: double.infinity,
@@ -406,7 +386,6 @@ class _SettingsPageState extends State<SettingsPage> {
               ),
             ),
           ),
-          // Partie basse (Texte centré sur fond violet sombre)
           Padding(
             padding: const EdgeInsets.all(16),
             child: RichText(
@@ -420,6 +399,53 @@ class _SettingsPageState extends State<SettingsPage> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildVoiceOption({
+    required String label,
+    required IconData icon,
+    required String genderKey,
+    required String currentGender,
+    required String settingsId,
+    required Color primaryTextColor,
+  }) {
+    final bool isSelected = currentGender == genderKey;
+
+    return GestureDetector(
+      onTap: () => _updateSetting(settingsId, 'voiceGender', genderKey),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? AppTheme.accentColor.withOpacity(0.15)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: isSelected ? AppTheme.accentColor : Colors.grey.withOpacity(0.3),
+            width: isSelected ? 2 : 1,
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              size: 20,
+              color: isSelected ? AppTheme.accentColor : primaryTextColor.withOpacity(0.7),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: TextStyle(
+                color: isSelected ? AppTheme.accentColor : primaryTextColor,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -482,6 +508,47 @@ class _SettingsPageState extends State<SettingsPage> {
           return ListView(
             padding: const EdgeInsets.all(20),
             children: [
+              // Voix de la narration
+              _buildSectionTitle('Voix de la narration', secondaryTextColor),
+              const SizedBox(height: 8),
+              Card(
+                color: cardColor,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  side: BorderSide(color: borderColor),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: _buildVoiceOption(
+                          label: 'Féminine',
+                          icon: Icons.record_voice_over_rounded,
+                          genderKey: 'female',
+                          currentGender: settings.voiceGender,
+                          settingsId: settings.id,
+                          primaryTextColor: primaryTextColor,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _buildVoiceOption(
+                          label: 'Masculine',
+                          icon: Icons.voice_over_off_rounded,
+                          genderKey: 'male',
+                          currentGender: settings.voiceGender,
+                          settingsId: settings.id,
+                          primaryTextColor: primaryTextColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 24),
               _buildSectionTitle('Accessibilité', secondaryTextColor),
               const SizedBox(height: 8),
 
@@ -571,8 +638,6 @@ class _SettingsPageState extends State<SettingsPage> {
                         onChanged: (double val) {},
                       ),
                       const SizedBox(height: 10),
-
-                      // Aperçu interactif réel du thème sélectionné
                       _buildPreviewBox(settings, isDark),
                     ],
                   ),
@@ -686,7 +751,6 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  /// Aperçu miniature du mode Classique
   Widget _buildClassicPreview() {
     return Container(
       color: const Color(0xFF161224),
@@ -736,7 +800,6 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  /// Aperçu miniature du mode Immersif
   Widget _buildImmersivePreview() {
     return Stack(
       fit: StackFit.expand,
@@ -775,7 +838,6 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  /// Aperçu miniature du mode Manuscrit
   Widget _buildManuscriptPreview() {
     return Container(
       color: const Color(0xFFEEEADE),

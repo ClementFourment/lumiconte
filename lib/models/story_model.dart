@@ -1,5 +1,3 @@
-import 'dart:ffi';
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class StoryModel {
@@ -8,7 +6,7 @@ class StoryModel {
   final int? age_min;
   final int? age_max;
   final String content;
-  final String morals; // ⚡ Champ morals ajouté
+  final String morals;
   final String? image;
   final String? illustrations;
   final List<Map<String, String>>? audio;
@@ -24,7 +22,7 @@ class StoryModel {
     required this.age_min,
     required this.age_max,
     required this.content,
-    this.morals = '', // ⚡ Valeur par défaut si non renseigné
+    this.morals = '',
     this.image,
     this.illustrations,
     this.audio,
@@ -43,8 +41,7 @@ class StoryModel {
     if (map['audio'] != null && map['audio'] is List) {
       parsedAudio = (map['audio'] as List).map((item) {
         if (item is Map) {
-          return item
-              .map((key, value) => MapEntry(key.toString(), value.toString()));
+          return item.map((key, value) => MapEntry(key.toString(), value.toString()));
         }
         return <String, String>{};
       }).toList();
@@ -59,10 +56,10 @@ class StoryModel {
     return StoryModel(
       id: docId,
       name: map['name'] as String? ?? '',
-      age_min: map['age_min'] as int? ?? null,
-      age_max: map['age_max'] as int? ?? null,
+      age_min: map['age_min'] as int?,
+      age_max: map['age_max'] as int?,
       content: map['content'] as String? ?? '',
-      morals: map['morals'] as String? ?? '', // ⚡ Parsing depuis Firestore
+      morals: map['morals'] as String? ?? '',
       image: map['image'] as String?,
       illustrations: map['illustrations'] as String?,
       audio: parsedAudio,
@@ -77,8 +74,10 @@ class StoryModel {
   Map<String, dynamic> toMap() {
     return {
       'name': name,
+      'age_min': age_min,
+      'age_max': age_max,
       'content': content,
-      'morals': morals, // ⚡ Sauvegarde dans Firestore
+      'morals': morals,
       'image': image,
       'illustrations': illustrations,
       'audio': audio,
