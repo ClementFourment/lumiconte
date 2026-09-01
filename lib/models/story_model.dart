@@ -8,6 +8,7 @@ class StoryModel {
   final int? age_min;
   final int? age_max;
   final String content;
+  final String morals; // ⚡ Champ morals ajouté
   final String? image;
   final String? illustrations;
   final List<Map<String, String>>? audio;
@@ -23,6 +24,7 @@ class StoryModel {
     required this.age_min,
     required this.age_max,
     required this.content,
+    this.morals = '', // ⚡ Valeur par défaut si non renseigné
     this.image,
     this.illustrations,
     this.audio,
@@ -60,6 +62,7 @@ class StoryModel {
       age_min: map['age_min'] as int? ?? null,
       age_max: map['age_max'] as int? ?? null,
       content: map['content'] as String? ?? '',
+      morals: map['morals'] as String? ?? '', // ⚡ Parsing depuis Firestore
       image: map['image'] as String?,
       illustrations: map['illustrations'] as String?,
       audio: parsedAudio,
@@ -75,6 +78,7 @@ class StoryModel {
     return {
       'name': name,
       'content': content,
+      'morals': morals, // ⚡ Sauvegarde dans Firestore
       'image': image,
       'illustrations': illustrations,
       'audio': audio,

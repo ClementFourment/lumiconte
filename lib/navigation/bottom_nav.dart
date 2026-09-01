@@ -14,6 +14,7 @@ import 'package:lumiconte/services/profile_service.dart';
 import 'package:lumiconte/pages/home_page.dart';
 import 'package:lumiconte/pages/profile_page.dart';
 import 'package:lumiconte/pages/library_page.dart';
+import 'package:lumiconte/pages/morals_page.dart';
 
 import 'package:lumiconte/theme/app_theme.dart';
 
@@ -144,6 +145,11 @@ class BottomNavState extends State<BottomNav> {
                     categories: categories,
                     stories: stories,
                   ),
+                  MoralsPage(
+                    key: ValueKey('morals_${activeProfile.id}'),
+                    profile: activeProfile,
+                    stories: stories,
+                  ),
                   ProfilePage(
                     key: ValueKey('profile_${activeProfile.id}'),
                     profileId: activeProfile.id,
@@ -158,7 +164,8 @@ class BottomNavState extends State<BottomNav> {
                   bottomNavigationBar: BottomNavigationBar(
                     backgroundColor: AppTheme.getCardColor(context),
                     selectedItemColor: colorScheme.primary,
-                    unselectedItemColor: colorScheme.onSurface.withValues(alpha: 0.6),
+                    unselectedItemColor:
+                        colorScheme.onSurface.withValues(alpha: 0.6),
                     currentIndex: _currentIndex,
                     onTap: (value) => setState(() => _currentIndex = value),
                     type: BottomNavigationBarType.fixed,
@@ -170,6 +177,10 @@ class BottomNavState extends State<BottomNav> {
                       BottomNavigationBarItem(
                         icon: Icon(Icons.menu_book_rounded),
                         label: "Bibliothèque",
+                      ),
+                      BottomNavigationBarItem(
+                        icon: Icon(Icons.auto_awesome_rounded),
+                        label: "Morales",
                       ),
                       BottomNavigationBarItem(
                         icon: Icon(Icons.person_rounded),
