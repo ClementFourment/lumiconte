@@ -42,8 +42,10 @@ class _StoryPageState extends State<StoryPage> {
   B2Audio? _audio;
   late final String _uid;
   late final CollectionReference _settingsCollection;
+  late final CollectionReference _favoritesCollection;
 
-  final ReadingProgressService _readingProgressService = ReadingProgressService();
+  final ReadingProgressService _readingProgressService =
+      ReadingProgressService();
   late AudioBackgroundService _audioBackgroundService;
   late AudioNotificationService _audioNotificationService;
 
@@ -58,6 +60,13 @@ class _StoryPageState extends State<StoryPage> {
         .doc(widget.profile.id)
         .collection('settings');
 
+    _favoritesCollection = FirebaseFirestore.instance
+        .collection('users')
+        .doc(_uid)
+        .collection('profiles')
+        .doc(widget.profile.id)
+        .collection('favorites');
+
     _audioBackgroundService = AudioBackgroundService();
     _audioNotificationService = AudioNotificationService();
     _initializeBackgroundAudioService();
@@ -68,6 +77,20 @@ class _StoryPageState extends State<StoryPage> {
     _initializePages();
     _initializeAudio();
     _loadReadingProgress();
+    _loadFavoriteStatus();
+  }
+
+  Future<void> _loadFavoriteStatus() async {
+    try {
+      final doc = await _favoritesCollection.doc(widget.story.id).get();
+      if (mounted) {
+        setState(() {
+          _isFavorite = doc.exists;
+        });
+      }
+    } catch (e) {
+      debugPrint('Erreur chargement favori : $e');
+    }
   }
 
   Future<void> _initializeBackgroundAudioService() async {
@@ -197,7 +220,8 @@ class _StoryPageState extends State<StoryPage> {
 
       final testPage = '$currentPage $unit';
       final bool endsWithQuote = RegExp(r'[»"”\)]\s*$').hasMatch(unit);
-      final int allowedLimit = endsWithQuote ? maxCharsPerPage + 25 : maxCharsPerPage;
+      final int allowedLimit =
+          endsWithQuote ? maxCharsPerPage + 25 : maxCharsPerPage;
 
       if (testPage.length > allowedLimit) {
         pages.add(currentPage.trim());
@@ -337,7 +361,10 @@ class _StoryPageState extends State<StoryPage> {
     final Color colorSilent = defaultTextColor.withOpacity(0.35);
 
     if (word.trim().isEmpty) {
-      return [TextSpan(text: word, style: baseDysStyle.copyWith(color: defaultTextColor))];
+      return [
+        TextSpan(
+            text: word, style: baseDysStyle.copyWith(color: defaultTextColor))
+      ];
     }
 
     final matchStart = RegExp(r'^[^a-zA-ZÀ-ÿ«»]+').firstMatch(word);
@@ -350,29 +377,39 @@ class _StoryPageState extends State<StoryPage> {
     if (prefix.length + suffix.length < word.length) {
       cleanWord = word.substring(prefix.length, word.length - suffix.length);
     } else {
-      return [TextSpan(text: word, style: baseDysStyle.copyWith(color: defaultTextColor))];
+      return [
+        TextSpan(
+            text: word, style: baseDysStyle.copyWith(color: defaultTextColor))
+      ];
     }
 
     if (cleanWord.isEmpty) {
-      return [TextSpan(text: word, style: baseDysStyle.copyWith(color: defaultTextColor))];
+      return [
+        TextSpan(
+            text: word, style: baseDysStyle.copyWith(color: defaultTextColor))
+      ];
     }
 
     String silentLetters = '';
-    final silentMatch = RegExp(r'(ts|ds|es|[stdxega])$', caseSensitive: false).firstMatch(cleanWord);
+    final silentMatch = RegExp(r'(ts|ds|es|[stdxega])$', caseSensitive: false)
+        .firstMatch(cleanWord);
 
     if (silentMatch != null &&
         cleanWord.length > 2 &&
-        !['les', 'des', 'mes', 'tes', 'ses', 'est'].contains(cleanWord.toLowerCase())) {
+        !['les', 'des', 'mes', 'tes', 'ses', 'est']
+            .contains(cleanWord.toLowerCase())) {
       String potentialSilent = silentMatch.group(0) ?? '';
       if (cleanWord.length > potentialSilent.length) {
         silentLetters = potentialSilent;
-        cleanWord = cleanWord.substring(0, cleanWord.length - silentLetters.length);
+        cleanWord =
+            cleanWord.substring(0, cleanWord.length - silentLetters.length);
       }
     }
 
     List<TextSpan> wordSpans = [];
     if (prefix.isNotEmpty) {
-      wordSpans.add(TextSpan(text: prefix, style: baseDysStyle.copyWith(color: defaultTextColor)));
+      wordSpans.add(TextSpan(
+          text: prefix, style: baseDysStyle.copyWith(color: defaultTextColor)));
     }
 
     List<String> syllables = [];
@@ -417,7 +454,8 @@ class _StoryPageState extends State<StoryPage> {
     }
 
     if (suffix.isNotEmpty) {
-      wordSpans.add(TextSpan(text: suffix, style: baseDysStyle.copyWith(color: defaultTextColor)));
+      wordSpans.add(TextSpan(
+          text: suffix, style: baseDysStyle.copyWith(color: defaultTextColor)));
     }
 
     return wordSpans;
@@ -456,7 +494,8 @@ class _StoryPageState extends State<StoryPage> {
     List<String> words = text.split(' ');
 
     for (int i = 0; i < words.length; i++) {
-      allSpans.addAll(_parseWordToDyslexiaSpans(words[i], baseDysStyle, defaultTextColor));
+      allSpans.addAll(
+          _parseWordToDyslexiaSpans(words[i], baseDysStyle, defaultTextColor));
       if (i < words.length - 1) {
         allSpans.add(TextSpan(text: ' ', style: baseDysStyle));
       }
@@ -476,6 +515,33 @@ class _StoryPageState extends State<StoryPage> {
     if (_currentPage > 0) {
       setState(() => _currentPage--);
       _updateReadingProgress(_calculateProgress());
+    }
+  }
+
+  Future<void> _toggleFavorite() async {
+    final newState = !_isFavorite;
+    setState(() => _isFavorite = newState); // Mise à jour optimiste de l'UI
+
+    try {
+      final docRef = _favoritesCollection.doc(widget.story.id);
+      if (newState) {
+        await docRef.set({
+          'storyId': widget.story.id,
+          'addedAt': FieldValue.serverTimestamp(),
+        });
+      } else {
+        await docRef.delete();
+      }
+    } catch (e) {
+      debugPrint('Erreur modification favori : $e');
+      // Annulation en cas d'erreur
+      if (mounted) {
+        setState(() => _isFavorite = !newState);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text('Erreur lors de la mise à jour des favoris')),
+        );
+      }
     }
   }
 
@@ -508,7 +574,8 @@ class _StoryPageState extends State<StoryPage> {
           settingsDoc.id,
         );
 
-        final currentSegments = (_syncService.pages.isNotEmpty && _currentPage < _syncService.pages.length)
+        final currentSegments = (_syncService.pages.isNotEmpty &&
+                _currentPage < _syncService.pages.length)
             ? _syncService.pages[_currentPage].segments
             : <SegmentTiming>[];
 
@@ -528,7 +595,7 @@ class _StoryPageState extends State<StoryPage> {
           illustrationsPath: widget.story.illustrations,
           currentSegments: currentSegments,
           onBack: () => Navigator.pop(context),
-          onToggleFavorite: () => setState(() => _isFavorite = !_isFavorite),
+          onToggleFavorite: () => _toggleFavorite(),
           onNextPage: _goToNextPage,
           onPreviousPage: _goToPreviousPage,
           onToggleAudio: _toggleAudio,
