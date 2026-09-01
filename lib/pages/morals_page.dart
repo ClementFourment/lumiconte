@@ -35,7 +35,6 @@ class MoralsPage extends StatelessWidget {
       );
     }
 
-    // Référence exacte selon ton Firestore : users/{uid}/profiles/{profileId}/readingProgress
     final readingProgressRef = FirebaseFirestore.instance
         .collection('users')
         .doc(currentUser.uid)
@@ -58,8 +57,9 @@ class MoralsPage extends StatelessWidget {
       body: StreamBuilder<QuerySnapshot>(
         stream: readingProgressRef.snapshots(),
         builder: (context, snapshot) {
-          // Map pour stocker : storyId -> progress (0 à 100)
+          // Stocke le niveau de progression et la date de déverrouillage/mise à jour
           final Map<String, int> readProgress = {};
+          final Map<String, DateTime> unlockDates = {};
 
           if (snapshot.hasData) {
             for (var doc in snapshot.data!.docs) {
@@ -68,20 +68,46 @@ class MoralsPage extends StatelessWidget {
 
               final String storyId = data['storyId'] as String? ?? doc.id;
               final num rawProgress = data['progress'] ?? 0;
-              
               readProgress[storyId] = rawProgress.toInt();
+
+              // Récupère la date de déverrouillage (updatedAt / timestamp)
+              if (data['updatedAt'] is Timestamp) {
+                unlockDates[storyId] = (data['updatedAt'] as Timestamp).toDate();
+              } else if (data['createdAt'] is Timestamp) {
+                unlockDates[storyId] = (data['createdAt'] as Timestamp).toDate();
+              }
             }
           }
 
-          // Débloqué uniquement si le champ progress est >= 100
-          final unlockedCount = stories.where((story) {
+          // Tri des histoires : 
+          // 1. Débloquées d'abord (triées par la date de déverrouillage la plus récente)
+          // 2. Non débloquées en dernier
+          final sortedStories = List<StoryModel>.from(stories)..sort((a, b) {
+            final progressA = readProgress[a.id] ?? 0;
+            final progressB = readProgress[b.id] ?? 0;
+            final isUnlockedA = progressA >= 100;
+            final isUnlockedB = progressB >= 100;
+
+            if (isUnlockedA && !isUnlockedB) return -1;
+            if (!isUnlockedA && isUnlockedB) return 1;
+
+            if (isUnlockedA && isUnlockedB) {
+              final dateA = unlockDates[a.id] ?? DateTime.fromMillisecondsSinceEpoch(0);
+              final dateB = unlockDates[b.id] ?? DateTime.fromMillisecondsSinceEpoch(0);
+              return dateB.compareTo(dateA); // Plus récent au plus ancien
+            }
+
+            return 0;
+          });
+
+          final unlockedCount = sortedStories.where((story) {
             final progress = readProgress[story.id] ?? 0;
             return progress >= 100;
           }).length;
 
           return Column(
             children: [
-              // Bannières récapitulative
+              // Bannière récapitulative
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                 child: Container(
@@ -124,13 +150,13 @@ class MoralsPage extends StatelessWidget {
                 ),
               ),
 
-              // Liste des histoires et morales
+              // Liste des morales ordonnées avec taille fixe
               Expanded(
                 child: ListView.builder(
-                  itemCount: stories.length,
+                  itemCount: sortedStories.length,
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                   itemBuilder: (context, index) {
-                    final story = stories[index];
+                    final story = sortedStories[index];
                     final int progress = readProgress[story.id] ?? 0;
                     final bool isUnlocked = progress >= 100;
 
@@ -154,6 +180,7 @@ class MoralsPage extends StatelessWidget {
     final colorScheme = theme.colorScheme;
 
     return Container(
+      height: 110, // Hauteur fixe pour uniformiser toutes les cartes
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
         color: isUnlocked
@@ -168,76 +195,79 @@ class MoralsPage extends StatelessWidget {
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(16),
-        child: IntrinsicHeight(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Vignette de couverture de l'histoire
-              SizedBox(
-                width: 90,
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    B2Image(
-                      objectKey: story.image,
-                      fit: BoxFit.cover,
+        child: Row(
+          children: [
+            // Vignette de couverture fixe (90x110)
+            SizedBox(
+              width: 90,
+              height: double.infinity,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  B2Image(
+                    objectKey: story.image,
+                    fit: BoxFit.cover,
+                  ),
+                  if (!isUnlocked)
+                    Container(
+                      color: Colors.black.withOpacity(0.65),
+                      child: const Icon(
+                        Icons.lock_rounded,
+                        color: Colors.white70,
+                        size: 26,
+                      ),
                     ),
-                    if (!isUnlocked)
-                      Container(
-                        color: Colors.black.withOpacity(0.65),
-                        child: const Icon(
-                          Icons.lock_rounded,
-                          color: Colors.white70,
-                          size: 26,
+                ],
+              ),
+            ),
+
+            // Contenu : Titre + Champ morals
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      story.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: isUnlocked
+                            ? colorScheme.onSurface
+                            : colorScheme.onSurface.withOpacity(0.5),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Expanded(
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          isUnlocked
+                              ? (story.morals.isNotEmpty 
+                                  ? story.morals 
+                                  : "Pas de morale enregistrée pour ce conte.")
+                              : "Terminez cette histoire pour en débloquer la morale.",
+                          maxLines: 3,
+                          overflow: TextOverflow.ellipsis,
+                          style: isUnlocked
+                              ? theme.textTheme.bodySmall?.copyWith(
+                                  color: colorScheme.onSurfaceVariant,
+                                  fontStyle: FontStyle.italic,
+                                )
+                              : theme.textTheme.bodySmall?.copyWith(
+                                  color: colorScheme.onSurfaceVariant.withOpacity(0.6),
+                                ),
                         ),
                       ),
+                    ),
                   ],
                 ),
               ),
-
-              // Contenu : Titre + Champ morals
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.all(14),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        story.name,
-                        style: theme.textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: isUnlocked
-                              ? colorScheme.onSurface
-                              : colorScheme.onSurface.withOpacity(0.5),
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      if (isUnlocked) ...[
-                        Text(
-                          // Récupération directe du champ `morals` de ton StoryModel
-                          story.morals.isNotEmpty 
-                              ? story.morals 
-                              : "Pas de morale enregistrée pour ce conte.",
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: colorScheme.onSurfaceVariant,
-                            fontStyle: FontStyle.italic,
-                          ),
-                        ),
-                      ] else ...[
-                        Text(
-                          "Terminez cette histoire pour en débloquer la morale.",
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: colorScheme.onSurfaceVariant.withOpacity(0.6),
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
