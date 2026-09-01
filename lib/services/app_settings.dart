@@ -7,6 +7,7 @@ import 'package:timezone/timezone.dart' as tz;
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:lumiconte/models/settings_model.dart';
 import 'package:lumiconte/models/reading_progress_model.dart';
+import 'package:firebase_core/firebase_core.dart';
 
 class AppSettings extends ChangeNotifier {
   bool _isDarkMode = false;
@@ -25,7 +26,9 @@ class AppSettings extends ChangeNotifier {
 
   // 🟢 Méthode d'initialisation explicite appelée après Firebase.initializeApp()
   Future<void> init() async {
+    if (Firebase.apps.isNotEmpty) {
     _initAuthListener();
+  }
     await initNotifications();
   }
 
