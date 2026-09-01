@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:lumiconte/models/profile_model.dart';
@@ -22,17 +23,24 @@ class AppRouterNotifier extends ChangeNotifier {
   StreamSubscription? _userDocSub;
 
   AppRouterNotifier() {
-    _authSub = FirebaseAuth.instance.authStateChanges().listen((user) {
-      _userDocSub?.cancel();
-      if (user != null) {
-        _userDocSub = FirebaseFirestore.instance
-            .collection('users')
-            .doc(user.uid)
-            .snapshots()
-            .listen((_) => notifyListeners());
-      }
-      notifyListeners();
-    });
+    _initListeners();
+  }
+
+  void _initListeners() {
+    // Vérification que Firebase est prêt avant d'écouter Auth
+    if (Firebase.apps.isNotEmpty) {
+      _authSub = FirebaseAuth.instance.authStateChanges().listen((user) {
+        _userDocSub?.cancel();
+        if (user != null) {
+          _userDocSub = FirebaseFirestore.instance
+              .collection('users')
+              .doc(user.uid)
+              .snapshots()
+              .listen((_) => notifyListeners());
+        }
+        notifyListeners();
+      });
+    }
   }
 
   @override
@@ -49,6 +57,9 @@ final GoRouter appRouter = GoRouter(
   initialLocation: '/',
   refreshListenable: _routerNotifier,
   redirect: (context, state) async {
+    // Sécurité si la redirection est appelée avant l'initialisation de Firebase
+    if (Firebase.apps.isEmpty) return null;
+
     final user = FirebaseAuth.instance.currentUser;
     final prefs = await SharedPreferences.getInstance();
     final hasSeenOnboarding = prefs.getBool('seen_onboarding') ?? false;
@@ -88,7 +99,7 @@ final GoRouter appRouter = GoRouter(
     // 4. Si connecté avec un profil actif :
     // Redirection automatique depuis l'Onboarding ou le Login vers la gestion des profils
     if (isOnboarding || isLogin) {
-      return '/manage-profiles'; // 👈 Modifié ici (/home -> /manage-profiles)
+      return '/manage-profiles';
     }
 
     // - On autorise l'accès à /create-profile pour ajouter d'autres profils

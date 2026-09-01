@@ -10,39 +10,34 @@ import 'package:lumiconte/theme/app_theme.dart';
 late final AppSettings appSettings;
 
 void main() async {
-  print("1. Starter main");
+  // 1. Indispensable avant tout appel async natif
   WidgetsFlutterBinding.ensureInitialized();
-  
-  print("2. Avant dotenv");
-  await dotenv.load();  
 
-print("3. Avant Firebase");
+  // 2. Chargement du fichier .env
+  try {
+    await dotenv.load();
+  } catch (e) {
+    debugPrint("Erreur chargement dotenv: $e");
+  }
+
+  // 3. Initialisation de Firebase sécurisée
   try {
     if (Firebase.apps.isEmpty) {
       await Firebase.initializeApp(
         options: DefaultFirebaseOptions.currentPlatform,
       );
-      print("Firebase initialisé avec succès : [DEFAULT]");
     } else {
-      print("Firebase était déjà prêt dans cet isolate.");
+      Firebase.app(); // Reconnecte le SDK Dart à l'instance native existante
     }
   } catch (e) {
-    print("Log d'info : Firebase déjà actif ($e)");
+    debugPrint("Erreur lors de initializeApp: $e");
   }
 
-  // 🟢 AJOUT OBLIGATOIRE :
-  // Attend que l'application Firebase soit réellement disponible
-  while (Firebase.apps.isEmpty) {
-    await Future.delayed(const Duration(milliseconds: 50));
-  }
-
-  print("4. Instanciation de AppSettings");
+  // 4. Initialisation des services
   appSettings = AppSettings();
-  
-  print("5. Initialisation asynchrone des services");
   await appSettings.init();
-  
-  print("6. Lancement runApp");
+
+  // 5. Lancement de l'application
   runApp(const LumiconteApp());
 }
 

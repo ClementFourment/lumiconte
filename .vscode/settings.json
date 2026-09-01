@@ -1,5 +1,6 @@
 {
     "files.autoSave": "afterDelay",
     "dart.flutterHotReloadOnSave": "all",
-    "dart.hotReloadOnSave": "all"
+    "dart.hotReloadOnSave": "all",
+    "cmake.sourceDirectory": "C:/Users/Charr/Desktop/Projet/lumiconte/linux"
 }
