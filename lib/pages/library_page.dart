@@ -33,7 +33,7 @@ class _LibraryPageState extends State<LibraryPage> {
     Stream<QuerySnapshot> s1 =
         profileRef.collection('readingProgress').snapshots();
 
-    Stream<QuerySnapshot> s2 = profileRef.collection('favoris').snapshots();
+    Stream<QuerySnapshot> s2 = profileRef.collection('favorites').snapshots();
 
     QuerySnapshot? lastS1;
     QuerySnapshot? lastS2;
@@ -125,7 +125,9 @@ class _LibraryPageState extends State<LibraryPage> {
           final favoriteDocs = snapshot.data![1].docs;
           for (var doc in favoriteDocs) {
             final data = doc.data() as Map<String, dynamic>?;
+
             final String? storyId = data?['storyId'] ?? doc.id;
+
             if (storyId != null) {
               favoriteStoryIds.add(storyId);
             }
@@ -159,7 +161,7 @@ class _LibraryPageState extends State<LibraryPage> {
                         .toList();
 
                     // Application des filtres
-                    if (_selectedFilter == 'favoris') {
+                    if (_selectedFilter == 'favorites') {
                       categoryStories = categoryStories
                           .where((story) => favoriteStoryIds.contains(story.id))
                           .toList();
@@ -198,7 +200,7 @@ class _LibraryPageState extends State<LibraryPage> {
 
     final filters = [
       {'id': 'tous', 'label': 'Tous'},
-      {'id': 'favoris', 'label': 'Favoris'},
+      {'id': 'favorites', 'label': 'Favoris'},
       {'id': 'en_cours', 'label': 'En cours'},
       {'id': 'non_lu', 'label': 'Non lu'},
     ];
