@@ -21,6 +21,12 @@ class StoryClassicView extends StatefulWidget {
 }
 
 class _StoryClassicViewState extends State<StoryClassicView> {
+  String _formatDuration(Duration duration) {
+    final minutes = duration.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final seconds = duration.inSeconds.remainder(60).toString().padLeft(2, '0');
+    return '$minutes:$seconds';
+  }
+
   @override
   Widget build(BuildContext context) {
     final Color backgroundColor =
@@ -256,6 +262,15 @@ class _StoryClassicViewState extends State<StoryClassicView> {
                             ),
                           ),
                         ),
+                      const SizedBox(width: 8),
+                      Text(
+                        _formatDuration(widget.params.audioPosition),
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: subtleTextColor,
+                        ),
+                      ),
                       Expanded(
                         child: SliderTheme(
                           data: SliderTheme.of(context).copyWith(
@@ -286,6 +301,14 @@ class _StoryClassicViewState extends State<StoryClassicView> {
                           ),
                         ),
                       ),
+                      Text(
+                        _formatDuration(widget.params.audioDuration),
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: subtleTextColor,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -296,7 +319,6 @@ class _StoryClassicViewState extends State<StoryClassicView> {
     );
   }
 
-  /// Rend le texte avec surlignage mot par mot si la synchronisation existe, sinon rendu standard
   Widget _buildTextContent(Color defaultTextColor) {
     if (widget.params.currentSegments.isNotEmpty) {
       final double currentTimeInSeconds =
@@ -336,7 +358,6 @@ class _StoryClassicViewState extends State<StoryClassicView> {
       );
     }
 
-    // Affichage standard en mode dyslexie ou texte simple
     return RichText(
       textAlign: TextAlign.center,
       text: widget.params.buildColorizedText(

@@ -35,6 +35,12 @@ class _StoryImmersiveViewState extends State<StoryImmersiveView> {
     });
   }
 
+  String _formatDuration(Duration duration) {
+    final minutes = duration.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final seconds = duration.inSeconds.remainder(60).toString().padLeft(2, '0');
+    return '$minutes:$seconds';
+  }
+
   @override
   Widget build(BuildContext context) {
     final Color backgroundColor =
@@ -62,7 +68,6 @@ class _StoryImmersiveViewState extends State<StoryImmersiveView> {
               fit: StackFit.expand,
               children: [
                 _buildStoryImage(),
-                // Dégradé global sombre sur le bas pour fondre le texte et l'audio
                 DecoratedBox(
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
@@ -88,7 +93,7 @@ class _StoryImmersiveViewState extends State<StoryImmersiveView> {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               child: Column(
                 children: [
-                  // App Bar supérieure (Retour & Favori)
+                  // App Bar supérieure
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -127,7 +132,7 @@ class _StoryImmersiveViewState extends State<StoryImmersiveView> {
 
                   const Spacer(),
 
-                  // Texte de l'histoire avec support du surlignage synchronisé
+                  // Texte de l'histoire
                   Expanded(
                     child: SingleChildScrollView(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -194,6 +199,14 @@ class _StoryImmersiveViewState extends State<StoryImmersiveView> {
                               ),
                             ),
                           const SizedBox(width: 8),
+                          Text(
+                            _formatDuration(widget.params.audioPosition),
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                              color: subtleTextColor,
+                            ),
+                          ),
                           Expanded(
                             child: SliderTheme(
                               data: SliderTheme.of(context).copyWith(
@@ -224,6 +237,14 @@ class _StoryImmersiveViewState extends State<StoryImmersiveView> {
                               ),
                             ),
                           ),
+                          Text(
+                            _formatDuration(widget.params.audioDuration),
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                              color: subtleTextColor,
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -236,7 +257,6 @@ class _StoryImmersiveViewState extends State<StoryImmersiveView> {
     );
   }
 
-  /// Rend le texte avec surlignage mot par mot si la synchronisation existe, sinon rendu standard
   Widget _buildTextContent(Color defaultTextColor) {
     if (widget.params.currentSegments.isNotEmpty) {
       final double currentTimeInSeconds =

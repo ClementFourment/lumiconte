@@ -36,6 +36,7 @@ class _StoryPageState extends State<StoryPage> {
   bool _isSeeking = false;
   bool _isAudio = false;
   bool _isAudioInitialized = false;
+  String? _currentVoiceKey;
   Duration _audioPosition = Duration.zero;
   Duration _audioDuration = Duration.zero;
   bool _isProgressLoaded = false;
@@ -71,8 +72,6 @@ class _StoryPageState extends State<StoryPage> {
     _audioBackgroundService = AudioBackgroundService();
     _audioNotificationService = AudioNotificationService();
     _initializeBackgroundAudioService();
-
-    _syncService.initializeFromStory(widget.story, maxCharsPerPage: 150);
 
     _initializePages();
     _loadReadingProgress();
@@ -235,34 +234,49 @@ class _StoryPageState extends State<StoryPage> {
   }
 
   void _initializeAudio(SettingsModel settings) {
-    if (_isAudioInitialized) return;
-    _isAudioInitialized = true;
+    // Si la voix demandée a changé dans les réglages, on réinitialise l'audio
+    final requestedVoiceKey = (settings.voiceGender == 'homme' || settings.voiceGender == 'male')
+        ? 'homme'
+        : 'femme';
 
-    final audioList = widget.story.audio;
-    if (audioList == null || audioList.isEmpty) {
-      _isAudio = false;
+    if (_isAudioInitialized && _currentVoiceKey == requestedVoiceKey) {
       return;
     }
 
-    final targetKey = settings.voiceGender == 'male' ? 'homme' : 'femme';
-    String selectedAudioPath = '';
+    final audioMap = widget.story.audio;
+    if (audioMap == null || audioMap.isEmpty) {
+      _isAudio = false;
+      _isAudioInitialized = true;
+      return;
+    }
 
-    // Parcours de l'array de Map
-    for (var audioMap in audioList) {
-      if (audioMap is Map && audioMap.containsKey(targetKey) && audioMap[targetKey] != null) {
-        selectedAudioPath = audioMap[targetKey].toString();
-        break;
+    // Récupérer la voix cible
+    String targetKey = requestedVoiceKey;
+    AudioVoiceData? voiceData = audioMap[targetKey];
+
+    // Fallback : si la voix choisie n'est pas remplie, basculer vers l'autre
+    if (voiceData == null || voiceData.url.trim().isEmpty) {
+      final alternateKey = targetKey == 'homme' ? 'femme' : 'homme';
+      if (audioMap.containsKey(alternateKey) && audioMap[alternateKey]!.url.trim().isNotEmpty) {
+        targetKey = alternateKey;
+        voiceData = audioMap[targetKey];
       }
     }
 
-    // Fallback : première valeur disponible si le genre choisi n'est pas présent
-    if (selectedAudioPath.isEmpty && audioList.first is Map && audioList.first.isNotEmpty) {
-      selectedAudioPath = (audioList.first as Map).values.first.toString();
-    }
-
+    final selectedAudioPath = voiceData?.url.trim() ?? '';
     _isAudio = selectedAudioPath.isNotEmpty;
+    _isAudioInitialized = true;
+    _currentVoiceKey = targetKey;
 
-    if (_isAudio) {
+    if (_isAudio && voiceData != null) {
+      // 1. Initialisation de la synchronisation texte/audio pour la voix active
+      _syncService.initializeFromAudioTimes(
+        voiceData.audioTimes,
+        maxCharsPerPage: 150,
+      );
+
+      // 2. Initialisation du lecteur audio
+      _audio?.dispose();
       _audio = B2Audio(objectKey: selectedAudioPath);
       _audio!.preload();
 

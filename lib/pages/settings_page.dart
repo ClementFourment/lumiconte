@@ -526,7 +526,7 @@ class _SettingsPageState extends State<SettingsPage> {
                         child: _buildVoiceOption(
                           label: 'Féminine',
                           icon: Icons.record_voice_over_rounded,
-                          genderKey: 'female',
+                          genderKey: 'femme',
                           currentGender: settings.voiceGender,
                           settingsId: settings.id,
                           primaryTextColor: primaryTextColor,
@@ -537,7 +537,7 @@ class _SettingsPageState extends State<SettingsPage> {
                         child: _buildVoiceOption(
                           label: 'Masculine',
                           icon: Icons.voice_over_off_rounded,
-                          genderKey: 'male',
+                          genderKey: 'homme',
                           currentGender: settings.voiceGender,
                           settingsId: settings.id,
                           primaryTextColor: primaryTextColor,

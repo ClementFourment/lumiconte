@@ -7,7 +7,7 @@ class SettingsModel {
   final String readTheme; // Thème de lecture (ex: classic, immersive, manuscript)
   final bool dyslexia;
   final String language;
-  final String voiceGender; // 'female' ou 'male'
+  final String voiceGender; // 'femme' ou 'homme'
   final int totalReadingTime;
   final int streak;
   final DateTime? stopRead;
@@ -18,7 +18,7 @@ class SettingsModel {
   static const String defaultReadTheme = 'classic';
   static const bool defaultDyslexia = false;
   static const String defaultLanguage = 'fr';
-  static const String defaultVoiceGender = 'female';
+  static const String defaultVoiceGender = 'femme';
   static const int defaultTotalReadingTime = 0;
   static const int defaultStreak = 0;
 
@@ -46,6 +46,11 @@ class SettingsModel {
       parsedStopRead = DateTime.tryParse(rawStopRead);
     }
 
+    // Rétrocompatibilité au cas où l'ancienne valeur 'female'/'male' existe dans Firestore
+    String rawGender = map['voiceGender'] as String? ?? defaultVoiceGender;
+    if (rawGender == 'female') rawGender = 'femme';
+    if (rawGender == 'male') rawGender = 'homme';
+
     return SettingsModel(
       id: docId,
       fontSize: (map['fontSize'] as num?)?.toInt() ?? defaultFontSize,
@@ -53,7 +58,7 @@ class SettingsModel {
       readTheme: map['readTheme'] as String? ?? defaultReadTheme,
       dyslexia: map['dyslexia'] as bool? ?? defaultDyslexia,
       language: map['language'] as String? ?? defaultLanguage,
-      voiceGender: map['voiceGender'] as String? ?? defaultVoiceGender,
+      voiceGender: rawGender,
       totalReadingTime: (map['totalReadingTime'] as num?)?.toInt() ?? defaultTotalReadingTime,
       streak: (map['streak'] as num?)?.toInt() ?? defaultStreak,
       stopRead: parsedStopRead,
@@ -81,7 +86,6 @@ class SettingsModel {
     };
   }
 
-  /// Getters utilitaires
   String get formattedReadingTime {
     if (totalReadingTime < 60) return '$totalReadingTime min';
     final hours = totalReadingTime ~/ 60;

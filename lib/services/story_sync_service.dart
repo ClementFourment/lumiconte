@@ -1,22 +1,23 @@
 import 'dart:convert';
-import 'package:lumiconte/models/story_model.dart'; // Votre modèle existant
 import 'package:lumiconte/models/audio_sync_model.dart';
 
 class StorySyncService {
   List<StorySyncPage> pages = [];
 
-  void initializeFromStory(StoryModel story, {int maxCharsPerPage = 150}) {
+  /// Initialise la synchronisation directement à partir du JSON `audioTimes`
+  /// de la voix active (homme ou femme).
+  void initializeFromAudioTimes(String? audioTimesStr, {int maxCharsPerPage = 150}) {
     pages.clear();
 
-    if (story.audioTimes == null || story.audioTimes!.isEmpty) {
+    if (audioTimesStr == null || audioTimesStr.trim().isEmpty) {
       return;
     }
 
     try {
-      final Map<String, dynamic> data = jsonDecode(story.audioTimes!);
+      final Map<String, dynamic> data = jsonDecode(audioTimesStr);
       final List rawSegments = data['segments'] as List? ?? [];
       final segments =
-          rawSegments.map((s) => SegmentTiming.fromJson(s)).toList();
+          rawSegments.map((s) => SegmentTiming.fromJson(s as Map<String, dynamic>)).toList();
 
       List<SegmentTiming> currentSegments = [];
       int currentLength = 0;
