@@ -35,6 +35,8 @@ class _StoryPageState extends State<StoryPage> {
   bool _isLoading = false;
   bool _isSeeking = false;
   bool _isAudio = false;
+  bool _isAudioInitialized = false;
+  String? _currentVoiceKey;
   Duration _audioPosition = Duration.zero;
   Duration _audioDuration = Duration.zero;
   bool _isProgressLoaded = false;
@@ -71,11 +73,7 @@ class _StoryPageState extends State<StoryPage> {
     _audioNotificationService = AudioNotificationService();
     _initializeBackgroundAudioService();
 
-    // Initialisation de la synchro JSON
-    _syncService.initializeFromStory(widget.story, maxCharsPerPage: 150);
-
     _initializePages();
-    _initializeAudio();
     _loadReadingProgress();
     _loadFavoriteStatus();
   }
@@ -235,14 +233,51 @@ class _StoryPageState extends State<StoryPage> {
     return pages.isEmpty ? [text] : pages;
   }
 
-  void _initializeAudio() {
-    _isAudio = widget.story.audio?.isNotEmpty == true &&
-        widget.story.audio!.first.isNotEmpty;
+  void _initializeAudio(SettingsModel settings) {
+    // Si la voix demandée a changé dans les réglages, on réinitialise l'audio
+    final requestedVoiceKey = (settings.voiceGender == 'homme' || settings.voiceGender == 'male')
+        ? 'homme'
+        : 'femme';
 
-    final audio = _isAudio ? widget.story.audio!.first.values.first : '';
+    if (_isAudioInitialized && _currentVoiceKey == requestedVoiceKey) {
+      return;
+    }
 
-    if (_isAudio && audio.isNotEmpty) {
-      _audio = B2Audio(objectKey: audio);
+    final audioMap = widget.story.audio;
+    if (audioMap == null || audioMap.isEmpty) {
+      _isAudio = false;
+      _isAudioInitialized = true;
+      return;
+    }
+
+    // Récupérer la voix cible
+    String targetKey = requestedVoiceKey;
+    AudioVoiceData? voiceData = audioMap[targetKey];
+
+    // Fallback : si la voix choisie n'est pas remplie, basculer vers l'autre
+    if (voiceData == null || voiceData.url.trim().isEmpty) {
+      final alternateKey = targetKey == 'homme' ? 'femme' : 'homme';
+      if (audioMap.containsKey(alternateKey) && audioMap[alternateKey]!.url.trim().isNotEmpty) {
+        targetKey = alternateKey;
+        voiceData = audioMap[targetKey];
+      }
+    }
+
+    final selectedAudioPath = voiceData?.url.trim() ?? '';
+    _isAudio = selectedAudioPath.isNotEmpty;
+    _isAudioInitialized = true;
+    _currentVoiceKey = targetKey;
+
+    if (_isAudio && voiceData != null) {
+      // 1. Initialisation de la synchronisation texte/audio pour la voix active
+      _syncService.initializeFromAudioTimes(
+        voiceData.audioTimes,
+        maxCharsPerPage: 150,
+      );
+
+      // 2. Initialisation du lecteur audio
+      _audio?.dispose();
+      _audio = B2Audio(objectKey: selectedAudioPath);
       _audio!.preload();
 
       _audio!.onComplete.listen((_) => _handleAudioComplete());
@@ -520,7 +555,7 @@ class _StoryPageState extends State<StoryPage> {
 
   Future<void> _toggleFavorite() async {
     final newState = !_isFavorite;
-    setState(() => _isFavorite = newState); // Mise à jour optimiste de l'UI
+    setState(() => _isFavorite = newState);
 
     try {
       final docRef = _favoritesCollection.doc(widget.story.id);
@@ -534,7 +569,6 @@ class _StoryPageState extends State<StoryPage> {
       }
     } catch (e) {
       debugPrint('Erreur modification favori : $e');
-      // Annulation en cas d'erreur
       if (mounted) {
         setState(() => _isFavorite = !newState);
         ScaffoldMessenger.of(context).showSnackBar(
@@ -573,6 +607,8 @@ class _StoryPageState extends State<StoryPage> {
           settingsDoc.data() as Map<String, dynamic>,
           settingsDoc.id,
         );
+
+        _initializeAudio(settings);
 
         final currentSegments = (_syncService.pages.isNotEmpty &&
                 _currentPage < _syncService.pages.length)

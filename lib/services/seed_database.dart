@@ -1,5 +1,5 @@
 // Script de seed à lancer UNE FOIS manuellement (pas dans main.dart),
-// par ex. depuis un bouton de debug ou un test, le temps de foutre des données dans Firestore.
+// par ex. depuis un bouton de debug ou un test, le temps de mettre des données dans Firestore.
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:lumiconte/models/category_model.dart';
@@ -33,7 +33,7 @@ Future<void> seedDatabase() async {
   final interestRef =
       await firestore.collection('interests').add(interest.toMap());
 
-  // 3. Story ("stories"), uniquement les champs que StoryModel connaît
+  // 3. Story ("stories"), respectant le nouveau format audio Map<String, AudioVoiceData>
   final story = StoryModel(
     id: '',
     name: 'Mission Lune',
@@ -43,8 +43,16 @@ Future<void> seedDatabase() async {
         'bla bla bla la mmission lune bla bla aller sur la lune owi la lune ca brille',
     image: 'lien_image_story',
     illustrations: 'lien_illustrations',
-    audio: [],
-    audioTimes: '',
+    audio: {
+      'femme': AudioVoiceData(
+        url: 'audio/mission_lune_femme.mp3',
+        audioTimes: '{"segments":[]}',
+      ),
+      'homme': AudioVoiceData(
+        url: 'audio/mission_lune_homme.mp3',
+        audioTimes: '{"segments":[]}',
+      ),
+    },
     categoryIds: [categoryRef.id],
     type: 'original',
     createdAt: DateTime.now(),
@@ -70,7 +78,7 @@ Future<void> seedDatabase() async {
     interestIds: [interestRef.id],
   );
 
-// 6. Settings du profil, via SettingsService
+  // 6. Settings du profil, via SettingsService
   final settingsService = SettingsService();
   await settingsService.createOrInitSettings(
     user.uid,

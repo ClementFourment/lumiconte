@@ -35,6 +35,12 @@ class _StoryManuscriptViewState extends State<StoryManuscriptView> {
     });
   }
 
+  String _formatDuration(Duration duration) {
+    final minutes = duration.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final seconds = duration.inSeconds.remainder(60).toString().padLeft(2, '0');
+    return '$minutes:$seconds';
+  }
+
   @override
   Widget build(BuildContext context) {
     final Color backgroundColor = const Color(0xFFEEEADE);
@@ -51,7 +57,7 @@ class _StoryManuscriptViewState extends State<StoryManuscriptView> {
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           child: Column(
             children: [
-              // 1. Barre supérieure minimaliste
+              // 1. Barre supérieure
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 4),
                 child: Row(
@@ -94,7 +100,7 @@ class _StoryManuscriptViewState extends State<StoryManuscriptView> {
               ),
               const SizedBox(height: 8),
 
-              // 2. MANUSCRIT - Parchemin ancien
+              // 2. Parchemin
               Expanded(
                 child: Container(
                   decoration: BoxDecoration(
@@ -162,8 +168,6 @@ class _StoryManuscriptViewState extends State<StoryManuscriptView> {
                                       ),
                                     ),
                                     const SizedBox(height: 8),
-
-                                    // TEXTE DE L'HISTOIRE
                                     Expanded(
                                       flex: 5,
                                       child: Center(
@@ -251,9 +255,18 @@ class _StoryManuscriptViewState extends State<StoryManuscriptView> {
                             ),
                           ),
                         ),
+                      const SizedBox(width: 6),
+                      Text(
+                        _formatDuration(widget.params.audioPosition),
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                          color: subtleTextColor,
+                        ),
+                      ),
                       Expanded(
                         child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
                           child: SliderTheme(
                             data: SliderTheme.of(context).copyWith(
                               trackHeight: 2,
@@ -281,6 +294,14 @@ class _StoryManuscriptViewState extends State<StoryManuscriptView> {
                               onChangeEnd: widget.params.onSeekAudio,
                             ),
                           ),
+                        ),
+                      ),
+                      Text(
+                        _formatDuration(widget.params.audioDuration),
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                          color: subtleTextColor,
                         ),
                       ),
                     ],
@@ -437,168 +458,162 @@ class _StoryManuscriptViewState extends State<StoryManuscriptView> {
     );
   }
 
-Widget _buildBookCompositionText(Color textColor) {
-  final cleanText = _getCleanPageText(widget.params.currentPageText);
+  Widget _buildBookCompositionText(Color textColor) {
+    final cleanText = _getCleanPageText(widget.params.currentPageText);
 
-  if (cleanText.isEmpty) {
-    return const SizedBox.shrink();
-  }
+    if (cleanText.isEmpty) {
+      return const SizedBox.shrink();
+    }
 
-  final adjustedFontSize =
-      widget.params.fontSize > 16 ? 15.0 : widget.params.fontSize;
-  const inkColor = Color(0xFF32271B);
+    final adjustedFontSize =
+        widget.params.fontSize > 16 ? 15.0 : widget.params.fontSize;
+    const inkColor = Color(0xFF32271B);
 
-  // Mode audio synchro : affichage avec lettrine sur le premier mot
-  if (widget.params.currentSegments.isNotEmpty) {
-    final double currentTimeInSeconds =
-        widget.params.audioPosition.inMilliseconds / 1000.0;
+    if (widget.params.currentSegments.isNotEmpty) {
+      final double currentTimeInSeconds =
+          widget.params.audioPosition.inMilliseconds / 1000.0;
 
-    // Récupération de tous les wordTimings à plat
-    final allWords = widget.params.currentSegments
-        .expand((segment) => segment.words)
-        .toList();
+      final allWords = widget.params.currentSegments
+          .expand((segment) => segment.words)
+          .toList();
 
-    if (allWords.isEmpty) return const SizedBox.shrink();
+      if (allWords.isEmpty) return const SizedBox.shrink();
 
-    final firstWordTiming = allWords.first;
-    final otherWords = allWords.skip(1);
+      final firstWordTiming = allWords.first;
+      final otherWords = allWords.skip(1);
 
-    final bool isFirstActive = currentTimeInSeconds >= firstWordTiming.start &&
-        currentTimeInSeconds <= firstWordTiming.end;
+      final bool isFirstActive = currentTimeInSeconds >= firstWordTiming.start &&
+          currentTimeInSeconds <= firstWordTiming.end;
 
-    final String firstLetter = firstWordTiming.word.isNotEmpty
-        ? firstWordTiming.word[0]
-        : '';
-    final String restOfFirstWord = firstWordTiming.word.length > 1
-        ? firstWordTiming.word.substring(1)
-        : '';
+      final String firstLetter = firstWordTiming.word.isNotEmpty
+          ? firstWordTiming.word[0]
+          : '';
+      final String restOfFirstWord = firstWordTiming.word.length > 1
+          ? firstWordTiming.word.substring(1)
+          : '';
+
+      return AnimatedSwitcher(
+        duration: const Duration(milliseconds: 300),
+        child: KeyedSubtree(
+          key: ValueKey(widget.params.currentPageIndex),
+          child: Wrap(
+            alignment: WrapAlignment.start,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 4.0,
+            runSpacing: 6.0,
+            children: [
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 80),
+                padding: const EdgeInsets.symmetric(horizontal: 3.0, vertical: 1.0),
+                decoration: BoxDecoration(
+                  color: isFirstActive
+                      ? const Color(0xFFB8A680).withOpacity(0.4)
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(4.0),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.baseline,
+                  textBaseline: TextBaseline.alphabetic,
+                  children: [
+                    Text(
+                      firstLetter,
+                      style: GoogleFonts.cormorantGaramond(
+                        fontSize: adjustedFontSize * 2.2,
+                        fontWeight: FontWeight.bold,
+                        color: isFirstActive ? const Color(0xFF8C4A00) : inkColor,
+                        height: 0.8,
+                      ),
+                    ),
+                    Text(
+                      restOfFirstWord,
+                      style: TextStyle(
+                        fontSize: adjustedFontSize,
+                        fontWeight:
+                            isFirstActive ? FontWeight.bold : FontWeight.normal,
+                        color: isFirstActive ? const Color(0xFF8C4A00) : inkColor,
+                        height: 1.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              ...otherWords.map((wordTiming) {
+                final bool isActive = currentTimeInSeconds >= wordTiming.start &&
+                    currentTimeInSeconds <= wordTiming.end;
+
+                return AnimatedContainer(
+                  duration: const Duration(milliseconds: 80),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 3.0, vertical: 1.0),
+                  decoration: BoxDecoration(
+                    color: isActive
+                        ? const Color(0xFFB8A680).withOpacity(0.4)
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(4.0),
+                  ),
+                  child: Text(
+                    wordTiming.word,
+                    style: TextStyle(
+                      fontSize: adjustedFontSize,
+                      fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+                      color: isActive ? const Color(0xFF8C4A00) : inkColor,
+                      height: 1.5,
+                    ),
+                  ),
+                );
+              }),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (widget.params.isDyslexia) {
+      return AnimatedSwitcher(
+        duration: const Duration(milliseconds: 300),
+        child: RichText(
+          key: ValueKey(widget.params.currentPageIndex),
+          textAlign: TextAlign.justify,
+          text: widget.params.buildColorizedText(
+            text: cleanText,
+            baseFontSize: adjustedFontSize,
+            defaultTextColor: inkColor,
+            isDyslexiaEnabled: widget.params.isDyslexia,
+          ),
+        ),
+      );
+    }
 
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 300),
       child: KeyedSubtree(
         key: ValueKey(widget.params.currentPageIndex),
-        child: Wrap(
-          alignment: WrapAlignment.start,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          spacing: 4.0,
-          runSpacing: 6.0,
-          children: [
-            // Premier mot décomposé (Lettrine + reste du mot)
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 80),
-              padding: const EdgeInsets.symmetric(horizontal: 3.0, vertical: 1.0),
-              decoration: BoxDecoration(
-                color: isFirstActive
-                    ? const Color(0xFFB8A680).withOpacity(0.4)
-                    : Colors.transparent,
-                borderRadius: BorderRadius.circular(4.0),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.baseline,
-                textBaseline: TextBaseline.alphabetic,
-                children: [
-                  Text(
-                    firstLetter,
-                    style: GoogleFonts.cormorantGaramond(
-                      fontSize: adjustedFontSize * 2.2,
-                      fontWeight: FontWeight.bold,
-                      color: isFirstActive ? const Color(0xFF8C4A00) : inkColor,
-                      height: 0.8,
-                    ),
-                  ),
-                  Text(
-                    restOfFirstWord,
-                    style: TextStyle(
-                      fontSize: adjustedFontSize,
-                      fontWeight:
-                          isFirstActive ? FontWeight.bold : FontWeight.normal,
-                      color: isFirstActive ? const Color(0xFF8C4A00) : inkColor,
-                      height: 1.5,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            // Reste des mots avec surlignage dynamique classique
-            ...otherWords.map((wordTiming) {
-              final bool isActive = currentTimeInSeconds >= wordTiming.start &&
-                  currentTimeInSeconds <= wordTiming.end;
-
-              return AnimatedContainer(
-                duration: const Duration(milliseconds: 80),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 3.0, vertical: 1.0),
-                decoration: BoxDecoration(
-                  color: isActive
-                      ? const Color(0xFFB8A680).withOpacity(0.4)
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(4.0),
-                ),
-                child: Text(
-                  wordTiming.word,
-                  style: TextStyle(
-                    fontSize: adjustedFontSize,
-                    fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
-                    color: isActive ? const Color(0xFF8C4A00) : inkColor,
-                    height: 1.5,
-                  ),
-                ),
-              );
-            }),
-          ],
+        child: DropCapText(
+          cleanText,
+          style: GoogleFonts.cormorantGaramond(
+            fontSize: adjustedFontSize,
+            color: inkColor,
+            height: 1.6,
+            letterSpacing: -0.15,
+          ),
+          textAlign: TextAlign.justify,
+          dropCapChars: 1,
+          indentation: Offset.zero,
+          dropCapStyle: GoogleFonts.cormorantGaramond(
+            fontSize: adjustedFontSize * 4.6,
+            fontWeight: FontWeight.w700,
+            color: inkColor,
+            height: 0.65,
+          ),
+          dropCapPadding: const EdgeInsets.only(
+            right: 4,
+            bottom: 1,
+          ),
         ),
       ),
     );
   }
-
-  // Mode dyslexie
-  if (widget.params.isDyslexia) {
-    return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 300),
-      child: RichText(
-        key: ValueKey(widget.params.currentPageIndex),
-        textAlign: TextAlign.justify,
-        text: widget.params.buildColorizedText(
-          text: cleanText,
-          baseFontSize: adjustedFontSize,
-          defaultTextColor: inkColor,
-          isDyslexiaEnabled: widget.params.isDyslexia,
-        ),
-      ),
-    );
-  }
-
-  // Mode standard manuscrit avec lettrine DropCapText
-  return AnimatedSwitcher(
-    duration: const Duration(milliseconds: 300),
-    child: KeyedSubtree(
-      key: ValueKey(widget.params.currentPageIndex),
-      child: DropCapText(
-        cleanText,
-        style: GoogleFonts.cormorantGaramond(
-          fontSize: adjustedFontSize,
-          color: inkColor,
-          height: 1.6,
-          letterSpacing: -0.15,
-        ),
-        textAlign: TextAlign.justify,
-        dropCapChars: 1,
-        indentation: Offset.zero,
-        dropCapStyle: GoogleFonts.cormorantGaramond(
-          fontSize: adjustedFontSize * 4.6,
-          fontWeight: FontWeight.w700,
-          color: inkColor,
-          height: 0.65,
-        ),
-        dropCapPadding: const EdgeInsets.only(
-          right: 4,
-          bottom: 1,
-        ),
-      ),
-    ),
-  );
-}
 
   Widget _buildPagination(Color subtleColor) {
     return Column(

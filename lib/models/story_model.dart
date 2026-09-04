@@ -1,6 +1,28 @@
-import 'dart:ffi';
-
 import 'package:cloud_firestore/cloud_firestore.dart';
+
+class AudioVoiceData {
+  final String url;
+  final String audioTimes;
+
+  AudioVoiceData({
+    required this.url,
+    required this.audioTimes,
+  });
+
+  factory AudioVoiceData.fromMap(Map<String, dynamic> map) {
+    return AudioVoiceData(
+      url: map['url'] as String? ?? '',
+      audioTimes: map['audioTimes'] as String? ?? '',
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'url': url,
+      'audioTimes': audioTimes,
+    };
+  }
+}
 
 class StoryModel {
   final String id;
@@ -8,11 +30,10 @@ class StoryModel {
   final int? age_min;
   final int? age_max;
   final String content;
-  final String morals; // ⚡ Champ morals ajouté
+  final String morals;
   final String? image;
   final String? illustrations;
-  final List<Map<String, String>>? audio;
-  final String? audioTimes;
+  final Map<String, AudioVoiceData>? audio; // Map de types de voix ("femme", "homme")
   final List<String> categoryIds;
   final String? type;
   final String? createdByProfileId;
@@ -24,11 +45,10 @@ class StoryModel {
     required this.age_min,
     required this.age_max,
     required this.content,
-    this.morals = '', // ⚡ Valeur par défaut si non renseigné
+    this.morals = '',
     this.image,
     this.illustrations,
     this.audio,
-    this.audioTimes,
     this.categoryIds = const [],
     this.type = 'original',
     this.createdByProfileId = '',
@@ -38,19 +58,37 @@ class StoryModel {
   factory StoryModel.fromMap(Map<String, dynamic>? data, String docId) {
     final map = data ?? {};
 
-    // Cast sécurisé du tableau Audio
-    List<Map<String, String>>? parsedAudio;
-    if (map['audio'] != null && map['audio'] is List) {
-      parsedAudio = (map['audio'] as List).map((item) {
-        if (item is Map) {
-          return item
-              .map((key, value) => MapEntry(key.toString(), value.toString()));
+    Map<String, AudioVoiceData>? parsedAudio;
+
+    if (map['audio'] != null) {
+      parsedAudio = {};
+      
+      // Cas 1 : Map directe dans Firestore (ex: { femme: { url: ..., audioTimes: ... }, homme: ... })
+      if (map['audio'] is Map) {
+        (map['audio'] as Map).forEach((key, value) {
+          if (value is Map) {
+            parsedAudio![key.toString()] = AudioVoiceData.fromMap(
+              Map<String, dynamic>.from(value),
+            );
+          }
+        });
+      } 
+      // Cas 2 : Si au format liste d'éléments Map
+      else if (map['audio'] is List) {
+        for (var item in (map['audio'] as List)) {
+          if (item is Map) {
+            item.forEach((key, value) {
+              if (value is Map) {
+                parsedAudio![key.toString()] = AudioVoiceData.fromMap(
+                  Map<String, dynamic>.from(value),
+                );
+              }
+            });
+          }
         }
-        return <String, String>{};
-      }).toList();
+      }
     }
 
-    // Cast sécurisé de la date
     DateTime? parsedDate;
     if (map['createdAt'] is Timestamp) {
       parsedDate = (map['createdAt'] as Timestamp).toDate();
@@ -59,14 +97,13 @@ class StoryModel {
     return StoryModel(
       id: docId,
       name: map['name'] as String? ?? '',
-      age_min: map['age_min'] as int? ?? null,
-      age_max: map['age_max'] as int? ?? null,
+      age_min: map['age_min'] as int?,
+      age_max: map['age_max'] as int?,
       content: map['content'] as String? ?? '',
-      morals: map['morals'] as String? ?? '', // ⚡ Parsing depuis Firestore
+      morals: map['morals'] as String? ?? '',
       image: map['image'] as String?,
       illustrations: map['illustrations'] as String?,
       audio: parsedAudio,
-      audioTimes: map['audioTimes'] as String?,
       categoryIds: List<String>.from(map['categoryIds'] ?? []),
       type: map['type'] as String? ?? 'original',
       createdByProfileId: map['createdByProfileId'] as String? ?? '',
@@ -77,12 +114,13 @@ class StoryModel {
   Map<String, dynamic> toMap() {
     return {
       'name': name,
+      'age_min': age_min,
+      'age_max': age_max,
       'content': content,
-      'morals': morals, // ⚡ Sauvegarde dans Firestore
+      'morals': morals,
       'image': image,
       'illustrations': illustrations,
-      'audio': audio,
-      'audioTimes': audioTimes,
+      'audio': audio?.map((key, value) => MapEntry(key, value.toMap())),
       'categoryIds': categoryIds,
       'type': type,
       'createdByProfileId': createdByProfileId,
