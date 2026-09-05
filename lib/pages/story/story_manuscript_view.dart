@@ -6,7 +6,7 @@ import 'package:lumiconte/pages/story/story_view_params.dart';
 import 'package:lumiconte/widget/b2_image.dart';
 import 'package:lumiconte/widget/drop_cap_text.dart';
 
-class StoryManuscriptView extends StatefulWidget {
+class StoryManuscriptView extends StatelessWidget {
   final StoryViewParams params;
   final String profileId;
 
@@ -15,25 +15,6 @@ class StoryManuscriptView extends StatefulWidget {
     required this.params,
     required this.profileId,
   });
-
-  @override
-  State<StoryManuscriptView> createState() => _StoryManuscriptViewState();
-}
-
-class _StoryManuscriptViewState extends State<StoryManuscriptView> {
-  late String? _currentImageUrl;
-
-  @override
-  void initState() {
-    super.initState();
-    _currentImageUrl = widget.params.image;
-  }
-
-  void updateImageUrl(String newUrl) {
-    setState(() {
-      _currentImageUrl = newUrl;
-    });
-  }
 
   String _formatDuration(Duration duration) {
     final minutes = duration.inMinutes.remainder(60).toString().padLeft(2, '0');
@@ -65,7 +46,7 @@ class _StoryManuscriptViewState extends State<StoryManuscriptView> {
                   children: [
                     _CircleIconButton(
                       icon: Icons.chevron_left,
-                      onPressed: widget.params.onBack,
+                      onPressed: params.onBack,
                       backgroundColor: iconBtnBg,
                       iconColor: textColor,
                       size: 34,
@@ -73,12 +54,12 @@ class _StoryManuscriptViewState extends State<StoryManuscriptView> {
                     Row(
                       children: [
                         _CircleIconButton(
-                          icon: widget.params.isFavorite
+                          icon: params.isFavorite
                               ? Icons.favorite
                               : Icons.favorite_border,
-                          onPressed: widget.params.onToggleFavorite,
+                          onPressed: params.onToggleFavorite,
                           backgroundColor: iconBtnBg,
-                          iconColor: widget.params.isFavorite
+                          iconColor: params.isFavorite
                               ? const Color(0xFFEF4444)
                               : textColor,
                           size: 34,
@@ -87,7 +68,7 @@ class _StoryManuscriptViewState extends State<StoryManuscriptView> {
                         _CircleIconButton(
                           icon: Icons.settings,
                           onPressed: () => context.push('/settings', extra: {
-                            'profileId': widget.profileId,
+                            'profileId': profileId,
                           }),
                           backgroundColor: iconBtnBg,
                           iconColor: textColor,
@@ -128,9 +109,9 @@ class _StoryManuscriptViewState extends State<StoryManuscriptView> {
                     child: GestureDetector(
                       onHorizontalDragEnd: (details) {
                         if (details.primaryVelocity! > 0) {
-                          widget.params.onPreviousPage();
+                          params.onPreviousPage();
                         } else if (details.primaryVelocity! < 0) {
-                          widget.params.onNextPage();
+                          params.onNextPage();
                         }
                       },
                       child: Stack(
@@ -203,7 +184,7 @@ class _StoryManuscriptViewState extends State<StoryManuscriptView> {
               const SizedBox(height: 10),
 
               // 3. BARRE AUDIO
-              if (widget.params.isAudio)
+              if (params.isAudio)
                 Container(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -224,7 +205,7 @@ class _StoryManuscriptViewState extends State<StoryManuscriptView> {
                   ),
                   child: Row(
                     children: [
-                      if (widget.params.isLoading)
+                      if (params.isLoading)
                         SizedBox(
                           width: 32,
                           height: 32,
@@ -238,7 +219,7 @@ class _StoryManuscriptViewState extends State<StoryManuscriptView> {
                         )
                       else
                         GestureDetector(
-                          onTap: widget.params.onToggleAudio,
+                          onTap: params.onToggleAudio,
                           child: Container(
                             width: 32,
                             height: 32,
@@ -247,7 +228,7 @@ class _StoryManuscriptViewState extends State<StoryManuscriptView> {
                               shape: BoxShape.circle,
                             ),
                             child: Icon(
-                              widget.params.isPlaying
+                              params.isPlaying
                                   ? Icons.pause_rounded
                                   : Icons.play_arrow_rounded,
                               color: pageColor,
@@ -257,7 +238,7 @@ class _StoryManuscriptViewState extends State<StoryManuscriptView> {
                         ),
                       const SizedBox(width: 6),
                       Text(
-                        _formatDuration(widget.params.audioPosition),
+                        _formatDuration(params.audioPosition),
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w500,
@@ -280,24 +261,24 @@ class _StoryManuscriptViewState extends State<StoryManuscriptView> {
                             ),
                             child: Slider(
                               min: 0,
-                              max: widget.params.audioDuration.inSeconds
+                              max: params.audioDuration.inSeconds
                                           .toDouble() >
                                       0
-                                  ? widget.params.audioDuration.inSeconds
+                                  ? params.audioDuration.inSeconds
                                       .toDouble()
                                   : 1,
-                              value: widget.params.audioPosition.inSeconds
+                              value: params.audioPosition.inSeconds
                                   .clamp(
-                                      0, widget.params.audioDuration.inSeconds)
+                                      0, params.audioDuration.inSeconds)
                                   .toDouble(),
                               onChanged: (_) {},
-                              onChangeEnd: widget.params.onSeekAudio,
+                              onChangeEnd: params.onSeekAudio,
                             ),
                           ),
                         ),
                       ),
                       Text(
-                        _formatDuration(widget.params.audioDuration),
+                        _formatDuration(params.audioDuration),
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w500,
@@ -459,21 +440,23 @@ class _StoryManuscriptViewState extends State<StoryManuscriptView> {
   }
 
   Widget _buildBookCompositionText(Color textColor) {
-    final cleanText = _getCleanPageText(widget.params.currentPageText);
+    final cleanText = _getCleanPageText(params.currentPageText);
 
     if (cleanText.isEmpty) {
       return const SizedBox.shrink();
     }
 
     final adjustedFontSize =
-        widget.params.fontSize > 16 ? 15.0 : widget.params.fontSize;
+        params.fontSize > 16 ? 15.0 : params.fontSize;
     const inkColor = Color(0xFF32271B);
+    final highlightBg = const Color(0xFFB8A680).withOpacity(0.25);
+    const activeInkColor = Color(0xFF6B3A00);
 
-    if (widget.params.currentSegments.isNotEmpty) {
+    if (params.currentSegments.isNotEmpty) {
       final double currentTimeInSeconds =
-          widget.params.audioPosition.inMilliseconds / 1000.0;
+          params.audioPosition.inMilliseconds / 1000.0;
 
-      final allWords = widget.params.currentSegments
+      final allWords = params.currentSegments
           .expand((segment) => segment.words)
           .toList();
 
@@ -495,7 +478,7 @@ class _StoryManuscriptViewState extends State<StoryManuscriptView> {
       return AnimatedSwitcher(
         duration: const Duration(milliseconds: 300),
         child: KeyedSubtree(
-          key: ValueKey(widget.params.currentPageIndex),
+          key: ValueKey(params.currentPageIndex),
           child: Wrap(
             alignment: WrapAlignment.start,
             crossAxisAlignment: WrapCrossAlignment.center,
@@ -503,12 +486,10 @@ class _StoryManuscriptViewState extends State<StoryManuscriptView> {
             runSpacing: 6.0,
             children: [
               AnimatedContainer(
-                duration: const Duration(milliseconds: 80),
+                duration: const Duration(milliseconds: 120),
                 padding: const EdgeInsets.symmetric(horizontal: 3.0, vertical: 1.0),
                 decoration: BoxDecoration(
-                  color: isFirstActive
-                      ? const Color(0xFFB8A680).withOpacity(0.4)
-                      : Colors.transparent,
+                  color: isFirstActive ? highlightBg : Colors.transparent,
                   borderRadius: BorderRadius.circular(4.0),
                 ),
                 child: Row(
@@ -521,7 +502,7 @@ class _StoryManuscriptViewState extends State<StoryManuscriptView> {
                       style: GoogleFonts.cormorantGaramond(
                         fontSize: adjustedFontSize * 2.2,
                         fontWeight: FontWeight.bold,
-                        color: isFirstActive ? const Color(0xFF8C4A00) : inkColor,
+                        color: isFirstActive ? activeInkColor : inkColor,
                         height: 0.8,
                       ),
                     ),
@@ -530,8 +511,8 @@ class _StoryManuscriptViewState extends State<StoryManuscriptView> {
                       style: TextStyle(
                         fontSize: adjustedFontSize,
                         fontWeight:
-                            isFirstActive ? FontWeight.bold : FontWeight.normal,
-                        color: isFirstActive ? const Color(0xFF8C4A00) : inkColor,
+                            isFirstActive ? FontWeight.w600 : FontWeight.normal,
+                        color: isFirstActive ? activeInkColor : inkColor,
                         height: 1.5,
                       ),
                     ),
@@ -543,21 +524,19 @@ class _StoryManuscriptViewState extends State<StoryManuscriptView> {
                     currentTimeInSeconds <= wordTiming.end;
 
                 return AnimatedContainer(
-                  duration: const Duration(milliseconds: 80),
+                  duration: const Duration(milliseconds: 120),
                   padding:
                       const EdgeInsets.symmetric(horizontal: 3.0, vertical: 1.0),
                   decoration: BoxDecoration(
-                    color: isActive
-                        ? const Color(0xFFB8A680).withOpacity(0.4)
-                        : Colors.transparent,
+                    color: isActive ? highlightBg : Colors.transparent,
                     borderRadius: BorderRadius.circular(4.0),
                   ),
                   child: Text(
                     wordTiming.word,
                     style: TextStyle(
                       fontSize: adjustedFontSize,
-                      fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
-                      color: isActive ? const Color(0xFF8C4A00) : inkColor,
+                      fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
+                      color: isActive ? activeInkColor : inkColor,
                       height: 1.5,
                     ),
                   ),
@@ -569,17 +548,17 @@ class _StoryManuscriptViewState extends State<StoryManuscriptView> {
       );
     }
 
-    if (widget.params.isDyslexia) {
+    if (params.isDyslexia) {
       return AnimatedSwitcher(
         duration: const Duration(milliseconds: 300),
         child: RichText(
-          key: ValueKey(widget.params.currentPageIndex),
+          key: ValueKey(params.currentPageIndex),
           textAlign: TextAlign.justify,
-          text: widget.params.buildColorizedText(
+          text: params.buildColorizedText(
             text: cleanText,
             baseFontSize: adjustedFontSize,
             defaultTextColor: inkColor,
-            isDyslexiaEnabled: widget.params.isDyslexia,
+            isDyslexiaEnabled: params.isDyslexia,
           ),
         ),
       );
@@ -588,7 +567,7 @@ class _StoryManuscriptViewState extends State<StoryManuscriptView> {
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 300),
       child: KeyedSubtree(
-        key: ValueKey(widget.params.currentPageIndex),
+        key: ValueKey(params.currentPageIndex),
         child: DropCapText(
           cleanText,
           style: GoogleFonts.cormorantGaramond(
@@ -626,7 +605,7 @@ class _StoryManuscriptViewState extends State<StoryManuscriptView> {
         ),
         const SizedBox(height: 6),
         Text(
-          '${widget.params.currentPageIndex + 1} / ${widget.params.totalPages}',
+          '${params.currentPageIndex + 1} / ${params.totalPages}',
           style: TextStyle(
             fontSize: 10,
             fontWeight: FontWeight.w500,
@@ -640,19 +619,10 @@ class _StoryManuscriptViewState extends State<StoryManuscriptView> {
   }
 
   Widget _buildStoryImage() {
-    final pattern = RegExp(r'\[img:(\d+)\]');
-    final match = pattern.firstMatch(widget.params.currentPageText);
-
-    if (match != null &&
-        widget.params.illustrationsPath != '' &&
-        widget.params.illustrationsPath?.isNotEmpty == true) {
-      final imgNumber = match.group(1);
-      _currentImageUrl =
-          '${widget.params.illustrationsPath}/img$imgNumber.webp';
-    }
     return SizedBox.expand(
       child: B2Image(
-        objectKey: _currentImageUrl,
+        key: ValueKey(params.image),
+        objectKey: params.image,
         width: double.infinity,
         height: double.infinity,
         fit: BoxFit.cover,

@@ -114,7 +114,7 @@ class _StoryPageState extends State<StoryPage> {
     if (_syncService.pages.isNotEmpty && _isPlaying) {
       final double currentTimeInSeconds = position.inMilliseconds / 1000.0;
       final targetPage = _syncService.getPageIndexForTime(currentTimeInSeconds);
-      if (targetPage != _currentPage && targetPage < _pages.length) {
+      if (targetPage != _currentPage && targetPage < _pages.length && targetPage >= 0) {
         setState(() {
           _currentPage = targetPage;
         });
@@ -233,8 +233,26 @@ class _StoryPageState extends State<StoryPage> {
     return pages.isEmpty ? [text] : pages;
   }
 
+  String? _getCalculatedImageUrl() {
+    final pattern = RegExp(r'\[img:(\d+)\]');
+    final illustrationsPath = widget.story.illustrations;
+
+    if (illustrationsPath != null && illustrationsPath.isNotEmpty) {
+      for (int i = _currentPage; i >= 0; i--) {
+        if (i < _pages.length) {
+          final match = pattern.firstMatch(_pages[i]);
+          if (match != null) {
+            final imgNumber = match.group(1);
+            return '$illustrationsPath/img$imgNumber.webp';
+          }
+        }
+      }
+    }
+
+    return widget.story.image;
+  }
+
   void _initializeAudio(SettingsModel settings) {
-    // Si la voix demandée a changé dans les réglages, on réinitialise l'audio
     final requestedVoiceKey = (settings.voiceGender == 'homme' || settings.voiceGender == 'male')
         ? 'homme'
         : 'femme';
@@ -250,11 +268,9 @@ class _StoryPageState extends State<StoryPage> {
       return;
     }
 
-    // Récupérer la voix cible
     String targetKey = requestedVoiceKey;
     AudioVoiceData? voiceData = audioMap[targetKey];
 
-    // Fallback : si la voix choisie n'est pas remplie, basculer vers l'autre
     if (voiceData == null || voiceData.url.trim().isEmpty) {
       final alternateKey = targetKey == 'homme' ? 'femme' : 'homme';
       if (audioMap.containsKey(alternateKey) && audioMap[alternateKey]!.url.trim().isNotEmpty) {
@@ -269,13 +285,28 @@ class _StoryPageState extends State<StoryPage> {
     _currentVoiceKey = targetKey;
 
     if (_isAudio && voiceData != null) {
-      // 1. Initialisation de la synchronisation texte/audio pour la voix active
       _syncService.initializeFromAudioTimes(
         voiceData.audioTimes,
         maxCharsPerPage: 150,
       );
 
-      // 2. Initialisation du lecteur audio
+      // Met à jour la liste des pages avec les données de synchronisation audio
+      if (_syncService.pages.isNotEmpty) {
+        final newPages = _syncService.pages.map((p) => p.text).toList();
+        if (_pages.length != newPages.length) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              setState(() {
+                _pages = newPages;
+                if (_currentPage >= _pages.length) {
+                  _currentPage = _pages.length - 1;
+                }
+              });
+            }
+          });
+        }
+      }
+
       _audio?.dispose();
       _audio = B2Audio(objectKey: selectedAudioPath);
       _audio!.preload();
@@ -610,14 +641,18 @@ class _StoryPageState extends State<StoryPage> {
 
         _initializeAudio(settings);
 
+        final int safePageIndex = _pages.isNotEmpty
+            ? _currentPage.clamp(0, _pages.length - 1)
+            : 0;
+
         final currentSegments = (_syncService.pages.isNotEmpty &&
-                _currentPage < _syncService.pages.length)
-            ? _syncService.pages[_currentPage].segments
+                safePageIndex < _syncService.pages.length)
+            ? _syncService.pages[safePageIndex].segments
             : <SegmentTiming>[];
 
         final storyParams = StoryViewParams(
-          currentPageText: _pages.isNotEmpty ? _pages[_currentPage] : '',
-          currentPageIndex: _currentPage,
+          currentPageText: _pages.isNotEmpty ? _pages[safePageIndex] : '',
+          currentPageIndex: safePageIndex,
           totalPages: _pages.length,
           isFavorite: _isFavorite,
           isAudio: _isAudio,
@@ -627,7 +662,7 @@ class _StoryPageState extends State<StoryPage> {
           audioDuration: _audioDuration,
           fontSize: settings.fontSize.toDouble(),
           isDyslexia: settings.dyslexia,
-          image: widget.story.image,
+          image: _getCalculatedImageUrl(),
           illustrationsPath: widget.story.illustrations,
           currentSegments: currentSegments,
           onBack: () => Navigator.pop(context),

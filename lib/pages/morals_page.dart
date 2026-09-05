@@ -57,7 +57,6 @@ class MoralsPage extends StatelessWidget {
       body: StreamBuilder<QuerySnapshot>(
         stream: readingProgressRef.snapshots(),
         builder: (context, snapshot) {
-          // Stocke le niveau de progression et la date de déverrouillage/mise à jour
           final Map<String, int> readProgress = {};
           final Map<String, DateTime> unlockDates = {};
 
@@ -70,7 +69,6 @@ class MoralsPage extends StatelessWidget {
               final num rawProgress = data['progress'] ?? 0;
               readProgress[storyId] = rawProgress.toInt();
 
-              // Récupère la date de déverrouillage (updatedAt / timestamp)
               if (data['updatedAt'] is Timestamp) {
                 unlockDates[storyId] = (data['updatedAt'] as Timestamp).toDate();
               } else if (data['createdAt'] is Timestamp) {
@@ -79,9 +77,6 @@ class MoralsPage extends StatelessWidget {
             }
           }
 
-          // Tri des histoires : 
-          // 1. Débloquées d'abord (triées par la date de déverrouillage la plus récente)
-          // 2. Non débloquées en dernier
           final sortedStories = List<StoryModel>.from(stories)..sort((a, b) {
             final progressA = readProgress[a.id] ?? 0;
             final progressB = readProgress[b.id] ?? 0;
@@ -94,7 +89,7 @@ class MoralsPage extends StatelessWidget {
             if (isUnlockedA && isUnlockedB) {
               final dateA = unlockDates[a.id] ?? DateTime.fromMillisecondsSinceEpoch(0);
               final dateB = unlockDates[b.id] ?? DateTime.fromMillisecondsSinceEpoch(0);
-              return dateB.compareTo(dateA); // Plus récent au plus ancien
+              return dateB.compareTo(dateA);
             }
 
             return 0;
@@ -107,7 +102,6 @@ class MoralsPage extends StatelessWidget {
 
           return Column(
             children: [
-              // Bannière récapitulative
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                 child: Container(
@@ -149,8 +143,6 @@ class MoralsPage extends StatelessWidget {
                   ),
                 ),
               ),
-
-              // Liste des morales ordonnées avec taille fixe
               Expanded(
                 child: ListView.builder(
                   itemCount: sortedStories.length,
@@ -171,6 +163,54 @@ class MoralsPage extends StatelessWidget {
     );
   }
 
+  // Extraction du préfixe "Le conseil de... :"
+  String _getConseilHeader(String text) {
+    final colonIndex = text.indexOf(':');
+    if (colonIndex != -1) {
+      return text.substring(0, colonIndex + 1).trim();
+    }
+    return text;
+  }
+
+  void _showMoralDialog(BuildContext context, StoryModel story) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: Text(
+            story.name,
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          content: SingleChildScrollView(
+            child: Text(
+              story.morals.isNotEmpty 
+                  ? story.morals 
+                  : "Pas de morale enregistrée pour ce conte.",
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: colorScheme.onSurface,
+                height: 1.4,
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Fermer'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   Widget _buildMoralCard(
     BuildContext context,
     StoryModel story,
@@ -179,8 +219,14 @@ class MoralsPage extends StatelessWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
+    final String displayText = isUnlocked
+        ? (story.morals.isNotEmpty
+            ? _getConseilHeader(story.morals)
+            : "Pas de morale enregistrée.")
+        : "Terminez cette histoire pour en débloquer la morale.";
+
     return Container(
-      height: 110, // Hauteur fixe pour uniformiser toutes les cartes
+      height: 100,
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
         color: isUnlocked
@@ -195,79 +241,90 @@ class MoralsPage extends StatelessWidget {
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(16),
-        child: Row(
-          children: [
-            // Vignette de couverture fixe (90x110)
-            SizedBox(
-              width: 90,
-              height: double.infinity,
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  B2Image(
-                    objectKey: story.image,
-                    fit: BoxFit.cover,
-                  ),
-                  if (!isUnlocked)
-                    Container(
-                      color: Colors.black.withOpacity(0.65),
-                      child: const Icon(
-                        Icons.lock_rounded,
-                        color: Colors.white70,
-                        size: 26,
-                      ),
-                    ),
-                ],
-              ),
-            ),
-
-            // Contenu : Titre + Champ morals
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
+        child: InkWell(
+          onTap: isUnlocked ? () => _showMoralDialog(context, story) : null,
+          child: Row(
+            children: [
+              SizedBox(
+                width: 90,
+                height: double.infinity,
+                child: Stack(
+                  fit: StackFit.expand,
                   children: [
-                    Text(
-                      story.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: isUnlocked
-                            ? colorScheme.onSurface
-                            : colorScheme.onSurface.withOpacity(0.5),
-                      ),
+                    B2Image(
+                      objectKey: story.image,
+                      fit: BoxFit.cover,
                     ),
-                    const SizedBox(height: 4),
-                    Expanded(
-                      child: Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          isUnlocked
-                              ? (story.morals.isNotEmpty 
-                                  ? story.morals 
-                                  : "Pas de morale enregistrée pour ce conte.")
-                              : "Terminez cette histoire pour en débloquer la morale.",
-                          maxLines: 3,
-                          overflow: TextOverflow.ellipsis,
-                          style: isUnlocked
-                              ? theme.textTheme.bodySmall?.copyWith(
-                                  color: colorScheme.onSurfaceVariant,
-                                  fontStyle: FontStyle.italic,
-                                )
-                              : theme.textTheme.bodySmall?.copyWith(
-                                  color: colorScheme.onSurfaceVariant.withOpacity(0.6),
-                                ),
+                    if (!isUnlocked)
+                      Container(
+                        color: Colors.black.withOpacity(0.65),
+                        child: const Icon(
+                          Icons.lock_rounded,
+                          color: Colors.white70,
+                          size: 26,
                         ),
                       ),
-                    ),
                   ],
                 ),
               ),
-            ),
-          ],
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        story.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: isUnlocked
+                              ? colorScheme.onSurface
+                              : colorScheme.onSurface.withOpacity(0.5),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        displayText,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: isUnlocked
+                            ? theme.textTheme.bodySmall?.copyWith(
+                                color: colorScheme.onSurfaceVariant,
+                                fontStyle: FontStyle.italic,
+                              )
+                            : theme.textTheme.bodySmall?.copyWith(
+                                color: colorScheme.onSurfaceVariant.withOpacity(0.6),
+                              ),
+                      ),
+                      if (isUnlocked) ...[
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            Text(
+                              "Toucher pour lire la suite",
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                color: colorScheme.primary,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(width: 2),
+                            Icon(
+                              Icons.touch_app,
+                              size: 12,
+                              color: colorScheme.primary,
+                            ),
+                          ],
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
