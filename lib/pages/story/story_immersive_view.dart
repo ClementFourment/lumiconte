@@ -4,7 +4,7 @@ import 'package:lumiconte/models/audio_sync_model.dart';
 import 'package:lumiconte/pages/story/story_view_params.dart';
 import 'package:lumiconte/widget/b2_image.dart';
 
-class StoryImmersiveView extends StatefulWidget {
+class StoryImmersiveView extends StatelessWidget {
   final StoryViewParams params;
   final bool isDark;
   final String profileId;
@@ -16,25 +16,6 @@ class StoryImmersiveView extends StatefulWidget {
     required this.profileId,
   });
 
-  @override
-  State<StoryImmersiveView> createState() => _StoryImmersiveViewState();
-}
-
-class _StoryImmersiveViewState extends State<StoryImmersiveView> {
-  late String? _currentImageUrl;
-
-  @override
-  void initState() {
-    super.initState();
-    _currentImageUrl = widget.params.image;
-  }
-
-  void updateImageUrl(String newUrl) {
-    setState(() {
-      _currentImageUrl = newUrl;
-    });
-  }
-
   String _formatDuration(Duration duration) {
     final minutes = duration.inMinutes.remainder(60).toString().padLeft(2, '0');
     final seconds = duration.inSeconds.remainder(60).toString().padLeft(2, '0');
@@ -44,7 +25,7 @@ class _StoryImmersiveViewState extends State<StoryImmersiveView> {
   @override
   Widget build(BuildContext context) {
     final Color backgroundColor =
-        widget.isDark ? const Color(0xFF161224) : const Color(0xFFF3F4F6);
+        isDark ? const Color(0xFF161224) : const Color(0xFFF3F4F6);
     final Color textColor = Colors.white;
     final Color subtleTextColor = Colors.white70;
     final Color iconBtnBg = Colors.black.withOpacity(0.3);
@@ -59,9 +40,9 @@ class _StoryImmersiveViewState extends State<StoryImmersiveView> {
           GestureDetector(
             onHorizontalDragEnd: (details) {
               if (details.primaryVelocity! > 0) {
-                widget.params.onPreviousPage();
+                params.onPreviousPage();
               } else if (details.primaryVelocity! < 0) {
-                widget.params.onNextPage();
+                params.onNextPage();
               }
             },
             child: Stack(
@@ -99,19 +80,19 @@ class _StoryImmersiveViewState extends State<StoryImmersiveView> {
                     children: [
                       _CircleIconButton(
                         icon: Icons.chevron_left,
-                        onPressed: widget.params.onBack,
+                        onPressed: params.onBack,
                         backgroundColor: iconBtnBg,
                         iconColor: textColor,
                       ),
                       Row(
                         children: [
                           _CircleIconButton(
-                            icon: widget.params.isFavorite
+                            icon: params.isFavorite
                                 ? Icons.favorite
                                 : Icons.favorite_border,
-                            onPressed: widget.params.onToggleFavorite,
+                            onPressed: params.onToggleFavorite,
                             backgroundColor: iconBtnBg,
-                            iconColor: widget.params.isFavorite
+                            iconColor: params.isFavorite
                                 ? const Color(0xFFEF4444)
                                 : textColor,
                           ),
@@ -119,7 +100,7 @@ class _StoryImmersiveViewState extends State<StoryImmersiveView> {
                           _CircleIconButton(
                             icon: Icons.settings,
                             onPressed: () => context.push('/settings', extra: {
-                              'profileId': widget.profileId,
+                              'profileId': profileId,
                             }),
                             backgroundColor: iconBtnBg,
                             iconColor: textColor,
@@ -139,7 +120,7 @@ class _StoryImmersiveViewState extends State<StoryImmersiveView> {
                       child: AnimatedSwitcher(
                         duration: const Duration(milliseconds: 300),
                         child: KeyedSubtree(
-                          key: ValueKey(widget.params.currentPageIndex),
+                          key: ValueKey(params.currentPageIndex),
                           child: _buildTextContent(textColor),
                         ),
                       ),
@@ -150,7 +131,7 @@ class _StoryImmersiveViewState extends State<StoryImmersiveView> {
 
                   // Compteur de pages
                   Text(
-                    '${widget.params.currentPageIndex + 1} / ${widget.params.totalPages}',
+                    '${params.currentPageIndex + 1} / ${params.totalPages}',
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
@@ -162,12 +143,12 @@ class _StoryImmersiveViewState extends State<StoryImmersiveView> {
                   const SizedBox(height: 16),
 
                   // 3. Barre Audio
-                  if (widget.params.isAudio)
+                  if (params.isAudio)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 8.0),
                       child: Row(
                         children: [
-                          if (widget.params.isLoading)
+                          if (params.isLoading)
                             const SizedBox(
                               width: 40,
                               height: 40,
@@ -181,7 +162,7 @@ class _StoryImmersiveViewState extends State<StoryImmersiveView> {
                             )
                           else
                             GestureDetector(
-                              onTap: widget.params.onToggleAudio,
+                              onTap: params.onToggleAudio,
                               child: Container(
                                 width: 40,
                                 height: 40,
@@ -190,7 +171,7 @@ class _StoryImmersiveViewState extends State<StoryImmersiveView> {
                                   shape: BoxShape.circle,
                                 ),
                                 child: Icon(
-                                  widget.params.isPlaying
+                                  params.isPlaying
                                       ? Icons.pause_rounded
                                       : Icons.play_arrow_rounded,
                                   color: Colors.black,
@@ -200,7 +181,7 @@ class _StoryImmersiveViewState extends State<StoryImmersiveView> {
                             ),
                           const SizedBox(width: 8),
                           Text(
-                            _formatDuration(widget.params.audioPosition),
+                            _formatDuration(params.audioPosition),
                             style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w500,
@@ -221,24 +202,24 @@ class _StoryImmersiveViewState extends State<StoryImmersiveView> {
                               ),
                               child: Slider(
                                 min: 0,
-                                max: widget.params.audioDuration.inSeconds
+                                max: params.audioDuration.inSeconds
                                             .toDouble() >
                                         0
-                                    ? widget.params.audioDuration.inSeconds
+                                    ? params.audioDuration.inSeconds
                                         .toDouble()
                                     : 1,
-                                value: widget.params.audioPosition.inSeconds
+                                value: params.audioPosition.inSeconds
                                     .clamp(
                                         0,
-                                        widget.params.audioDuration.inSeconds)
+                                        params.audioDuration.inSeconds)
                                     .toDouble(),
                                 onChanged: (_) {},
-                                onChangeEnd: widget.params.onSeekAudio,
+                                onChangeEnd: params.onSeekAudio,
                               ),
                             ),
                           ),
                           Text(
-                            _formatDuration(widget.params.audioDuration),
+                            _formatDuration(params.audioDuration),
                             style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w500,
@@ -258,35 +239,36 @@ class _StoryImmersiveViewState extends State<StoryImmersiveView> {
   }
 
   Widget _buildTextContent(Color defaultTextColor) {
-    if (widget.params.currentSegments.isNotEmpty) {
+    if (params.currentSegments.isNotEmpty) {
       final double currentTimeInSeconds =
-          widget.params.audioPosition.inMilliseconds / 1000.0;
+          params.audioPosition.inMilliseconds / 1000.0;
+
+      final Color highlightBg = const Color(0xFFF59E0B).withOpacity(0.25);
+      const Color activeTextColor = Color(0xFFFDE68A);
 
       return Wrap(
         alignment: WrapAlignment.start,
         spacing: 4.0,
         runSpacing: 6.0,
-        children: widget.params.currentSegments.expand((segment) {
+        children: params.currentSegments.expand((segment) {
           return segment.words.map((wordTiming) {
             final bool isActive = currentTimeInSeconds >= wordTiming.start &&
                 currentTimeInSeconds <= wordTiming.end;
 
             return AnimatedContainer(
-              duration: const Duration(milliseconds: 80),
+              duration: const Duration(milliseconds: 120),
               padding:
                   const EdgeInsets.symmetric(horizontal: 3.0, vertical: 1.0),
               decoration: BoxDecoration(
-                color: isActive
-                    ? const Color(0xFFF59E0B).withOpacity(0.4)
-                    : Colors.transparent,
+                color: isActive ? highlightBg : Colors.transparent,
                 borderRadius: BorderRadius.circular(4.0),
               ),
               child: Text(
                 wordTiming.word,
                 style: TextStyle(
-                  fontSize: widget.params.fontSize,
-                  fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
-                  color: isActive ? Colors.amber.shade300 : defaultTextColor,
+                  fontSize: params.fontSize,
+                  fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
+                  color: isActive ? activeTextColor : defaultTextColor,
                   height: 1.5,
                 ),
               ),
@@ -298,29 +280,20 @@ class _StoryImmersiveViewState extends State<StoryImmersiveView> {
 
     return RichText(
       textAlign: TextAlign.left,
-      text: widget.params.buildColorizedText(
-        text: _getCleanPageText(widget.params.currentPageText),
-        baseFontSize: widget.params.fontSize,
+      text: params.buildColorizedText(
+        text: _getCleanPageText(params.currentPageText),
+        baseFontSize: params.fontSize,
         defaultTextColor: defaultTextColor,
-        isDyslexiaEnabled: widget.params.isDyslexia,
+        isDyslexiaEnabled: params.isDyslexia,
       ),
     );
   }
 
   Widget _buildStoryImage() {
-    final pattern = RegExp(r'\[img:(\d+)\]');
-    final match = pattern.firstMatch(widget.params.currentPageText);
-
-    if (match != null &&
-        widget.params.illustrationsPath != '' &&
-        widget.params.illustrationsPath?.isNotEmpty == true) {
-      final imgNumber = match.group(1);
-      _currentImageUrl =
-          '${widget.params.illustrationsPath}/img$imgNumber.webp';
-    }
     return SizedBox.expand(
       child: B2Image(
-        objectKey: _currentImageUrl,
+        key: ValueKey(params.image),
+        objectKey: params.image,
         width: double.infinity,
         height: double.infinity,
         fit: BoxFit.cover,

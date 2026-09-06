@@ -1,9 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 abstract class FirebaseService {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-
-  FirebaseFirestore get firestore => _firestore;
+  // ✅ Firestore est accédé à la demande et non à l'instanciation de la classe
+  FirebaseFirestore get firestore => FirebaseFirestore.instance;
 
   Future<void> setData(String path, Map<String, dynamic> data) async {
     await firestore.doc(path).set(data);
@@ -21,5 +20,4 @@ abstract class FirebaseService {
     final doc = await firestore.doc(path).get();
     return doc.data();
   }
-  
 }
