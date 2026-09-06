@@ -4,12 +4,14 @@ class SettingsModel {
   final String id;
   final int fontSize;
   final String theme; // Thème de l'application (ex: light, dark)
-  final String readTheme; // Thème de lecture (ex: classic, immersive, manuscript)
+  final String
+      readTheme; // Thème de lecture (ex: classic, immersive, manuscript)
   final bool dyslexia;
   final String language;
   final String voiceGender; // 'femme' ou 'homme'
   final int totalReadingTime;
   final int streak;
+  final DateTime lastReadingDate;
   final DateTime? stopRead;
 
   // Valeurs par défaut centralisées
@@ -22,7 +24,7 @@ class SettingsModel {
   static const int defaultTotalReadingTime = 0;
   static const int defaultStreak = 0;
 
-  const SettingsModel({
+  SettingsModel({
     required this.id,
     this.fontSize = defaultFontSize,
     this.theme = defaultTheme,
@@ -32,8 +34,9 @@ class SettingsModel {
     this.voiceGender = defaultVoiceGender,
     this.totalReadingTime = defaultTotalReadingTime,
     this.streak = defaultStreak,
+    DateTime? lastReadingDate,
     this.stopRead,
-  });
+  }) : lastReadingDate = lastReadingDate ?? DateTime.now();
 
   factory SettingsModel.fromMap(Map<String, dynamic>? data, String docId) {
     final map = data ?? {};
@@ -59,7 +62,8 @@ class SettingsModel {
       dyslexia: map['dyslexia'] as bool? ?? defaultDyslexia,
       language: map['language'] as String? ?? defaultLanguage,
       voiceGender: rawGender,
-      totalReadingTime: (map['totalReadingTime'] as num?)?.toInt() ?? defaultTotalReadingTime,
+      totalReadingTime:
+          (map['totalReadingTime'] as num?)?.toInt() ?? defaultTotalReadingTime,
       streak: (map['streak'] as num?)?.toInt() ?? defaultStreak,
       stopRead: parsedStopRead,
     );
@@ -82,6 +86,7 @@ class SettingsModel {
       'voiceGender': voiceGender,
       'totalReadingTime': totalReadingTime,
       'streak': streak,
+      'lastReadingDate': Timestamp.fromDate(lastReadingDate),
       'stopRead': stopRead != null ? Timestamp.fromDate(stopRead!) : null,
     };
   }

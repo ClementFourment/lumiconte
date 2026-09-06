@@ -23,13 +23,83 @@ class SettingsService extends FirebaseService {
   // CRÉATION & SAUVEGARDE DE BASE
   // ---------------------------------------------------------------------------
 
+  // met a jour le streak de reading
+  Future<void> registerReading(
+    String userId,
+    String profileId,
+    SettingsModel settings, {
+    String settingsId = 'default',
+  }) async {
+    final now = DateTime.now();
+
+    final today = DateTime(
+      now.year,
+      now.month,
+      now.day,
+    );
+
+    int newStreak;
+
+    if (settings.stopRead == null) {
+      // Première lecture
+      newStreak = 1;
+    } else {
+      final lastRead = settings.stopRead!;
+
+      final lastReadDay = DateTime(
+        lastRead.year,
+        lastRead.month,
+        lastRead.day,
+      );
+
+      final daysDifference = today.difference(lastReadDay).inDays;
+
+      if (daysDifference == 0) {
+        // Déjà enregistré comme ayant lu aujourd'hui
+        newStreak = settings.streak;
+      } else if (daysDifference == 1) {
+        // Lecture hier → on continue la série
+        newStreak = settings.streak + 1;
+      } else {
+        // Plus d'un jour → nouvelle série
+        newStreak = 1;
+      }
+    }
+
+    await _getSettingsDocRef(
+      userId,
+      profileId,
+      settingsId,
+    ).update({
+      'streak': newStreak,
+      'stopRead': Timestamp.fromDate(now),
+    });
+  }
+
+  // lastReadingDate mis à jour dans Firestore
+  Future<void> updateLastReadingDate(
+    String userId,
+    String profileId, {
+    String settingsId = 'default',
+  }) async {
+    try {
+      await _getSettingsDocRef(userId, profileId, settingsId).update({
+        'lastReadingDate': Timestamp.now(),
+      });
+    } catch (e) {
+      debugPrint('Erreur mise à jour lastReadingDate: $e');
+      rethrow;
+    }
+  }
+
   /// Initialise ou crée les paramètres par défaut pour un profil
   Future<void> createOrInitSettings(
     String userId,
     String profileId, {
     int fontSize = SettingsModel.defaultFontSize,
     String theme = SettingsModel.defaultTheme,
-    String readTheme = SettingsModel.defaultReadTheme, // 👈 Nouveau : Thème de lecture
+    String readTheme =
+        SettingsModel.defaultReadTheme, // 👈 Nouveau : Thème de lecture
     bool dyslexia = SettingsModel.defaultDyslexia,
     String language = SettingsModel.defaultLanguage,
     int totalReadingTime = SettingsModel.defaultTotalReadingTime,
@@ -159,16 +229,16 @@ class SettingsService extends FirebaseService {
     }
   }
 
-  /// Incrémenter le temps de lecture total (en minutes)
+  /// Incrémenter le temps de lecture total (en secondes)
   Future<void> incrementTotalReadingTime(
     String userId,
     String profileId,
-    int minutes, {
+    int secondes, {
     String settingsId = 'default',
   }) async {
     try {
       await _getSettingsDocRef(userId, profileId, settingsId).update({
-        'totalReadingTime': FieldValue.increment(minutes),
+        'totalReadingTime': FieldValue.increment(secondes),
       });
     } catch (e) {
       debugPrint('Erreur incrément temps de lecture: $e');

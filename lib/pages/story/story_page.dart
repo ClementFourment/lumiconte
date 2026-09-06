@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -11,6 +13,7 @@ import 'package:lumiconte/pages/story/story_immersive_view.dart';
 import 'package:lumiconte/pages/story/story_manuscript_view.dart';
 import 'package:lumiconte/pages/story/story_view_params.dart';
 import 'package:lumiconte/services/reading_progress_service.dart';
+import 'package:lumiconte/services/settings_service.dart';
 import 'package:lumiconte/services/audio_background_service.dart';
 import 'package:lumiconte/services/audio_notification_service.dart';
 import 'package:lumiconte/services/story_sync_service.dart';
@@ -51,6 +54,11 @@ class _StoryPageState extends State<StoryPage> {
   late AudioBackgroundService _audioBackgroundService;
   late AudioNotificationService _audioNotificationService;
 
+  final SettingsService _settingsService = SettingsService();
+  final Stopwatch _readingTimer = Stopwatch();
+  Timer? _readingSaveTimer;
+  int _savedReadingSeconds = 0;
+
   @override
   void initState() {
     super.initState();
@@ -76,6 +84,31 @@ class _StoryPageState extends State<StoryPage> {
     _initializePages();
     _loadReadingProgress();
     _loadFavoriteStatus();
+
+    _readingTimer.start();
+    _readingSaveTimer = Timer.periodic(
+      const Duration(seconds: 30),
+      (_) => _saveReadingTime(),
+    );
+  }
+
+  Future<void> _saveReadingTime() async {
+    final totalSeconds = _readingTimer.elapsed.inSeconds;
+    final secondsToSave = totalSeconds - _savedReadingSeconds;
+
+    if (secondsToSave <= 0) return;
+
+    try {
+      await _settingsService.incrementTotalReadingTime(
+        _uid,
+        widget.profile.id,
+        secondsToSave,
+      );
+
+      _savedReadingSeconds = totalSeconds;
+    } catch (e) {
+      debugPrint('Erreur sauvegarde temps de lecture : $e');
+    }
   }
 
   Future<void> _loadFavoriteStatus() async {
@@ -114,7 +147,9 @@ class _StoryPageState extends State<StoryPage> {
     if (_syncService.pages.isNotEmpty && _isPlaying) {
       final double currentTimeInSeconds = position.inMilliseconds / 1000.0;
       final targetPage = _syncService.getPageIndexForTime(currentTimeInSeconds);
-      if (targetPage != _currentPage && targetPage < _pages.length && targetPage >= 0) {
+      if (targetPage != _currentPage &&
+          targetPage < _pages.length &&
+          targetPage >= 0) {
         setState(() {
           _currentPage = targetPage;
         });
@@ -253,9 +288,10 @@ class _StoryPageState extends State<StoryPage> {
   }
 
   void _initializeAudio(SettingsModel settings) {
-    final requestedVoiceKey = (settings.voiceGender == 'homme' || settings.voiceGender == 'male')
-        ? 'homme'
-        : 'femme';
+    final requestedVoiceKey =
+        (settings.voiceGender == 'homme' || settings.voiceGender == 'male')
+            ? 'homme'
+            : 'femme';
 
     if (_isAudioInitialized && _currentVoiceKey == requestedVoiceKey) {
       return;
@@ -273,7 +309,8 @@ class _StoryPageState extends State<StoryPage> {
 
     if (voiceData == null || voiceData.url.trim().isEmpty) {
       final alternateKey = targetKey == 'homme' ? 'femme' : 'homme';
-      if (audioMap.containsKey(alternateKey) && audioMap[alternateKey]!.url.trim().isNotEmpty) {
+      if (audioMap.containsKey(alternateKey) &&
+          audioMap[alternateKey]!.url.trim().isNotEmpty) {
         targetKey = alternateKey;
         voiceData = audioMap[targetKey];
       }
@@ -622,8 +659,32 @@ class _StoryPageState extends State<StoryPage> {
     }
   }
 
+  bool _readingRegistered = false;
+
+  Future<void> _registerReading(SettingsModel settings) async {
+    if (_readingRegistered) return;
+
+    _readingRegistered = true;
+
+    try {
+      await _settingsService.registerReading(
+        _uid,
+        widget.profile.id,
+        settings,
+        settingsId: settings.id,
+      );
+    } catch (e) {
+      _readingRegistered = false;
+      debugPrint('Erreur enregistrement lecture : $e');
+    }
+  }
+
   @override
   void dispose() {
+    _readingSaveTimer?.cancel();
+    _readingTimer.stop();
+    _saveReadingTime();
+
     _audio?.dispose();
     _audioNotificationService.hideNotification();
     super.dispose();
@@ -651,11 +712,11 @@ class _StoryPageState extends State<StoryPage> {
           settingsDoc.id,
         );
 
+        _registerReading(settings);
         _initializeAudio(settings);
 
-        final int safePageIndex = _pages.isNotEmpty
-            ? _currentPage.clamp(0, _pages.length - 1)
-            : 0;
+        final int safePageIndex =
+            _pages.isNotEmpty ? _currentPage.clamp(0, _pages.length - 1) : 0;
 
         final currentSegments = (_syncService.pages.isNotEmpty &&
                 safePageIndex < _syncService.pages.length)
