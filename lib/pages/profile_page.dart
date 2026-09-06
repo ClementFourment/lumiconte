@@ -155,13 +155,13 @@ class _ProfilePageState extends State<ProfilePage> {
           return StreamBuilder<QuerySnapshot>(
             stream: _readingProgressCollection.snapshots(),
             builder: (context, progressSnapshot) {
-          final int storiesReadCount = progressSnapshot.hasData
-              ? progressSnapshot.data!.docs.where((doc) {
-                  final data = doc.data() as Map<String, dynamic>?;
-                  // On considère lue uniquement si progress == 100 (ou progress >= 100)
-                  return (data?['progress'] ?? 0) >= 100; 
-                }).length
-              : 0;
+              final int storiesReadCount = progressSnapshot.hasData
+                  ? progressSnapshot.data!.docs.where((doc) {
+                      final data = doc.data() as Map<String, dynamic>?;
+                      // On considère lue uniquement si progress == 100 (ou progress >= 100)
+                      return (data?['progress'] ?? 0) >= 100;
+                    }).length
+                  : 0;
 
               return StreamBuilder<QuerySnapshot>(
                 stream: _settingsCollection.snapshots(),
@@ -183,14 +183,24 @@ class _ProfilePageState extends State<ProfilePage> {
 
                     currentLangCode = settings.language;
 
-                    final int totalMinutes = settings.totalReadingTime;
-                    if (totalMinutes < 60) {
-                      timeDisplay = '$totalMinutes min';
+                    final int totalSecondes = settings.totalReadingTime;
+
+                    if (totalSecondes < 60) {
+                      timeDisplay = '$totalSecondes sec';
                     } else {
-                      final hours = totalMinutes ~/ 60;
-                      final minutes = totalMinutes % 60;
-                      timeDisplay =
-                          minutes > 0 ? '${hours}h $minutes' : '${hours}h';
+                      if (totalSecondes < 60 * 60) {
+                        final minutes = totalSecondes ~/ 60;
+                        timeDisplay = '${minutes}min';
+                      } else {
+                        final heures = totalSecondes ~/ 3600;
+                        final reste = totalSecondes % 3600;
+                        final minutes = reste ~/ 60;
+                        timeDisplay = minutes > 0
+                            ? (minutes < 10
+                                ? '${heures}h0${minutes}'
+                                : '${heures}h${minutes}')
+                            : '${heures}h';
+                      }
                     }
 
                     if (settings.stopRead != null) {
