@@ -308,6 +308,18 @@ class _StoryPageState extends State<StoryPage> {
       }
 
       _audio?.dispose();
+
+      // Remet l'état audio à jour lors d'une réinitialisation de voix
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          setState(() {
+            _isPlaying = false;
+            _audioPosition = Duration.zero;
+          });
+          _updateAudioNotification();
+        }
+      });
+
       _audio = B2Audio(objectKey: selectedAudioPath);
       _audio!.preload();
 
