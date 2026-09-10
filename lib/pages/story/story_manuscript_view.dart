@@ -27,266 +27,315 @@ class StoryManuscriptView extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: backgroundColor,
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          child: Column(
-            children: [
-              // 1. Barre supérieure
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      body: GestureDetector(
+        onHorizontalDragEnd: (details) {
+          if (details.primaryVelocity! > 0) {
+            params.onPreviousPage();
+          } else if (details.primaryVelocity! < 0) {
+            params.onNextPage();
+          }
+        },
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            SafeArea(
+              child: Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                child: Column(
                   children: [
-                    StoryCircleIconButton(
-                      icon: Icons.chevron_left,
-                      onPressed: params.onBack,
-                      backgroundColor: iconBtnBg,
-                      iconColor: textColor,
-                      size: 34,
-                      hasBorder: true,
-                    ),
-                    Row(
-                      children: [
-                        StoryCircleIconButton(
-                          icon: params.isFavorite
-                              ? Icons.favorite
-                              : Icons.favorite_border,
-                          onPressed: params.onToggleFavorite,
-                          backgroundColor: iconBtnBg,
-                          iconColor: params.isFavorite
-                              ? const Color(0xFFEF4444)
-                              : textColor,
-                          size: 34,
-                          hasBorder: true,
-                        ),
-                        const SizedBox(width: 8),
-                        StoryCircleIconButton(
-                          icon: Icons.settings,
-                          onPressed: () => context.push('/settings', extra: {
-                            'profileId': profileId,
-                          }),
-                          backgroundColor: iconBtnBg,
-                          iconColor: textColor,
-                          size: 34,
-                          hasBorder: true,
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 8),
-
-              // 2. Parchemin
-              Expanded(
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: pageColor,
-                    borderRadius: BorderRadius.circular(4),
-                    border: Border.all(
-                      color: borderColor,
-                      width: 3,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.4),
-                        blurRadius: 24,
-                        offset: const Offset(0, 8),
-                      ),
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.15),
-                        blurRadius: 12,
-                        offset: const Offset(0, 0),
-                      ),
-                    ],
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(2),
-                    child: GestureDetector(
-                      onHorizontalDragEnd: (details) {
-                        if (details.primaryVelocity! > 0) {
-                          params.onPreviousPage();
-                        } else if (details.primaryVelocity! < 0) {
-                          params.onNextPage();
-                        }
-                      },
-                      child: Stack(
+                    // 1. Barre supérieure
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Positioned.fill(
-                            child: Container(
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                  colors: [
-                                    const Color(0xFFFAF6EB).withOpacity(0.3),
-                                    const Color(0xFFF0E8D8).withOpacity(0.3),
-                                  ],
-                                ),
-                              ),
-                            ),
+                          StoryCircleIconButton(
+                            icon: Icons.chevron_left,
+                            onPressed: params.onBack,
+                            backgroundColor: iconBtnBg,
+                            iconColor: textColor,
+                            size: 34,
+                            hasBorder: true,
                           ),
-                          LayoutBuilder(
-                            builder: (context, constraints) {
-                              return Padding(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 20, vertical: 12),
-                                child: Column(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    _buildDecorativeHeader(
-                                        subtleTextColor, textColor),
-                                    Expanded(
-                                      flex: 4,
-                                      child: Center(
-                                        child: _buildImageFrame(textColor,
-                                            subtleTextColor, borderColor),
-                                      ),
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Expanded(
-                                      flex: 5,
-                                      child: Center(
-                                        child: SingleChildScrollView(
-                                          physics:
-                                              const BouncingScrollPhysics(),
-                                          child: _buildBookCompositionText(
-                                              textColor),
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Column(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        _buildDecorativeFooter(
-                                            subtleTextColor, textColor),
-                                        const SizedBox(height: 6),
-                                        _buildPagination(subtleTextColor),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              );
-                            },
+                          Row(
+                            children: [
+                              StoryCircleIconButton(
+                                icon: params.isFavorite
+                                    ? Icons.favorite
+                                    : Icons.favorite_border,
+                                onPressed: params.onToggleFavorite,
+                                backgroundColor: iconBtnBg,
+                                iconColor: params.isFavorite
+                                    ? const Color(0xFFEF4444)
+                                    : textColor,
+                                size: 34,
+                                hasBorder: true,
+                              ),
+                              const SizedBox(width: 8),
+                              StoryCircleIconButton(
+                                icon: Icons.settings,
+                                onPressed: () =>
+                                    context.push('/settings', extra: {
+                                  'profileId': profileId,
+                                }),
+                                backgroundColor: iconBtnBg,
+                                iconColor: textColor,
+                                size: 34,
+                                hasBorder: true,
+                              ),
+                            ],
                           ),
                         ],
                       ),
                     ),
-                  ),
+                    const SizedBox(height: 8),
+
+                    // 2. Parchemin
+                    Expanded(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: pageColor,
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(
+                            color: borderColor,
+                            width: 3,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.4),
+                              blurRadius: 24,
+                              offset: const Offset(0, 8),
+                            ),
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.15),
+                              blurRadius: 12,
+                              offset: const Offset(0, 0),
+                            ),
+                          ],
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(2),
+                          child: Stack(
+                            children: [
+                              Positioned.fill(
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                      colors: [
+                                        const Color(0xFFFAF6EB)
+                                            .withOpacity(0.3),
+                                        const Color(0xFFF0E8D8)
+                                            .withOpacity(0.3),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              LayoutBuilder(
+                                builder: (context, constraints) {
+                                  return Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 20, vertical: 12),
+                                    child: Column(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        _buildDecorativeHeader(
+                                            subtleTextColor, textColor),
+                                        Expanded(
+                                          flex: 4,
+                                          child: Center(
+                                            child: _buildImageFrame(textColor,
+                                                subtleTextColor, borderColor),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Expanded(
+                                          flex: 5,
+                                          child: Center(
+                                            child: SingleChildScrollView(
+                                              physics:
+                                                  const BouncingScrollPhysics(),
+                                              child: _buildBookCompositionText(
+                                                  textColor),
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Column(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            _buildDecorativeFooter(
+                                                subtleTextColor, textColor),
+                                            const SizedBox(height: 6),
+                                            _buildPagination(subtleTextColor),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+
+                    // 3. BARRE AUDIO
+                    if (params.isAudio)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: pageColor,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: borderColor.withOpacity(0.6),
+                            width: 1.5,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.15),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          children: [
+                            if (params.isLoading)
+                              SizedBox(
+                                width: 32,
+                                height: 32,
+                                child: Padding(
+                                  padding: const EdgeInsets.all(6.0),
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor:
+                                        AlwaysStoppedAnimation(textColor),
+                                  ),
+                                ),
+                              )
+                            else
+                              GestureDetector(
+                                onTap: params.onToggleAudio,
+                                child: Container(
+                                  width: 32,
+                                  height: 32,
+                                  decoration: BoxDecoration(
+                                    color: textColor,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(
+                                    params.isPlaying
+                                        ? Icons.pause_rounded
+                                        : Icons.play_arrow_rounded,
+                                    color: pageColor,
+                                    size: 18,
+                                  ),
+                                ),
+                              ),
+                            const SizedBox(width: 6),
+                            Text(
+                              StoryUtils.formatDuration(params.audioPosition),
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w500,
+                                color: subtleTextColor,
+                              ),
+                            ),
+                            Expanded(
+                              child: Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 4),
+                                child: SliderTheme(
+                                  data: SliderTheme.of(context).copyWith(
+                                    trackHeight: 2,
+                                    thumbShape: const RoundSliderThumbShape(
+                                        enabledThumbRadius: 4),
+                                    activeTrackColor: textColor,
+                                    inactiveTrackColor:
+                                        subtleTextColor.withOpacity(0.3),
+                                    thumbColor: textColor,
+                                    overlayColor: textColor.withOpacity(0.1),
+                                  ),
+                                  child: Slider(
+                                    min: 0,
+                                    max: params.audioDuration.inSeconds
+                                                .toDouble() >
+                                            0
+                                        ? params.audioDuration.inSeconds
+                                            .toDouble()
+                                        : 1,
+                                    value: params.audioPosition.inSeconds
+                                        .clamp(
+                                            0, params.audioDuration.inSeconds)
+                                        .toDouble(),
+                                    onChanged: (_) {},
+                                    onChangeEnd: params.onSeekAudio,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            Text(
+                              StoryUtils.formatDuration(params.audioDuration),
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w500,
+                                color: subtleTextColor,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 10),
+            ),
 
-              // 3. BARRE AUDIO
-              if (params.isAudio)
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: pageColor,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: borderColor.withOpacity(0.6),
-                      width: 1.5,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.15),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    children: [
-                      if (params.isLoading)
-                        SizedBox(
-                          width: 32,
-                          height: 32,
-                          child: Padding(
-                            padding: const EdgeInsets.all(6.0),
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation(textColor),
-                            ),
-                          ),
-                        )
-                      else
-                        GestureDetector(
-                          onTap: params.onToggleAudio,
-                          child: Container(
-                            width: 32,
-                            height: 32,
-                            decoration: BoxDecoration(
-                              color: textColor,
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              params.isPlaying
-                                  ? Icons.pause_rounded
-                                  : Icons.play_arrow_rounded,
-                              color: pageColor,
-                              size: 18,
-                            ),
-                          ),
-                        ),
-                      const SizedBox(width: 6),
-                      Text(
-                        StoryUtils.formatDuration(params.audioPosition),
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w500,
-                          color: subtleTextColor,
-                        ),
-                      ),
-                      Expanded(
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 4),
-                          child: SliderTheme(
-                            data: SliderTheme.of(context).copyWith(
-                              trackHeight: 2,
-                              thumbShape: const RoundSliderThumbShape(
-                                  enabledThumbRadius: 4),
-                              activeTrackColor: textColor,
-                              inactiveTrackColor:
-                                  subtleTextColor.withOpacity(0.3),
-                              thumbColor: textColor,
-                              overlayColor: textColor.withOpacity(0.1),
-                            ),
-                            child: Slider(
-                              min: 0,
-                              max: params.audioDuration.inSeconds
-                                          .toDouble() >
-                                      0
-                                  ? params.audioDuration.inSeconds
-                                      .toDouble()
-                                  : 1,
-                              value: params.audioPosition.inSeconds
-                                  .clamp(
-                                      0, params.audioDuration.inSeconds)
-                                  .toDouble(),
-                              onChanged: (_) {},
-                              onChangeEnd: params.onSeekAudio,
-                            ),
-                          ),
-                        ),
-                      ),
-                      Text(
-                        StoryUtils.formatDuration(params.audioDuration),
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w500,
-                          color: subtleTextColor,
-                        ),
-                      ),
-                    ],
-                  ),
+            // Navigation Arrows
+            Positioned(
+              left: 8,
+              top: 0,
+              bottom: 0,
+              child: Center(
+                child: StoryCircleIconButton(
+                  icon: Icons.chevron_left,
+                  onPressed: params.currentPageIndex > 0
+                      ? params.onPreviousPage
+                      : null,
+                  backgroundColor: Colors.transparent,
+                  iconColor: params.currentPageIndex > 0
+                      ? textColor
+                      : textColor.withOpacity(0.3),
+                  size: 44,
                 ),
-            ],
-          ),
+              ),
+            ),
+            Positioned(
+              right: 8,
+              top: 0,
+              bottom: 0,
+              child: Center(
+                child: StoryCircleIconButton(
+                  icon: Icons.chevron_right,
+                  onPressed: params.currentPageIndex < params.totalPages - 1
+                      ? params.onNextPage
+                      : null,
+                  backgroundColor: Colors.transparent,
+                  iconColor: params.currentPageIndex < params.totalPages - 1
+                      ? textColor
+                      : textColor.withOpacity(0.3),
+                  size: 44,
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -443,8 +492,7 @@ class StoryManuscriptView extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
-    final adjustedFontSize =
-        params.fontSize > 16 ? 15.0 : params.fontSize;
+    final adjustedFontSize = params.fontSize > 16 ? 15.0 : params.fontSize;
     const inkColor = Color(0xFF32271B);
     final highlightBg = const Color(0xFFB8A680).withOpacity(0.25);
     const activeInkColor = Color(0xFF6B3A00);
@@ -453,21 +501,20 @@ class StoryManuscriptView extends StatelessWidget {
       final double currentTimeInSeconds =
           params.audioPosition.inMilliseconds / 1000.0;
 
-      final allWords = params.currentSegments
-          .expand((segment) => segment.words)
-          .toList();
+      final allWords =
+          params.currentSegments.expand((segment) => segment.words).toList();
 
       if (allWords.isEmpty) return const SizedBox.shrink();
 
       final firstWordTiming = allWords.first;
       final otherWords = allWords.skip(1);
 
-      final bool isFirstActive = currentTimeInSeconds >= firstWordTiming.start &&
-          currentTimeInSeconds <= firstWordTiming.end;
+      final bool isFirstActive =
+          currentTimeInSeconds >= firstWordTiming.start &&
+              currentTimeInSeconds <= firstWordTiming.end;
 
-      final String firstLetter = firstWordTiming.word.isNotEmpty
-          ? firstWordTiming.word[0]
-          : '';
+      final String firstLetter =
+          firstWordTiming.word.isNotEmpty ? firstWordTiming.word[0] : '';
       final String restOfFirstWord = firstWordTiming.word.length > 1
           ? firstWordTiming.word.substring(1)
           : '';
@@ -484,7 +531,8 @@ class StoryManuscriptView extends StatelessWidget {
             children: [
               AnimatedContainer(
                 duration: const Duration(milliseconds: 120),
-                padding: const EdgeInsets.symmetric(horizontal: 3.0, vertical: 1.0),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 3.0, vertical: 1.0),
                 decoration: BoxDecoration(
                   color: isFirstActive ? highlightBg : Colors.transparent,
                   borderRadius: BorderRadius.circular(4.0),
@@ -517,13 +565,14 @@ class StoryManuscriptView extends StatelessWidget {
                 ),
               ),
               ...otherWords.map((wordTiming) {
-                final bool isActive = currentTimeInSeconds >= wordTiming.start &&
-                    currentTimeInSeconds <= wordTiming.end;
+                final bool isActive =
+                    currentTimeInSeconds >= wordTiming.start &&
+                        currentTimeInSeconds <= wordTiming.end;
 
                 return AnimatedContainer(
                   duration: const Duration(milliseconds: 120),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 3.0, vertical: 1.0),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 3.0, vertical: 1.0),
                   decoration: BoxDecoration(
                     color: isActive ? highlightBg : Colors.transparent,
                     borderRadius: BorderRadius.circular(4.0),
@@ -532,7 +581,8 @@ class StoryManuscriptView extends StatelessWidget {
                     wordTiming.word,
                     style: TextStyle(
                       fontSize: adjustedFontSize,
-                      fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
+                      fontWeight:
+                          isActive ? FontWeight.w600 : FontWeight.normal,
                       color: isActive ? activeInkColor : inkColor,
                       height: 1.5,
                     ),
