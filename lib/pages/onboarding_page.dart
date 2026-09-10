@@ -137,7 +137,7 @@ class _PetitesHistoiresHeroState extends State<_PetitesHistoiresHero>
               ),
               // Hero illustration with assets
               Positioned(
-                bottom: 40,
+                bottom: 40 + MediaQuery.of(context).padding.bottom,
                 left: 0,
                 right: 0,
                 child: _HeroAssetsSection(
@@ -148,7 +148,7 @@ class _PetitesHistoiresHeroState extends State<_PetitesHistoiresHero>
               ),
               // CTA BUTTON
               Positioned(
-                bottom: 40,
+                bottom: 40 + MediaQuery.of(context).padding.bottom,
                 left: 24,
                 right: 24,
                 child: _PremiumButton(),
