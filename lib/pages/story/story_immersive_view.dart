@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:lumiconte/models/audio_sync_model.dart';
 import 'package:lumiconte/pages/story/story_view_params.dart';
+import 'package:lumiconte/pages/story/story_widgets.dart';
 import 'package:lumiconte/widget/b2_image.dart';
 
 class StoryImmersiveView extends StatelessWidget {
@@ -16,12 +16,6 @@ class StoryImmersiveView extends StatelessWidget {
     required this.profileId,
   });
 
-  String _formatDuration(Duration duration) {
-    final minutes = duration.inMinutes.remainder(60).toString().padLeft(2, '0');
-    final seconds = duration.inSeconds.remainder(60).toString().padLeft(2, '0');
-    return '$minutes:$seconds';
-  }
-
   @override
   Widget build(BuildContext context) {
     final Color backgroundColor =
@@ -33,22 +27,22 @@ class StoryImmersiveView extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: backgroundColor,
-      body: Stack(
-        fit: StackFit.expand,
-        children: [
-          // 1. Image en plein écran
-          GestureDetector(
-            onHorizontalDragEnd: (details) {
-              if (details.primaryVelocity! > 0) {
-                params.onPreviousPage();
-              } else if (details.primaryVelocity! < 0) {
-                params.onNextPage();
-              }
-            },
-            child: Stack(
+      body: GestureDetector(
+        onHorizontalDragEnd: (details) {
+          if (details.primaryVelocity! > 0) {
+            params.onPreviousPage();
+          } else if (details.primaryVelocity! < 0) {
+            params.onNextPage();
+          }
+        },
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            // 1. Image en plein écran
+            Stack(
               fit: StackFit.expand,
               children: [
-                _buildStoryImage(),
+                StoryImage(imageKey: params.image),
                 DecoratedBox(
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
@@ -66,19 +60,18 @@ class StoryImmersiveView extends StatelessWidget {
                 ),
               ],
             ),
-          ),
 
-          // 2. Contenu superposé
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              child: Column(
-                children: [
+            // 2. Contenu superposé
+            SafeArea(
+              child: Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                child: Column(children: [
                   // App Bar supérieure
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      _CircleIconButton(
+                      StoryCircleIconButton(
                         icon: Icons.chevron_left,
                         onPressed: params.onBack,
                         backgroundColor: iconBtnBg,
@@ -86,7 +79,7 @@ class StoryImmersiveView extends StatelessWidget {
                       ),
                       Row(
                         children: [
-                          _CircleIconButton(
+                          StoryCircleIconButton(
                             icon: params.isFavorite
                                 ? Icons.favorite
                                 : Icons.favorite_border,
@@ -97,7 +90,7 @@ class StoryImmersiveView extends StatelessWidget {
                                 : textColor,
                           ),
                           const SizedBox(width: 8),
-                          _CircleIconButton(
+                          StoryCircleIconButton(
                             icon: Icons.settings,
                             onPressed: () => context.push('/settings', extra: {
                               'profileId': profileId,
@@ -181,7 +174,7 @@ class StoryImmersiveView extends StatelessWidget {
                             ),
                           const SizedBox(width: 8),
                           Text(
-                            _formatDuration(params.audioPosition),
+                            StoryUtils.formatDuration(params.audioPosition),
                             style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w500,
@@ -202,16 +195,12 @@ class StoryImmersiveView extends StatelessWidget {
                               ),
                               child: Slider(
                                 min: 0,
-                                max: params.audioDuration.inSeconds
-                                            .toDouble() >
+                                max: params.audioDuration.inSeconds.toDouble() >
                                         0
-                                    ? params.audioDuration.inSeconds
-                                        .toDouble()
+                                    ? params.audioDuration.inSeconds.toDouble()
                                     : 1,
                                 value: params.audioPosition.inSeconds
-                                    .clamp(
-                                        0,
-                                        params.audioDuration.inSeconds)
+                                    .clamp(0, params.audioDuration.inSeconds)
                                     .toDouble(),
                                 onChanged: (_) {},
                                 onChangeEnd: params.onSeekAudio,
@@ -219,7 +208,7 @@ class StoryImmersiveView extends StatelessWidget {
                             ),
                           ),
                           Text(
-                            _formatDuration(params.audioDuration),
+                            StoryUtils.formatDuration(params.audioDuration),
                             style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w500,
@@ -229,11 +218,49 @@ class StoryImmersiveView extends StatelessWidget {
                         ],
                       ),
                     ),
-                ],
+                ]),
               ),
             ),
-          ),
-        ],
+
+            // Navigation Arrows
+            Positioned(
+              left: 8,
+              top: 0,
+              bottom: 0,
+              child: Center(
+                child: StoryCircleIconButton(
+                  icon: Icons.chevron_left,
+                  onPressed: params.currentPageIndex > 0
+                      ? params.onPreviousPage
+                      : null,
+                  backgroundColor: Colors.black.withOpacity(0.3),
+                  iconColor: params.currentPageIndex > 0
+                      ? textColor
+                      : textColor.withOpacity(0.3),
+                  size: 44,
+                ),
+              ),
+            ),
+            Positioned(
+              right: 8,
+              top: 0,
+              bottom: 0,
+              child: Center(
+                child: StoryCircleIconButton(
+                  icon: Icons.chevron_right,
+                  onPressed: params.currentPageIndex < params.totalPages - 1
+                      ? params.onNextPage
+                      : null,
+                  backgroundColor: Colors.black.withOpacity(0.3),
+                  iconColor: params.currentPageIndex < params.totalPages - 1
+                      ? textColor
+                      : textColor.withOpacity(0.3),
+                  size: 44,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -281,66 +308,10 @@ class StoryImmersiveView extends StatelessWidget {
     return RichText(
       textAlign: TextAlign.left,
       text: params.buildColorizedText(
-        text: _getCleanPageText(params.currentPageText),
+        text: StoryUtils.getCleanPageText(params.currentPageText),
         baseFontSize: params.fontSize,
         defaultTextColor: defaultTextColor,
         isDyslexiaEnabled: params.isDyslexia,
-      ),
-    );
-  }
-
-  Widget _buildStoryImage() {
-    return SizedBox.expand(
-      child: B2Image(
-        key: ValueKey(params.image),
-        objectKey: params.image,
-        width: double.infinity,
-        height: double.infinity,
-        fit: BoxFit.cover,
-      ),
-    );
-  }
-
-  String _getCleanPageText(String rawText) {
-    return rawText.replaceAll(RegExp(r'\[img:\d+\]'), '').trim();
-  }
-}
-
-class _CircleIconButton extends StatelessWidget {
-  final IconData icon;
-  final VoidCallback? onPressed;
-  final Color backgroundColor;
-  final Color iconColor;
-  final double size;
-
-  const _CircleIconButton({
-    required this.icon,
-    this.onPressed,
-    required this.backgroundColor,
-    required this.iconColor,
-    this.size = 40,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onPressed,
-        customBorder: const CircleBorder(),
-        child: Container(
-          width: size,
-          height: size,
-          decoration: BoxDecoration(
-            color: backgroundColor,
-            shape: BoxShape.circle,
-          ),
-          child: Icon(
-            icon,
-            color: iconColor,
-            size: size * 0.55,
-          ),
-        ),
       ),
     );
   }
