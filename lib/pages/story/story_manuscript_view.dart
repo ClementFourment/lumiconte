@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:lumiconte/models/audio_sync_model.dart';
 import 'package:lumiconte/pages/story/story_view_params.dart';
+import 'package:lumiconte/pages/story/story_widgets.dart';
 import 'package:lumiconte/widget/b2_image.dart';
 import 'package:lumiconte/widget/drop_cap_text.dart';
 
@@ -15,12 +15,6 @@ class StoryManuscriptView extends StatelessWidget {
     required this.params,
     required this.profileId,
   });
-
-  String _formatDuration(Duration duration) {
-    final minutes = duration.inMinutes.remainder(60).toString().padLeft(2, '0');
-    final seconds = duration.inSeconds.remainder(60).toString().padLeft(2, '0');
-    return '$minutes:$seconds';
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -44,16 +38,17 @@ class StoryManuscriptView extends StatelessWidget {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    _CircleIconButton(
+                    StoryCircleIconButton(
                       icon: Icons.chevron_left,
                       onPressed: params.onBack,
                       backgroundColor: iconBtnBg,
                       iconColor: textColor,
                       size: 34,
+                      hasBorder: true,
                     ),
                     Row(
                       children: [
-                        _CircleIconButton(
+                        StoryCircleIconButton(
                           icon: params.isFavorite
                               ? Icons.favorite
                               : Icons.favorite_border,
@@ -63,9 +58,10 @@ class StoryManuscriptView extends StatelessWidget {
                               ? const Color(0xFFEF4444)
                               : textColor,
                           size: 34,
+                          hasBorder: true,
                         ),
                         const SizedBox(width: 8),
-                        _CircleIconButton(
+                        StoryCircleIconButton(
                           icon: Icons.settings,
                           onPressed: () => context.push('/settings', extra: {
                             'profileId': profileId,
@@ -73,6 +69,7 @@ class StoryManuscriptView extends StatelessWidget {
                           backgroundColor: iconBtnBg,
                           iconColor: textColor,
                           size: 34,
+                          hasBorder: true,
                         ),
                       ],
                     ),
@@ -238,7 +235,7 @@ class StoryManuscriptView extends StatelessWidget {
                         ),
                       const SizedBox(width: 6),
                       Text(
-                        _formatDuration(params.audioPosition),
+                        StoryUtils.formatDuration(params.audioPosition),
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w500,
@@ -278,7 +275,7 @@ class StoryManuscriptView extends StatelessWidget {
                         ),
                       ),
                       Text(
-                        _formatDuration(params.audioDuration),
+                        StoryUtils.formatDuration(params.audioDuration),
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w500,
@@ -431,7 +428,7 @@ class StoryManuscriptView extends StatelessWidget {
             ),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(1),
-              child: _buildStoryImage(),
+              child: StoryImage(imageKey: params.image),
             ),
           ),
         ),
@@ -440,7 +437,7 @@ class StoryManuscriptView extends StatelessWidget {
   }
 
   Widget _buildBookCompositionText(Color textColor) {
-    final cleanText = _getCleanPageText(params.currentPageText);
+    final cleanText = StoryUtils.getCleanPageText(params.currentPageText);
 
     if (cleanText.isEmpty) {
       return const SizedBox.shrink();
@@ -615,66 +612,6 @@ class StoryManuscriptView extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildStoryImage() {
-    return SizedBox.expand(
-      child: B2Image(
-        key: ValueKey(params.image),
-        objectKey: params.image,
-        width: double.infinity,
-        height: double.infinity,
-        fit: BoxFit.cover,
-      ),
-    );
-  }
-
-  String _getCleanPageText(String rawText) {
-    return rawText.replaceAll(RegExp(r'\[img:\d+\]'), '').trim();
-  }
-}
-
-class _CircleIconButton extends StatelessWidget {
-  final IconData icon;
-  final VoidCallback? onPressed;
-  final Color backgroundColor;
-  final Color iconColor;
-  final double size;
-
-  const _CircleIconButton({
-    required this.icon,
-    this.onPressed,
-    required this.backgroundColor,
-    required this.iconColor,
-    this.size = 36,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onPressed,
-        customBorder: const CircleBorder(),
-        child: Container(
-          width: size,
-          height: size,
-          decoration: BoxDecoration(
-            color: backgroundColor,
-            shape: BoxShape.circle,
-            border: Border.all(
-              color: iconColor.withOpacity(0.2),
-              width: 1,
-            ),
-          ),
-          child: Icon(
-            icon,
-            color: iconColor,
-            size: size * 0.55,
-          ),
-        ),
-      ),
     );
   }
 }
