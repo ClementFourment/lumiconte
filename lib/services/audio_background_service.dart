@@ -85,10 +85,32 @@ class AudioBackgroundService extends BaseAudioHandler
       );
     });
 
+    // Écouter l'état de traitement (loading, buffering, etc.)
+    _audioPlayer.processingStateStream.listen((state) {
+      _updateState(
+        processingState: _mapProcessingState(state),
+      );
+    });
+
     // Initialiser l'état de lecture
     _updateState(processingState: AudioProcessingState.idle);
 
     _isInitialized = true;
+  }
+
+  AudioProcessingState _mapProcessingState(ProcessingState state) {
+    switch (state) {
+      case ProcessingState.idle:
+        return AudioProcessingState.idle;
+      case ProcessingState.loading:
+        return AudioProcessingState.loading;
+      case ProcessingState.buffering:
+        return AudioProcessingState.buffering;
+      case ProcessingState.ready:
+        return AudioProcessingState.ready;
+      case ProcessingState.completed:
+        return AudioProcessingState.completed;
+    }
   }
 
   /// Configurer l'audio pour une histoire spécifique

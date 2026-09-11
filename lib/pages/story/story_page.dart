@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:audio_service/audio_service.dart';
 import 'package:lumiconte/models/profile_model.dart';
 import 'package:lumiconte/models/story_model.dart';
 import 'package:lumiconte/models/settings_model.dart';
@@ -127,6 +128,8 @@ class _StoryPageState extends State<StoryPage> {
         if (mounted) {
           setState(() {
             _isPlaying = playbackState.playing;
+            _isLoading = playbackState.processingState == AudioProcessingState.loading ||
+                playbackState.processingState == AudioProcessingState.buffering;
           });
         }
       });
@@ -370,24 +373,6 @@ class _StoryPageState extends State<StoryPage> {
     }
   }
 
-  Future<void> _handleAudioComplete() async {
-    if (!mounted) return;
-    try {
-      setState(() {
-        _isPlaying = false;
-        _audioPosition = Duration.zero;
-        _isSeeking = true;
-      });
-      await _audioBackgroundService.seek(Duration.zero);
-      if (mounted) {
-        setState(() => _isSeeking = false);
-      }
-    } catch (e) {
-      debugPrint('Erreur fin audio: $e');
-      if (mounted) setState(() => _isSeeking = false);
-    }
-  }
-
   void _onSeekAudioChanged(double value) {
     setState(() {
       _isSeeking = true;
@@ -420,7 +405,6 @@ class _StoryPageState extends State<StoryPage> {
   Future<void> _toggleAudio() async {
     if (_isPlaying) {
       await _audioBackgroundService.pause();
-      setState(() => _isPlaying = false);
       return;
     }
 
@@ -440,18 +424,14 @@ class _StoryPageState extends State<StoryPage> {
     setState(() => _isLoading = true);
     try {
       await _audioBackgroundService.play();
-      if (mounted) {
-        setState(() => _isPlaying = true);
-      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Erreur audio: $e')),
         );
       }
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
     }
+    // _isLoading and _isPlaying are updated via the playbackState stream
   }
 
   List<TextSpan> _parseWordToDyslexiaSpans(
@@ -669,6 +649,7 @@ class _StoryPageState extends State<StoryPage> {
 
   @override
   void dispose() {
+    _audioBackgroundService.stop();
     _readingSaveTimer?.cancel();
     _readingTimer.stop();
     _saveReadingTime();
