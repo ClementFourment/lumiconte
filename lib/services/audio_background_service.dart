@@ -5,8 +5,10 @@ import 'package:lumiconte/models/story_model.dart';
 
 /// Service pour gérer la lecture audio en arrière-plan
 /// Permet la lecture continue même quand l'app est fermée ou l'écran verrouillé
-class AudioBackgroundService extends BaseAudioHandler with QueueHandler, SeekHandler {
-  static final AudioBackgroundService _instance = AudioBackgroundService._internal();
+class AudioBackgroundService extends BaseAudioHandler
+    with QueueHandler, SeekHandler {
+  static final AudioBackgroundService _instance =
+      AudioBackgroundService._internal();
 
   factory AudioBackgroundService() {
     return _instance;
@@ -31,7 +33,8 @@ class AudioBackgroundService extends BaseAudioHandler with QueueHandler, SeekHan
         playing: playing ?? playbackState.value.playing,
         processingState: processingState ?? playbackState.value.processingState,
         updatePosition: updatePosition ?? playbackState.value.updatePosition,
-        bufferedPosition: bufferedPosition ?? playbackState.value.bufferedPosition,
+        bufferedPosition:
+            bufferedPosition ?? playbackState.value.bufferedPosition,
         controls: [
           MediaControl.rewind,
           MediaControl.play,
@@ -52,7 +55,9 @@ class AudioBackgroundService extends BaseAudioHandler with QueueHandler, SeekHan
       final now = DateTime.now().millisecondsSinceEpoch;
       if (_lastPositionUpdate == null || now - _lastPositionUpdate! > 500) {
         _lastPositionUpdate = now;
-        _updateState(updatePosition: position, bufferedPosition: _audioPlayer.bufferedPosition);
+        _updateState(
+            updatePosition: position,
+            bufferedPosition: _audioPlayer.bufferedPosition);
       }
     });
 
@@ -60,10 +65,13 @@ class AudioBackgroundService extends BaseAudioHandler with QueueHandler, SeekHan
     _audioPlayer.durationStream.listen((duration) {
       if (duration != null) {
         final currentItem = mediaItem.value;
+        debugPrint(currentItem.toString());
         if (currentItem != null) {
           mediaItem.add(currentItem.copyWith(duration: duration));
         }
-        _updateState(updatePosition: _audioPlayer.position, bufferedPosition: _audioPlayer.bufferedPosition);
+        _updateState(
+            updatePosition: _audioPlayer.position,
+            bufferedPosition: _audioPlayer.bufferedPosition);
       }
     });
 
@@ -71,7 +79,9 @@ class AudioBackgroundService extends BaseAudioHandler with QueueHandler, SeekHan
     _audioPlayer.playingStream.listen((isPlaying) {
       _updateState(
         playing: isPlaying,
-        processingState: isPlaying ? AudioProcessingState.ready : playbackState.value.processingState,
+        processingState: isPlaying
+            ? AudioProcessingState.ready
+            : playbackState.value.processingState,
       );
     });
 
@@ -105,7 +115,9 @@ class AudioBackgroundService extends BaseAudioHandler with QueueHandler, SeekHan
         id: story.id,
         album: 'Lumiconte',
         title: story.name,
-        artUri: Uri.parse(story.image ?? 'https://lumiconte-cdn.clementfourment.fr/assets/default_story.webp'),
+        artUri: Uri.parse(story.image != null && story.image!.startsWith('http')
+            ? story.image!
+            : '$_cdnBaseUrl${story.image ?? 'assets/default_story.webp'}'),
         duration: duration,
       ));
 
@@ -146,12 +158,13 @@ class AudioBackgroundService extends BaseAudioHandler with QueueHandler, SeekHan
   @override
   Future<void> fastForward() async {
     final newPosition = _audioPlayer.position + const Duration(seconds: 10);
-    await seek(newPosition > _audioPlayer.duration! ? _audioPlayer.duration! : newPosition);
+    await seek(newPosition > _audioPlayer.duration!
+        ? _audioPlayer.duration!
+        : newPosition);
   }
 
   @override
   Future<void> pause() async {
-
     try {
       playbackState.add(
         playbackState.value.copyWith(
