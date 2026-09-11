@@ -295,7 +295,7 @@ class _HomePageState extends State<HomePage> {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  "${progress.progress}% terminé",
+                  "${progress.progress.round()}% terminé",
                   style: const TextStyle(
                     color: Colors.white70,
                     fontSize: 11,
