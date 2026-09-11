@@ -132,7 +132,7 @@ class _StoryPageState extends State<StoryPage> {
       });
 
       _audioBackgroundService.audioPlayer.positionStream.listen((position) {
-        if (mounted) {
+        if (mounted && !_isSeeking) {
           setState(() {
             _audioPosition = position;
           });
@@ -388,6 +388,13 @@ class _StoryPageState extends State<StoryPage> {
     }
   }
 
+  void _onSeekAudioChanged(double value) {
+    setState(() {
+      _isSeeking = true;
+      _audioPosition = Duration(seconds: value.toInt());
+    });
+  }
+
   Future<void> _seekAudio(double value) async {
     setState(() => _isSeeking = true);
     try {
@@ -400,6 +407,14 @@ class _StoryPageState extends State<StoryPage> {
     } finally {
       if (mounted) setState(() => _isSeeking = false);
     }
+  }
+
+  void _onRewind() {
+    _audioBackgroundService.rewind();
+  }
+
+  void _onFastForward() {
+    _audioBackgroundService.fastForward();
   }
 
   Future<void> _toggleAudio() async {
@@ -714,7 +729,10 @@ class _StoryPageState extends State<StoryPage> {
           onNextPage: _goToNextPage,
           onPreviousPage: _goToPreviousPage,
           onToggleAudio: _toggleAudio,
+          onSeekAudioChanged: _onSeekAudioChanged,
           onSeekAudio: _seekAudio,
+          onRewind: _onRewind,
+          onFastForward: _onFastForward,
           buildColorizedText: _buildColorizedText,
         );
         final bool isDarkTheme = settings.theme == 'dark';

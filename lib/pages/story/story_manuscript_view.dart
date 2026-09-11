@@ -257,7 +257,7 @@ class StoryManuscriptView extends StatelessWidget {
                                   data: SliderTheme.of(context).copyWith(
                                     trackHeight: 2,
                                     thumbShape: const RoundSliderThumbShape(
-                                        enabledThumbRadius: 4),
+                                        enabledThumbRadius: 6),
                                     activeTrackColor: textColor,
                                     inactiveTrackColor:
                                         subtleTextColor.withOpacity(0.3),
@@ -276,7 +276,7 @@ class StoryManuscriptView extends StatelessWidget {
                                         .clamp(
                                             0, params.audioDuration.inSeconds)
                                         .toDouble(),
-                                    onChanged: (_) {},
+                                    onChanged: params.onSeekAudioChanged,
                                     onChangeEnd: params.onSeekAudio,
                                   ),
                                 ),

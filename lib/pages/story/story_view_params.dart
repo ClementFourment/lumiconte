@@ -21,7 +21,10 @@ class StoryViewParams {
   final VoidCallback onNextPage;
   final VoidCallback onPreviousPage;
   final VoidCallback onToggleAudio;
+  final ValueChanged<double> onSeekAudioChanged;
   final ValueChanged<double> onSeekAudio;
+  final VoidCallback onRewind;
+  final VoidCallback onFastForward;
   final TextSpan Function({
     required String text,
     required double baseFontSize,
@@ -49,7 +52,10 @@ class StoryViewParams {
     required this.onNextPage,
     required this.onPreviousPage,
     required this.onToggleAudio,
+    required this.onSeekAudioChanged,
     required this.onSeekAudio,
+    required this.onRewind,
+    required this.onFastForward,
     required this.buildColorizedText,
   });
 }

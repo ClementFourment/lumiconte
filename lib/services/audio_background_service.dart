@@ -16,7 +16,31 @@ class AudioBackgroundService extends BaseAudioHandler with QueueHandler, SeekHan
 
   late AudioPlayer _audioPlayer;
   bool _isInitialized = false;
+  int? _lastPositionUpdate;
   static const String _cdnBaseUrl = 'https://lumiconte-cdn.clementfourment.fr/';
+
+  // Helper pour mettre à jour l'état avec les contrôles toujours présents
+  void _updateState({
+    bool? playing,
+    AudioProcessingState? processingState,
+    Duration? updatePosition,
+    Duration? bufferedPosition,
+  }) {
+    playbackState.add(
+      playbackState.value.copyWith(
+        playing: playing ?? playbackState.value.playing,
+        processingState: processingState ?? playbackState.value.processingState,
+        updatePosition: updatePosition ?? playbackState.value.updatePosition,
+        bufferedPosition: bufferedPosition ?? playbackState.value.bufferedPosition,
+        controls: [
+          MediaControl.rewind,
+          MediaControl.play,
+          MediaControl.pause,
+          MediaControl.fastForward,
+        ],
+      ),
+    );
+  }
 
   Future<void> init() async {
     if (_isInitialized) return;
@@ -25,53 +49,34 @@ class AudioBackgroundService extends BaseAudioHandler with QueueHandler, SeekHan
 
     // Écouter les changements de position
     _audioPlayer.positionStream.listen((position) {
-      playbackState.add(
-        playbackState.value.copyWith(
-          updatePosition: position,
-          bufferedPosition: _audioPlayer.bufferedPosition,
-        ),
-      );
+      final now = DateTime.now().millisecondsSinceEpoch;
+      if (_lastPositionUpdate == null || now - _lastPositionUpdate! > 500) {
+        _lastPositionUpdate = now;
+        _updateState(updatePosition: position, bufferedPosition: _audioPlayer.bufferedPosition);
+      }
     });
 
     // Écouter les changements de durée
     _audioPlayer.durationStream.listen((duration) {
       if (duration != null) {
-        // Mettre à jour le MediaItem pour que la notification sache la durée totale
         final currentItem = mediaItem.value;
         if (currentItem != null) {
           mediaItem.add(currentItem.copyWith(duration: duration));
         }
-
-        playbackState.add(
-          playbackState.value.copyWith(
-            updatePosition: _audioPlayer.position,
-            bufferedPosition: _audioPlayer.bufferedPosition,
-          ),
-        );
+        _updateState(updatePosition: _audioPlayer.position, bufferedPosition: _audioPlayer.bufferedPosition);
       }
     });
 
     // Écouter l'état de lecture
     _audioPlayer.playingStream.listen((isPlaying) {
-      playbackState.add(
-        playbackState.value.copyWith(
-          playing: isPlaying,
-          processingState: isPlaying
-              ? AudioProcessingState.ready
-              : playbackState.value.processingState,
-        ),
+      _updateState(
+        playing: isPlaying,
+        processingState: isPlaying ? AudioProcessingState.ready : playbackState.value.processingState,
       );
     });
 
     // Initialiser l'état de lecture
-    playbackState.add(
-      PlaybackState(
-        playing: false,
-        processingState: AudioProcessingState.idle,
-        speed: 1.0,
-        updatePosition: Duration.zero,
-      ),
-    );
+    _updateState(processingState: AudioProcessingState.idle);
 
     _isInitialized = true;
   }
@@ -82,28 +87,33 @@ class AudioBackgroundService extends BaseAudioHandler with QueueHandler, SeekHan
 
     final url = '$_cdnBaseUrl$objectKey';
 
-    // Mise à jour des métadonnées pour la notification système
-    mediaItem.add(MediaItem(
-      id: story.id,
-      album: 'Lumiconte',
-      title: story.name,
-      artUri: Uri.parse(story.image ?? 'https://lumiconte-cdn.clementfourment.fr/assets/default_story.webp'),
-    ));
-
     try {
+      // 1. Charger l'URL
       await _audioPlayer.setUrl(url);
-      playbackState.add(
-        playbackState.value.copyWith(
-          processingState: AudioProcessingState.ready,
-        ),
-      );
+
+      // 2. ATTENTE CRITIQUE : On attend que la durée soit réellement disponible
+      // Android désactive le curseur si la durée est nulle au moment du passage à "ready"
+      int retryCount = 0;
+      while (_audioPlayer.duration == null && retryCount < 15) {
+        await Future.delayed(const Duration(milliseconds: 200));
+        retryCount++;
+      }
+      final duration = _audioPlayer.duration;
+
+      // 3. Envoyer le MediaItem COMPLET AVANT l'état "ready"
+      mediaItem.add(MediaItem(
+        id: story.id,
+        album: 'Lumiconte',
+        title: story.name,
+        artUri: Uri.parse(story.image ?? 'https://lumiconte-cdn.clementfourment.fr/assets/default_story.webp'),
+        duration: duration,
+      ));
+
+      // 4. Passer l'état à READY avec les contrôles
+      _updateState(processingState: AudioProcessingState.ready);
     } catch (e) {
       debugPrint('Erreur chargement audio: $e');
-      playbackState.add(
-        playbackState.value.copyWith(
-          processingState: AudioProcessingState.error,
-        ),
-      );
+      _updateState(processingState: AudioProcessingState.error);
     }
   }
 
@@ -128,7 +138,20 @@ class AudioBackgroundService extends BaseAudioHandler with QueueHandler, SeekHan
   }
 
   @override
+  Future<void> rewind() async {
+    final newPosition = _audioPlayer.position - const Duration(seconds: 10);
+    await seek(newPosition < Duration.zero ? Duration.zero : newPosition);
+  }
+
+  @override
+  Future<void> fastForward() async {
+    final newPosition = _audioPlayer.position + const Duration(seconds: 10);
+    await seek(newPosition > _audioPlayer.duration! ? _audioPlayer.duration! : newPosition);
+  }
+
+  @override
   Future<void> pause() async {
+
     try {
       playbackState.add(
         playbackState.value.copyWith(

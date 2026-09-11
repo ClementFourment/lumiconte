@@ -202,7 +202,7 @@ class StoryImmersiveView extends StatelessWidget {
                                 value: params.audioPosition.inSeconds
                                     .clamp(0, params.audioDuration.inSeconds)
                                     .toDouble(),
-                                onChanged: (_) {},
+                                onChanged: params.onSeekAudioChanged,
                                 onChangeEnd: params.onSeekAudio,
                               ),
                             ),
