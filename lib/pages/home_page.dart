@@ -229,10 +229,10 @@ class _HomePageState extends State<HomePage> {
 
                   if (adaptedFromAgeStories.isNotEmpty)
                     _carrousel(
-                        context, "Adapté à ton âge", adaptedFromAgeStories),
+                        context, "Adapté à ton âge", adaptedFromAgeStories, readingProgress),
                   _carrousel(context, "Histoires populaires",
-                      widget.stories.sublist(0, 10)),
-                  _carrousel(context, "Nouveautés", latestStories),
+                      widget.stories.sublist(0, 10), readingProgress),
+                  _carrousel(context, "Nouveautés", latestStories, readingProgress),
                 ],
               ),
             ),
@@ -310,7 +310,11 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildStoryCard(BuildContext context, StoryModel story) {
+  Widget _buildStoryCard(
+    BuildContext context,
+    StoryModel story,
+    ReadingProgressModel progress,
+  ) {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Container(
@@ -341,15 +345,29 @@ class _HomePageState extends State<HomePage> {
                 stops: [0.0, 0.6, 1.0],
               ),
             ),
-            child: Text(
-              story.name,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 12,
-              ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Text(
+                  story.name,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                  ),
+                ),
+                if (progress.progress > 0) ...[
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: 80,
+                    child: LanternProgressBar(progress: progress.progress / 100),
+                  ),
+                ],
+              ],
             ),
           ),
         ],
@@ -358,7 +376,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _carrousel(
-      BuildContext context, String titleText, List<StoryModel> stories) {
+      BuildContext context, String titleText, List<StoryModel> stories, List<ReadingProgressModel> readingProgress) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final textTheme = theme.textTheme;
@@ -393,12 +411,21 @@ class _HomePageState extends State<HomePage> {
                 itemCount: stories.length,
                 itemBuilder: (context, index) {
                   final story = stories[index];
+                  final progress = readingProgress.firstWhere(
+                    (p) => p.storyId == story.id,
+                    orElse: () => ReadingProgressModel(
+                      id: '',
+                      storyId: '',
+                      progress: 0.0,
+                      lastRead: DateTime.now(),
+                    ),
+                  );
                   return GestureDetector(
                     onTap: () => context.push('/story', extra: {
                       'story': story,
                       'profile': widget.profile,
                     }),
-                    child: _buildStoryCard(context, story),
+                    child: _buildStoryCard(context, story, progress),
                   );
                 },
               ),
