@@ -36,7 +36,7 @@ class DataFuture {
 }
 
 class BottomNavState extends State<BottomNav> {
-  int _currentIndex = 0;
+  final ValueNotifier<int> _currentIndexNotifier = ValueNotifier<int>(0);
 
   final ProfileService _profileService = ProfileService();
   final CategoryService _categoryService = CategoryService();
@@ -52,9 +52,7 @@ class BottomNavState extends State<BottomNav> {
   }
 
   void changeTab(int index) {
-    setState(() {
-      _currentIndex = index;
-    });
+    _currentIndexNotifier.value = index;
   }
 
   Future<DataFuture> _loadStaticData() async {
@@ -156,38 +154,43 @@ class BottomNavState extends State<BottomNav> {
                   ),
                 ];
 
-                return Scaffold(
-                  body: IndexedStack(
-                    index: _currentIndex,
-                    children: pages,
-                  ),
-                  bottomNavigationBar: BottomNavigationBar(
-                    backgroundColor: AppTheme.getCardColor(context),
-                    selectedItemColor: colorScheme.primary,
-                    unselectedItemColor:
-                        colorScheme.onSurface.withValues(alpha: 0.6),
-                    currentIndex: _currentIndex,
-                    onTap: (value) => setState(() => _currentIndex = value),
-                    type: BottomNavigationBarType.fixed,
-                    items: const [
-                      BottomNavigationBarItem(
-                        icon: Icon(Icons.home_rounded),
-                        label: "Accueil",
+                return ValueListenableBuilder<int>(
+                  valueListenable: _currentIndexNotifier,
+                  builder: (context, currentIndex, child) {
+                    return Scaffold(
+                      body: IndexedStack(
+                        index: currentIndex,
+                        children: pages,
                       ),
-                      BottomNavigationBarItem(
-                        icon: Icon(Icons.menu_book_rounded),
-                        label: "Bibliothèque",
+                      bottomNavigationBar: BottomNavigationBar(
+                        backgroundColor: AppTheme.getCardColor(context),
+                        selectedItemColor: colorScheme.primary,
+                        unselectedItemColor:
+                            colorScheme.onSurface.withValues(alpha: 0.6),
+                        currentIndex: currentIndex,
+                        onTap: (value) => _currentIndexNotifier.value = value,
+                        type: BottomNavigationBarType.fixed,
+                        items: const [
+                          BottomNavigationBarItem(
+                            icon: Icon(Icons.home_rounded),
+                            label: "Accueil",
+                          ),
+                          BottomNavigationBarItem(
+                            icon: Icon(Icons.menu_book_rounded),
+                            label: "Bibliothèque",
+                          ),
+                          BottomNavigationBarItem(
+                            icon: Icon(Icons.auto_awesome_rounded),
+                            label: "Morales",
+                          ),
+                          BottomNavigationBarItem(
+                            icon: Icon(Icons.person_rounded),
+                            label: "Profil",
+                          ),
+                        ],
                       ),
-                      BottomNavigationBarItem(
-                        icon: Icon(Icons.auto_awesome_rounded),
-                        label: "Morales",
-                      ),
-                      BottomNavigationBarItem(
-                        icon: Icon(Icons.person_rounded),
-                        label: "Profil",
-                      ),
-                    ],
-                  ),
+                    );
+                  },
                 );
               },
             );
