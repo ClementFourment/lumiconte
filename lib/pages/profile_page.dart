@@ -32,9 +32,13 @@ class _ProfilePageState extends State<ProfilePage> {
   final AuthService _authService = AuthService();
   final String? _uid = FirebaseAuth.instance.currentUser?.uid;
 
-  late final DocumentReference _profileDoc;
-  late final CollectionReference _readingProgressCollection;
-  late final CollectionReference _settingsCollection;
+  late DocumentReference _profileDoc;
+  late CollectionReference _readingProgressCollection;
+  late CollectionReference _settingsCollection;
+
+  late Stream<DocumentSnapshot> _profileStream;
+  late Stream<QuerySnapshot> _progressStream;
+  late Stream<QuerySnapshot> _settingsStream;
 
   StreamSubscription? _progressSubscription;
   StreamSubscription? _settingsSubscription;
@@ -43,36 +47,60 @@ class _ProfilePageState extends State<ProfilePage> {
   @override
   void initState() {
     super.initState();
+    _initStreams();
+    _initSubscriptions();
+  }
 
-    if (_uid != null) {
-      _profileDoc = FirebaseFirestore.instance
-          .collection('users')
-          .doc(_uid)
-          .collection('profiles')
-          .doc(widget.profileId);
+  void _initStreams() {
+    if (_uid == null) return;
 
-      _readingProgressCollection = _profileDoc.collection('readingProgress');
-      _settingsCollection = _profileDoc.collection('settings');
+    _profileDoc = FirebaseFirestore.instance
+        .collection('users')
+        .doc(_uid)
+        .collection('profiles')
+        .doc(widget.profileId);
 
-      _progressSubscription =
-          _readingProgressCollection.snapshots().listen((_) {
-        if (mounted && appSettings.isNotificationsEnabled) {
-          appSettings.scheduleReadingReminder();
+    _readingProgressCollection = _profileDoc.collection('readingProgress');
+    _settingsCollection = _profileDoc.collection('settings');
+
+    _profileStream = _profileDoc.snapshots();
+    _progressStream = _readingProgressCollection.snapshots();
+    _settingsStream = _settingsCollection.snapshots();
+  }
+
+  void _initSubscriptions() {
+    _progressSubscription?.cancel();
+    _settingsSubscription?.cancel();
+
+    if (_uid == null) return;
+
+    _progressSubscription =
+        _readingProgressCollection.snapshots().listen((_) {
+      if (mounted && appSettings.isNotificationsEnabled) {
+        appSettings.scheduleReadingReminder();
+      }
+    });
+
+    _settingsSubscription =
+        _settingsCollection.snapshots().listen((snapshot) {
+      if (mounted && snapshot.docs.isNotEmpty) {
+        final rawData =
+            snapshot.docs.first.data() as Map<String, dynamic>? ?? {};
+        final isDark = rawData['theme'] == 'dark' ?? appSettings.isDarkMode;
+
+        if (appSettings.isDarkMode != isDark) {
+          appSettings.toggleDarkMode(widget.profileId, isDark);
         }
-      });
+      }
+    });
+  }
 
-      _settingsSubscription =
-          _settingsCollection.snapshots().listen((snapshot) {
-        if (mounted && snapshot.docs.isNotEmpty) {
-          final rawData =
-              snapshot.docs.first.data() as Map<String, dynamic>? ?? {};
-          final isDark = rawData['theme'] == 'dark' ?? appSettings.isDarkMode;
-
-          if (appSettings.isDarkMode != isDark) {
-            appSettings.toggleDarkMode(widget.profileId, isDark);
-          }
-        }
-      });
+  @override
+  void didUpdateWidget(ProfilePage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.profileId != widget.profileId) {
+      _initStreams();
+      _initSubscriptions();
     }
   }
 
@@ -129,7 +157,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
     return Scaffold(
       body: StreamBuilder<DocumentSnapshot>(
-        stream: _profileDoc.snapshots(),
+        stream: _profileStream,
         builder: (context, profileSnapshot) {
           if (profileSnapshot.connectionState == ConnectionState.waiting) {
             return Center(
@@ -153,7 +181,7 @@ class _ProfilePageState extends State<ProfilePage> {
               profileData, profileSnapshot.data!.id, _uid!);
 
           return StreamBuilder<QuerySnapshot>(
-            stream: _readingProgressCollection.snapshots(),
+            stream: _progressStream,
             builder: (context, progressSnapshot) {
               final int storiesReadCount = progressSnapshot.hasData
                   ? progressSnapshot.data!.docs.where((doc) {
@@ -164,7 +192,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   : 0;
 
               return StreamBuilder<QuerySnapshot>(
-                stream: _settingsCollection.snapshots(),
+                stream: _settingsStream,
                 builder: (context, settingsSnapshot) {
                   String currentLangCode = 'fr';
                   String settingsDocId = '';
@@ -398,9 +426,9 @@ class _ProfilePageState extends State<ProfilePage> {
                                           .withValues(alpha: 0.08),
                                     ),
 
-                                    ListenableBuilder(
-                                      listenable: appSettings,
-                                      builder: (context, child) {
+                                    ValueListenableBuilder<bool>(
+                                      valueListenable: appSettings.notificationsNotifier,
+                                      builder: (context, isNotificationsEnabled, child) {
                                         return Column(
                                           children: [
                                             // Rappels de lecture
@@ -414,8 +442,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                                       .colorScheme.onSurface,
                                                 ),
                                               ),
-                                              value: appSettings
-                                                  .isNotificationsEnabled,
+                                              value: isNotificationsEnabled,
                                               onChanged: (bool newValue) {
                                                 appSettings.toggleNotifications(
                                                     newValue);
