@@ -1,7 +1,7 @@
 class ReadingProgressModel {
   final String id;
   final String storyId;
-  final int progress;
+  final double progress;
   final DateTime lastRead;
 
   ReadingProgressModel({
@@ -16,7 +16,7 @@ class ReadingProgressModel {
     return ReadingProgressModel(
       id: docId,
       storyId: data['storyId'] ?? '',
-      progress: data['progress'] ?? 0,
+      progress: (data['progress'] as num?)?.toDouble() ?? 0.0,
       lastRead: data['lastRead']?.toDate() ?? DateTime.now(),
     );
   }

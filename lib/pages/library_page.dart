@@ -110,12 +110,11 @@ class _LibraryPageState extends State<LibraryPage> {
               storyId = data['storyId'] as String? ?? doc.id;
             }
 
-            // Extraction et normalisation de la progression (support 0..1 et 0..100)
+            // Extraction et normalisation de la progression
             final rawProgress = data['progress'] ?? data['percentage'] ?? 0;
             double p = 0.0;
             if (rawProgress is num) {
-              double val = rawProgress.toDouble();
-              p = val > 1.0 ? val / 100.0 : val;
+              p = rawProgress.toDouble() / 100.0;
             }
 
             activeProfileReadProgress[storyId] = p.clamp(0.0, 1.0);

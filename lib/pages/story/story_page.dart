@@ -170,7 +170,7 @@ class _StoryPageState extends State<StoryPage> {
           _isProgressLoaded = true;
         });
       } else {
-        await _updateReadingProgress(1);
+        await _updateReadingProgress(1.0);
         setState(() {
           _currentPage = 0;
           _isProgressLoaded = true;
@@ -182,9 +182,9 @@ class _StoryPageState extends State<StoryPage> {
     }
   }
 
-  int _calculatePageFromProgress(int progress) {
+  int _calculatePageFromProgress(double progress) {
     if (_pages.isEmpty) return 0;
-    final totalCharacters = _pages.fold(0, (sum, page) => sum + page.length);
+    final totalCharacters = _pages.fold(0, (total, page) => total + page.length);
     final targetCharacters = totalCharacters * progress / 100;
 
     int currentCharacters = 0;
@@ -195,12 +195,12 @@ class _StoryPageState extends State<StoryPage> {
     return _pages.length - 1;
   }
 
-  int _calculateProgress() {
-    if (_pages.isEmpty) return 0;
-    if (_currentPage >= _pages.length - 1) return 100;
+  double _calculateProgress() {
+    if (_pages.isEmpty) return 0.0;
+    if (_currentPage >= _pages.length - 1) return 100.0;
 
-    final totalCharacters = _pages.fold(0, (sum, page) => sum + page.length);
-    if (totalCharacters == 0) return 0;
+    final totalCharacters = _pages.fold(0, (total, page) => total + page.length);
+    if (totalCharacters == 0) return 0.0;
 
     int readCharacters = 0;
     for (int i = 0; i <= _currentPage; i++) {
@@ -208,10 +208,10 @@ class _StoryPageState extends State<StoryPage> {
     }
 
     final double percentage = (readCharacters / totalCharacters) * 100;
-    return percentage.round().clamp(0, 99);
+    return percentage.clamp(0.0, 100.0);
   }
 
-  Future<void> _updateReadingProgress(int progress) async {
+  Future<void> _updateReadingProgress(double progress) async {
     try {
       await _readingProgressService.createOrUpdate(
         profileId: widget.profile.id,

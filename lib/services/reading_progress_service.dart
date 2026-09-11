@@ -25,7 +25,7 @@ class ReadingProgressService {
   Future<void> createOrUpdate({
     required String profileId,
     required String storyId,
-    required int progress,
+    required double progress,
   }) async {
     final collection = _readingProgressCollection(profileId);
 
@@ -45,7 +45,7 @@ class ReadingProgressService {
       // Si le document n'existe PAS ENCORE (premier clic), on FORCE la création à 0
       await docRef.set({
         'storyId': storyId,
-        'progress': 0, // Initialisation forcée à 0
+        'progress': 0.0, // Initialisation forcée à 0
         'lastRead': FieldValue.serverTimestamp(),
       });
       debugPrint('ReadingProgress créé à 0 pour $storyId');
