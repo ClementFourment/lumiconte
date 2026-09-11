@@ -3,11 +3,11 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:audio_service/audio_service.dart';
 import 'package:lumiconte/models/profile_model.dart';
 import 'package:lumiconte/models/story_model.dart';
 import 'package:lumiconte/models/settings_model.dart';
 import 'package:lumiconte/models/audio_sync_model.dart';
-import 'package:lumiconte/widget/b2_audio.dart';
 import 'package:lumiconte/pages/story/story_classic_view.dart';
 import 'package:lumiconte/pages/story/story_immersive_view.dart';
 import 'package:lumiconte/pages/story/story_manuscript_view.dart';
@@ -15,7 +15,6 @@ import 'package:lumiconte/pages/story/story_view_params.dart';
 import 'package:lumiconte/services/reading_progress_service.dart';
 import 'package:lumiconte/services/settings_service.dart';
 import 'package:lumiconte/services/audio_background_service.dart';
-import 'package:lumiconte/services/audio_notification_service.dart';
 import 'package:lumiconte/services/story_sync_service.dart';
 
 class StoryPage extends StatefulWidget {
@@ -44,7 +43,6 @@ class _StoryPageState extends State<StoryPage> {
   Duration _audioDuration = Duration.zero;
   bool _isProgressLoaded = false;
 
-  B2Audio? _audio;
   late final String _uid;
   late final CollectionReference _settingsCollection;
   late final CollectionReference _favoritesCollection;
@@ -52,7 +50,6 @@ class _StoryPageState extends State<StoryPage> {
   final ReadingProgressService _readingProgressService =
       ReadingProgressService();
   late AudioBackgroundService _audioBackgroundService;
-  late AudioNotificationService _audioNotificationService;
 
   final SettingsService _settingsService = SettingsService();
   final Stopwatch _readingTimer = Stopwatch();
@@ -78,7 +75,6 @@ class _StoryPageState extends State<StoryPage> {
         .collection('favorites');
 
     _audioBackgroundService = AudioBackgroundService();
-    _audioNotificationService = AudioNotificationService();
     _initializeBackgroundAudioService();
 
     _initializePages();
@@ -127,15 +123,31 @@ class _StoryPageState extends State<StoryPage> {
   Future<void> _initializeBackgroundAudioService() async {
     try {
       await _audioBackgroundService.init();
-      await _audioNotificationService.init();
 
       _audioBackgroundService.playbackState.listen((playbackState) {
         if (mounted) {
           setState(() {
             _isPlaying = playbackState.playing;
-            _audioPosition = playbackState.position;
+            _isLoading = playbackState.processingState == AudioProcessingState.loading ||
+                playbackState.processingState == AudioProcessingState.buffering;
+          });
+        }
+      });
+
+      _audioBackgroundService.audioPlayer.positionStream.listen((position) {
+        if (mounted && !_isSeeking) {
+          setState(() {
+            _audioPosition = position;
           });
           _checkPageChangeForAudio(_audioPosition);
+        }
+      });
+
+      _audioBackgroundService.audioPlayer.durationStream.listen((duration) {
+        if (mounted) {
+          setState(() {
+            _audioDuration = duration ?? Duration.zero;
+          });
         }
       });
     } catch (e) {
@@ -287,7 +299,7 @@ class _StoryPageState extends State<StoryPage> {
     return widget.story.image;
   }
 
-  void _initializeAudio(SettingsModel settings) {
+  Future<void> _initializeAudio(SettingsModel settings) async {
     final requestedVoiceKey =
         (settings.voiceGender == 'homme' || settings.voiceGender == 'male')
             ? 'homme'
@@ -344,8 +356,6 @@ class _StoryPageState extends State<StoryPage> {
         }
       }
 
-      _audio?.dispose();
-
       // Remet l'état audio à jour lors d'une réinitialisation de voix
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
@@ -353,53 +363,29 @@ class _StoryPageState extends State<StoryPage> {
             _isPlaying = false;
             _audioPosition = Duration.zero;
           });
-          _updateAudioNotification();
         }
       });
 
-      _audio = B2Audio(objectKey: selectedAudioPath);
-      _audio!.preload();
-
-      _audio!.onComplete.listen((_) => _handleAudioComplete());
-      _audio!.onPositionChanged.listen((position) {
-        if (mounted && !_isSeeking) {
-          setState(() => _audioPosition = position);
-          _checkPageChangeForAudio(position);
-          _updateAudioNotification();
-        }
-      });
-      _audio!.onDurationChanged.listen((duration) {
-        if (mounted) setState(() => _audioDuration = duration);
-      });
+      await _audioBackgroundService.setStory(
+        widget.story,
+        selectedAudioPath,
+      );
     }
   }
 
-  Future<void> _handleAudioComplete() async {
-    if (!mounted) return;
-    try {
-      setState(() {
-        _isPlaying = false;
-        _audioPosition = Duration.zero;
-        _isSeeking = true;
-      });
-      await _audio?.seekToStart();
-      if (mounted) {
-        setState(() => _isSeeking = false);
-        _updateAudioNotification();
-      }
-    } catch (e) {
-      debugPrint('Erreur fin audio: $e');
-      if (mounted) setState(() => _isSeeking = false);
-    }
+  void _onSeekAudioChanged(double value) {
+    setState(() {
+      _isSeeking = true;
+      _audioPosition = Duration(seconds: value.toInt());
+    });
   }
 
   Future<void> _seekAudio(double value) async {
     setState(() => _isSeeking = true);
     try {
-      await _audio?.seek(Duration(seconds: value.toInt()));
+      await _audioBackgroundService.seek(Duration(seconds: value.toInt()));
       if (mounted) {
         setState(() => _audioPosition = Duration(seconds: value.toInt()));
-        _updateAudioNotification();
       }
     } catch (e) {
       debugPrint('Erreur seek: $e');
@@ -408,18 +394,24 @@ class _StoryPageState extends State<StoryPage> {
     }
   }
 
+  void _onRewind() {
+    _audioBackgroundService.rewind();
+  }
+
+  void _onFastForward() {
+    _audioBackgroundService.fastForward();
+  }
+
   Future<void> _toggleAudio() async {
     if (_isPlaying) {
-      await _audio?.pause();
-      setState(() => _isPlaying = false);
-      _updateAudioNotification();
+      await _audioBackgroundService.pause();
       return;
     }
 
     if (_audioPosition >= _audioDuration && _audioDuration > Duration.zero) {
       setState(() => _isSeeking = true);
       try {
-        await _audio?.seekToStart();
+        await _audioBackgroundService.seek(Duration.zero);
         setState(() {
           _audioPosition = Duration.zero;
           _isSeeking = false;
@@ -431,39 +423,15 @@ class _StoryPageState extends State<StoryPage> {
 
     setState(() => _isLoading = true);
     try {
-      await _audio?.play();
-      if (mounted) {
-        setState(() => _isPlaying = true);
-        _updateAudioNotification();
-      }
+      await _audioBackgroundService.play();
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Erreur audio: $e')),
         );
       }
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
     }
-  }
-
-  void _updateAudioNotification() {
-    if (!_isAudio) return;
-
-    final progress = _audioDuration.inSeconds > 0
-        ? ((_audioPosition.inSeconds / _audioDuration.inSeconds) * 100)
-            .toInt()
-            .clamp(0, 100)
-        : 0;
-
-    _audioNotificationService.showPlaybackProgressNotification(
-      title: widget.story.name,
-      subtitle: _isPlaying ? 'En cours de lecture...' : 'En pause',
-      isPlaying: _isPlaying,
-      progress: progress,
-      position: _audioPosition,
-      duration: _audioDuration,
-    );
+    // _isLoading and _isPlaying are updated via the playbackState stream
   }
 
   List<TextSpan> _parseWordToDyslexiaSpans(
@@ -681,12 +649,11 @@ class _StoryPageState extends State<StoryPage> {
 
   @override
   void dispose() {
+    _audioBackgroundService.stop();
     _readingSaveTimer?.cancel();
     _readingTimer.stop();
     _saveReadingTime();
 
-    _audio?.dispose();
-    _audioNotificationService.hideNotification();
     super.dispose();
   }
 
@@ -743,7 +710,10 @@ class _StoryPageState extends State<StoryPage> {
           onNextPage: _goToNextPage,
           onPreviousPage: _goToPreviousPage,
           onToggleAudio: _toggleAudio,
+          onSeekAudioChanged: _onSeekAudioChanged,
           onSeekAudio: _seekAudio,
+          onRewind: _onRewind,
+          onFastForward: _onFastForward,
           buildColorizedText: _buildColorizedText,
         );
         final bool isDarkTheme = settings.theme == 'dark';
