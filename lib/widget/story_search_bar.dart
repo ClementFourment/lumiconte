@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:lumiconte/models/story_model.dart';
 import 'package:lumiconte/services/story_service.dart';
 import 'package:lumiconte/widget/b2_image.dart';
+import 'package:lumiconte/utils/string_utils.dart';
 
 class StorySearchBar extends StatefulWidget {
   const StorySearchBar({
@@ -32,7 +33,6 @@ class _StorySearchBarState extends State<StorySearchBar>
   List<StoryModel> _stories = [];
   List<StoryModel> _results = [];
   bool _loading = true;
-  String _lastSearch = '';
 
   @override
   void initState() {
@@ -80,8 +80,7 @@ class _StorySearchBarState extends State<StorySearchBar>
 
   void _onTextChanged() {
     setState(() {
-      final search = _controller.text.trim().toLowerCase();
-      _lastSearch = search;
+      final search = normalizeText(_controller.text.trim());
 
       if (search.isEmpty) {
         _results = [];
@@ -90,16 +89,16 @@ class _StorySearchBarState extends State<StorySearchBar>
       }
 
       _results = _stories.where((story) {
-        return story.name.toLowerCase().contains(search) ||
+        return normalizeText(story.name).contains(search) ||
             story.categoryIds.any(
-              (category) => category.toLowerCase().contains(search),
+              (category) => normalizeText(category).contains(search),
             );
       }).toList();
 
       // Tri intelligent : priorité aux correspondances au début du nom
       _results.sort((a, b) {
-        final aStarts = a.name.toLowerCase().startsWith(search);
-        final bStarts = b.name.toLowerCase().startsWith(search);
+        final aStarts = normalizeText(a.name).startsWith(search);
+        final bStarts = normalizeText(b.name).startsWith(search);
 
         if (aStarts && !bStarts) return -1;
         if (!aStarts && bStarts) return 1;
