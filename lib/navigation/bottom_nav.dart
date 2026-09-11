@@ -97,13 +97,17 @@ class BottomNavState extends State<BottomNav> {
           stream: FirebaseFirestore.instance
               .collection('users')
               .doc(_uid)
-              .snapshots(),
+              .snapshots()
+              .distinct((prev, next) =>
+                  prev.data()?['activeProfileId'] == next.data()?['activeProfileId']),
           builder: (context, userSnapshot) {
             final activeProfileId =
                 userSnapshot.data?.data()?['activeProfileId'] as String?;
 
             return StreamBuilder<List<ProfileModel>>(
-              stream: _profileService.getUserProfilesStream(_uid!),
+              stream: _profileService.getUserProfilesStream(_uid!)
+                  .distinct((prev, next) => prev.length == next.length &&
+                      prev.every((p) => p.id == next[prev.indexOf(p)].id)),
               builder: (context, profilesSnapshot) {
                 if (profilesSnapshot.connectionState ==
                     ConnectionState.waiting) {

@@ -59,9 +59,9 @@ class LumiconteApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListenableBuilder(
-      listenable: appSettings,
-      builder: (context, child) {
+    return ValueListenableBuilder<bool>(
+      valueListenable: appSettings.themeNotifier,
+      builder: (context, isDarkMode, child) {
         final lightTextTheme =
             Typography.material2021(platform: TargetPlatform.android).black;
         final darkTextTheme =
@@ -71,7 +71,7 @@ class LumiconteApp extends StatelessWidget {
           title: 'Lumiconte',
           routerConfig: appRouter,
           debugShowCheckedModeBanner: false,
-          themeMode: appSettings.isDarkMode ? ThemeMode.dark : ThemeMode.light,
+          themeMode: isDarkMode ? ThemeMode.dark : ThemeMode.light,
 
           // ☀️ THÈME CLAIR
           theme: AppTheme.lightTheme.copyWith(

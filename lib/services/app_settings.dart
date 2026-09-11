@@ -14,6 +14,9 @@ class AppSettings extends ChangeNotifier {
   bool _isNotificationsEnabled = true;
   SettingsModel? _currentSettings;
 
+  final ValueNotifier<bool> themeNotifier = ValueNotifier(false);
+  final ValueNotifier<bool> notificationsNotifier = ValueNotifier(true);
+
   bool get isDarkMode => _isDarkMode;
   bool get isNotificationsEnabled => _isNotificationsEnabled;
   SettingsModel? get currentSettings => _currentSettings;
@@ -97,7 +100,7 @@ class AppSettings extends ChangeNotifier {
       if (userDoc.exists && userDoc.data() != null) {
         _isNotificationsEnabled =
             userDoc.data()!['notificationsEnabled'] as bool? ?? true;
-        notifyListeners();
+        notificationsNotifier.value = _isNotificationsEnabled;
       }
     } catch (e) {
       debugPrint('Erreur chargement paramètres globaux: $e');
@@ -123,7 +126,7 @@ class AppSettings extends ChangeNotifier {
         final doc = snapshot.docs.first;
         _currentSettings = SettingsModel.fromMap(doc.data(), doc.id);
         _isDarkMode = _currentSettings?.theme == 'dark';
-        notifyListeners();
+        themeNotifier.value = _isDarkMode;
       }
     } catch (e) {
       debugPrint('Erreur chargement settings profil: $e');
@@ -132,19 +135,19 @@ class AppSettings extends ChangeNotifier {
 
   Future<void> toggleDarkMode(String profileId, bool value) async {
     _isDarkMode = value;
+    themeNotifier.value = value;
     final newTheme = value ? 'dark' : 'light';
 
     if (_currentSettings != null) {
       _currentSettings = _currentSettings!.copyWith(theme: newTheme);
     }
 
-    notifyListeners();
     await _updateSettingsInFirestore(profileId, {'theme': newTheme});
   }
 
   Future<void> toggleNotifications(bool value) async {
     _isNotificationsEnabled = value;
-    notifyListeners();
+    notificationsNotifier.value = value;
 
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
