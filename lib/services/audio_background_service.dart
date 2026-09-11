@@ -1,13 +1,12 @@
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:lumiconte/models/story_model.dart';
 
 /// Service pour gérer la lecture audio en arrière-plan
 /// Permet la lecture continue même quand l'app est fermée ou l'écran verrouillé
-class AudioBackgroundService extends BaseAudioHandler
-    with QueueHandler, SeekHandler {
-  static final AudioBackgroundService _instance =
-      AudioBackgroundService._internal();
+class AudioBackgroundService extends BaseAudioHandler with QueueHandler, SeekHandler {
+  static final AudioBackgroundService _instance = AudioBackgroundService._internal();
 
   factory AudioBackgroundService() {
     return _instance;
@@ -17,6 +16,7 @@ class AudioBackgroundService extends BaseAudioHandler
 
   late AudioPlayer _audioPlayer;
   bool _isInitialized = false;
+  static const String _cdnBaseUrl = 'https://lumiconte-cdn.clementfourment.fr/';
 
   Future<void> init() async {
     if (_isInitialized) return;
@@ -35,13 +35,20 @@ class AudioBackgroundService extends BaseAudioHandler
 
     // Écouter les changements de durée
     _audioPlayer.durationStream.listen((duration) {
-      final currentState = playbackState.value;
-      playbackState.add(
-        currentState.copyWith(
-          updatePosition: _audioPlayer.position,
-          bufferedPosition: _audioPlayer.bufferedPosition,
-        ),
-      );
+      if (duration != null) {
+        // Mettre à jour le MediaItem pour que la notification sache la durée totale
+        final currentItem = mediaItem.value;
+        if (currentItem != null) {
+          mediaItem.add(currentItem.copyWith(duration: duration));
+        }
+
+        playbackState.add(
+          playbackState.value.copyWith(
+            updatePosition: _audioPlayer.position,
+            bufferedPosition: _audioPlayer.bufferedPosition,
+          ),
+        );
+      }
     });
 
     // Écouter l'état de lecture
@@ -69,11 +76,27 @@ class AudioBackgroundService extends BaseAudioHandler
     _isInitialized = true;
   }
 
-  /// Charger et jouer un fichier audio
-  Future<void> loadAndPlay(String audioUrl) async {
+  /// Configurer l'audio pour une histoire spécifique
+  Future<void> setStory(StoryModel story, String objectKey) async {
+    if (!_isInitialized) await init();
+
+    final url = '$_cdnBaseUrl$objectKey';
+
+    // Mise à jour des métadonnées pour la notification système
+    mediaItem.add(MediaItem(
+      id: story.id,
+      album: 'Lumiconte',
+      title: story.name,
+      artUri: Uri.parse(story.image ?? 'https://lumiconte-cdn.clementfourment.fr/assets/default_story.webp'),
+    ));
+
     try {
-      await _audioPlayer.setUrl(audioUrl);
-      await play();
+      await _audioPlayer.setUrl(url);
+      playbackState.add(
+        playbackState.value.copyWith(
+          processingState: AudioProcessingState.ready,
+        ),
+      );
     } catch (e) {
       debugPrint('Erreur chargement audio: $e');
       playbackState.add(
@@ -121,7 +144,11 @@ class AudioBackgroundService extends BaseAudioHandler
   @override
   Future<void> seek(Duration position) async {
     try {
+      // 1. On demande au lecteur de changer de position
       await _audioPlayer.seek(position);
+
+      // 2. On force la mise à jour immédiate de l'état pour la notification
+      // On utilise updatePosition pour notifier le système nativement
       playbackState.add(
         playbackState.value.copyWith(
           updatePosition: position,

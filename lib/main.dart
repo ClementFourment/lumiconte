@@ -6,6 +6,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:lumiconte/services/app_settings.dart';
 import 'package:lumiconte/theme/app_theme.dart';
+import 'package:audio_service/audio_service.dart';
+import 'package:lumiconte/services/audio_background_service.dart';
 
 late final AppSettings appSettings;
 
@@ -36,6 +38,17 @@ void main() async {
   // 4. Initialisation des services
   appSettings = AppSettings();
   await appSettings.init();
+
+  // Initialisation du service audio global
+  await AudioService.init(
+    builder: () => AudioBackgroundService(),
+    config: AudioServiceConfig(
+      androidStopForegroundOnPause: false,
+      androidNotificationChannelId: 'lumiconte_audio_playback',
+      androidNotificationChannelName: 'Lumiconte Audio Playback',
+      androidNotificationOngoing: false,
+    ),
+  );
 
   // 5. Lancement de l'application
   runApp(const LumiconteApp());
