@@ -47,6 +47,8 @@ void main() async {
       androidNotificationChannelId: 'lumiconte_audio_playback',
       androidNotificationChannelName: 'Lumiconte Audio Playback',
       androidNotificationOngoing: false,
+      androidNotificationIcon: 'drawable/ic_notification',
+      notificationColor: Color(0xFFF59E0B),
     ),
   );
 
