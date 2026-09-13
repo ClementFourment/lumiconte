@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:lumiconte/models/audio_sync_model.dart';
+import 'package:lumiconte/pages/story/story_text.dart';
 
 class StoryViewParams {
-  final String currentPageText;
+  final StoryDocument document;
+
+  /// Premier mot de la page courante ; la page affichée est celle qui le contient.
+  final int anchorWord;
+  final StoryPagination Function(StoryLayoutRequest request) paginate;
   final int currentPageIndex;
   final int totalPages;
   final bool isFavorite;
@@ -14,8 +18,6 @@ class StoryViewParams {
   final double fontSize;
   final bool isDyslexia;
   final String? image;
-  final String? illustrationsPath;
-  final List<SegmentTiming> currentSegments; // <-- Ajout des segments synchronisés
   final VoidCallback onBack;
   final VoidCallback onToggleFavorite;
   final VoidCallback onRestart;
@@ -26,18 +28,14 @@ class StoryViewParams {
   final ValueChanged<double> onSeekAudio;
   final VoidCallback onRewind;
   final VoidCallback onFastForward;
-  final TextSpan Function({
-    required String text,
-    required double baseFontSize,
-    required Color defaultTextColor,
-    required bool isDyslexiaEnabled,
-  }) buildColorizedText;
 
   bool get isAtStart =>
       currentPageIndex == 0 && audioPosition == Duration.zero;
 
   StoryViewParams({
-    required this.currentPageText,
+    required this.document,
+    required this.anchorWord,
+    required this.paginate,
     required this.currentPageIndex,
     required this.totalPages,
     required this.isFavorite,
@@ -49,8 +47,6 @@ class StoryViewParams {
     required this.fontSize,
     required this.isDyslexia,
     required this.image,
-    required this.illustrationsPath,
-    this.currentSegments = const [],
     required this.onBack,
     required this.onToggleFavorite,
     required this.onRestart,
@@ -61,6 +57,5 @@ class StoryViewParams {
     required this.onSeekAudio,
     required this.onRewind,
     required this.onFastForward,
-    required this.buildColorizedText,
   });
 }

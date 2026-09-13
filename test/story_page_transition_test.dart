@@ -5,10 +5,10 @@ import 'package:lumiconte/pages/story/story_widgets.dart';
 void main() {
   Widget page(int index, String text) => MaterialApp(
         home: Scaffold(
-          body: SingleChildScrollView(
-            child: Center(
-              child: StoryPageTransition(pageIndex: index, child: Text(text)),
-            ),
+          body: SizedBox(
+            width: 300,
+            height: 200,
+            child: StoryPageTransition(pageIndex: index, child: Text(text)),
           ),
         ),
       );

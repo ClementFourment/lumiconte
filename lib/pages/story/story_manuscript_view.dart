@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:lumiconte/pages/story/story_text.dart';
 import 'package:lumiconte/pages/story/story_view_params.dart';
 import 'package:lumiconte/pages/story/story_widgets.dart';
-import 'package:lumiconte/widget/b2_image.dart';
-import 'package:lumiconte/widget/drop_cap_text.dart';
 
 class StoryManuscriptView extends StatelessWidget {
   final StoryViewParams params;
@@ -167,17 +166,27 @@ class StoryManuscriptView extends StatelessWidget {
                                         const SizedBox(height: 8),
                                         Expanded(
                                           flex: 5,
-                                          child: Center(
-                                            child: SingleChildScrollView(
-                                              physics:
-                                                  const BouncingScrollPhysics(),
-                                              child: StoryPageTransition(
-                                                pageIndex:
-                                                    params.currentPageIndex,
-                                                child:
-                                                    _buildBookCompositionText(
-                                                        textColor),
-                                              ),
+                                          child: StoryTextArea(
+                                            params: params,
+                                            metrics: StoryTextMetrics(
+                                              fontSize: params.fontSize,
+                                              fontFamily: GoogleFonts
+                                                      .cormorantGaramond()
+                                                  .fontFamily,
+                                              lineHeight: 1.6,
+                                              letterSpacing: -0.15,
+                                              textAlign: TextAlign.justify,
+                                              dyslexia: params.isDyslexia,
+                                              dropCapFontFamily: GoogleFonts
+                                                      .cormorantGaramond(
+                                                          fontWeight:
+                                                              FontWeight.w700)
+                                                  .fontFamily,
+                                            ),
+                                            colors: const StoryTextColors(
+                                              text: Color(0xFF32271B),
+                                              activeText: Color(0xFF6B3A00),
+                                              highlight: Color(0x40B8A680),
                                             ),
                                           ),
                                         ),
@@ -498,143 +507,6 @@ class StoryManuscriptView extends StatelessWidget {
             ),
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildBookCompositionText(Color textColor) {
-    final cleanText = StoryUtils.getCleanPageText(params.currentPageText);
-
-    if (cleanText.isEmpty) {
-      return const SizedBox.shrink();
-    }
-
-    final adjustedFontSize = params.fontSize > 16 ? 15.0 : params.fontSize;
-    const inkColor = Color(0xFF32271B);
-    final highlightBg = const Color(0xFFB8A680).withOpacity(0.25);
-    const activeInkColor = Color(0xFF6B3A00);
-
-    if (params.currentSegments.isNotEmpty) {
-      final double currentTimeInSeconds =
-          params.audioPosition.inMilliseconds / 1000.0;
-
-      final allWords =
-          params.currentSegments.expand((segment) => segment.words).toList();
-
-      if (allWords.isEmpty) return const SizedBox.shrink();
-
-      final firstWordTiming = allWords.first;
-      final otherWords = allWords.skip(1);
-
-      final bool isFirstActive =
-          currentTimeInSeconds >= firstWordTiming.start &&
-              currentTimeInSeconds <= firstWordTiming.end;
-
-      final String firstLetter =
-          firstWordTiming.word.isNotEmpty ? firstWordTiming.word[0] : '';
-      final String restOfFirstWord = firstWordTiming.word.length > 1
-          ? firstWordTiming.word.substring(1)
-          : '';
-
-      return Wrap(
-        alignment: WrapAlignment.start,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        spacing: 4.0,
-        runSpacing: 6.0,
-        children: [
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 120),
-            padding: const EdgeInsets.symmetric(horizontal: 3.0, vertical: 1.0),
-            decoration: BoxDecoration(
-              color: isFirstActive ? highlightBg : Colors.transparent,
-              borderRadius: BorderRadius.circular(4.0),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.baseline,
-              textBaseline: TextBaseline.alphabetic,
-              children: [
-                Text(
-                  firstLetter,
-                  style: GoogleFonts.cormorantGaramond(
-                    fontSize: adjustedFontSize * 2.2,
-                    fontWeight: FontWeight.bold,
-                    color: isFirstActive ? activeInkColor : inkColor,
-                    height: 0.8,
-                  ),
-                ),
-                Text(
-                  restOfFirstWord,
-                  style: TextStyle(
-                    fontSize: adjustedFontSize,
-                    fontWeight:
-                        isFirstActive ? FontWeight.w600 : FontWeight.normal,
-                    color: isFirstActive ? activeInkColor : inkColor,
-                    height: 1.5,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          ...otherWords.map((wordTiming) {
-            final bool isActive = currentTimeInSeconds >= wordTiming.start &&
-                currentTimeInSeconds <= wordTiming.end;
-
-            return AnimatedContainer(
-              duration: const Duration(milliseconds: 120),
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 3.0, vertical: 1.0),
-              decoration: BoxDecoration(
-                color: isActive ? highlightBg : Colors.transparent,
-                borderRadius: BorderRadius.circular(4.0),
-              ),
-              child: Text(
-                wordTiming.word,
-                style: TextStyle(
-                  fontSize: adjustedFontSize,
-                  fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
-                  color: isActive ? activeInkColor : inkColor,
-                  height: 1.5,
-                ),
-              ),
-            );
-          }),
-        ],
-      );
-    }
-
-    if (params.isDyslexia) {
-      return RichText(
-        textAlign: TextAlign.justify,
-        text: params.buildColorizedText(
-          text: cleanText,
-          baseFontSize: adjustedFontSize,
-          defaultTextColor: inkColor,
-          isDyslexiaEnabled: params.isDyslexia,
-        ),
-      );
-    }
-
-    return DropCapText(
-      cleanText,
-      style: GoogleFonts.cormorantGaramond(
-        fontSize: adjustedFontSize,
-        color: inkColor,
-        height: 1.6,
-        letterSpacing: -0.15,
-      ),
-      textAlign: TextAlign.justify,
-      dropCapChars: 1,
-      indentation: Offset.zero,
-      dropCapStyle: GoogleFonts.cormorantGaramond(
-        fontSize: adjustedFontSize * 4.6,
-        fontWeight: FontWeight.w700,
-        color: inkColor,
-        height: 0.65,
-      ),
-      dropCapPadding: const EdgeInsets.only(
-        right: 4,
-        bottom: 1,
       ),
     );
   }
