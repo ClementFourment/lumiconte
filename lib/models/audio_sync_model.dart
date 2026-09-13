@@ -39,21 +39,3 @@ class SegmentTiming {
     );
   }
 }
-
-class StorySyncPage {
-  final int pageIndex;
-  final List<SegmentTiming> segments;
-
-  StorySyncPage({required this.pageIndex, required this.segments});
-
-  double get start => segments.isNotEmpty ? segments.first.start : 0.0;
-  double get end => segments.isNotEmpty ? segments.last.end : 0.0;
-
-  /// Retourne le texte brut combiné de tous les segments de la page
-  String get text => segments.map((s) => s.text).join(' ').trim();
-
-  /// Récupère le texte complet nettoyé de la page (sans balises [img:X])
-  String get fullText {
-    return text.replaceAll(RegExp(r'\[img:\d+\]'), '').trim();
-  }
-}

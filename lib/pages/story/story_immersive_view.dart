@@ -1,8 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:lumiconte/pages/story/story_text.dart';
 import 'package:lumiconte/pages/story/story_view_params.dart';
 import 'package:lumiconte/pages/story/story_widgets.dart';
-import 'package:lumiconte/widget/b2_image.dart';
+
+// Ombre douce pour garder le texte lisible quand l'illustration est claire
+const List<Shadow> _readabilityShadows = [
+  Shadow(color: Color(0x73000000), blurRadius: 6, offset: Offset(0, 1)),
+  Shadow(color: Color(0x40000000), blurRadius: 2),
+];
 
 class StoryImmersiveView extends StatelessWidget {
   final StoryViewParams params;
@@ -118,11 +124,21 @@ class StoryImmersiveView extends StatelessWidget {
 
                   // Texte de l'histoire
                   Expanded(
-                    child: SingleChildScrollView(
+                    child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: StoryPageTransition(
-                        pageIndex: params.currentPageIndex,
-                        child: _buildTextContent(textColor),
+                      child: StoryTextArea(
+                        params: params,
+                        alignment: Alignment.topLeft,
+                        metrics: StoryTextMetrics(
+                          fontSize: params.fontSize,
+                          dyslexia: params.isDyslexia,
+                        ),
+                        colors: StoryTextColors(
+                          text: textColor,
+                          activeText: const Color(0xFFFDE68A),
+                          highlight: const Color(0x40F59E0B),
+                          shadows: _readabilityShadows,
+                        ),
                       ),
                     ),
                   ),
@@ -137,6 +153,7 @@ class StoryImmersiveView extends StatelessWidget {
                       fontWeight: FontWeight.w600,
                       color: subtleTextColor,
                       letterSpacing: 1.5,
+                      shadows: _readabilityShadows,
                     ),
                   ),
 
@@ -268,57 +285,6 @@ class StoryImmersiveView extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildTextContent(Color defaultTextColor) {
-    if (params.currentSegments.isNotEmpty) {
-      final double currentTimeInSeconds =
-          params.audioPosition.inMilliseconds / 1000.0;
-
-      final Color highlightBg = const Color(0xFFF59E0B).withOpacity(0.25);
-      const Color activeTextColor = Color(0xFFFDE68A);
-
-      return Wrap(
-        alignment: WrapAlignment.start,
-        spacing: 4.0,
-        runSpacing: 6.0,
-        children: params.currentSegments.expand((segment) {
-          return segment.words.map((wordTiming) {
-            final bool isActive = currentTimeInSeconds >= wordTiming.start &&
-                currentTimeInSeconds <= wordTiming.end;
-
-            return AnimatedContainer(
-              duration: const Duration(milliseconds: 120),
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 3.0, vertical: 1.0),
-              decoration: BoxDecoration(
-                color: isActive ? highlightBg : Colors.transparent,
-                borderRadius: BorderRadius.circular(4.0),
-              ),
-              child: Text(
-                wordTiming.word,
-                style: TextStyle(
-                  fontSize: params.fontSize,
-                  fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
-                  color: isActive ? activeTextColor : defaultTextColor,
-                  height: 1.5,
-                ),
-              ),
-            );
-          });
-        }).toList(),
-      );
-    }
-
-    return RichText(
-      textAlign: TextAlign.left,
-      text: params.buildColorizedText(
-        text: StoryUtils.getCleanPageText(params.currentPageText),
-        baseFontSize: params.fontSize,
-        defaultTextColor: defaultTextColor,
-        isDyslexiaEnabled: params.isDyslexia,
       ),
     );
   }

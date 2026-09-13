@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:lumiconte/widget/b2_image.dart';
+import 'package:lumiconte/pages/story/story_text.dart';
 import 'package:lumiconte/pages/story/story_view_params.dart';
 
 class StoryUtils {
@@ -9,10 +10,70 @@ class StoryUtils {
     final seconds = duration.inSeconds.remainder(60).toString().padLeft(2, '0');
     return '$minutes:$seconds';
   }
+}
 
-  /// Retire les tags d'images [img:X] du texte
-  static String getCleanPageText(String rawText) {
-    return rawText.replaceAll(RegExp(r'\[img:\d+\]'), '').trim();
+/// Zone de texte d'une histoire : mesure la place disponible, demande la
+/// pagination correspondante et affiche la page courante sans défilement.
+class StoryTextArea extends StatelessWidget {
+  final StoryViewParams params;
+  final StoryTextMetrics metrics;
+  final StoryTextColors colors;
+  final Alignment alignment;
+
+  const StoryTextArea({
+    super.key,
+    required this.params,
+    required this.metrics,
+    required this.colors,
+    this.alignment = Alignment.center,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (!constraints.hasBoundedWidth || !constraints.hasBoundedHeight) {
+          return const SizedBox.shrink();
+        }
+        final request = StoryLayoutRequest(
+          area: constraints.biggest,
+          metrics: metrics,
+          textScaler: MediaQuery.textScalerOf(context),
+          locale: Localizations.maybeLocaleOf(context),
+        );
+        if (request.area.isEmpty) return const SizedBox.shrink();
+
+        final pagination = params.paginate(request);
+        final pageIndex = pagination.pageOfWord(params.anchorWord);
+        final page = pagination.pages[pageIndex];
+        final words = params.document.words.sublist(page.start, page.end);
+
+        int? activeIndex;
+        if (params.isAudio && params.document.hasTimings) {
+          final seconds = params.audioPosition.inMilliseconds / 1000.0;
+          final index = words.indexWhere((word) => word.isSpokenAt(seconds));
+          if (index >= 0) activeIndex = index;
+        }
+
+        return StoryPageTransition(
+          pageIndex: pageIndex,
+          child: Align(
+            alignment: alignment,
+            // Filet de sécurité : si une page dépasse malgré la mesure, on la réduit
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: alignment,
+              child: StoryPageText(
+                words: words,
+                request: request,
+                colors: colors,
+                activeIndex: activeIndex,
+              ),
+            ),
+          ),
+        );
+      },
+    );
   }
 }
 
@@ -87,7 +148,7 @@ class StoryImage extends StatelessWidget {
 }
 
 /// Transition courte entre deux pages : glissement léger dans le sens de lecture
-/// et fondu. L'ancienne page n'influence pas la mise en page, pour éviter les sauts de hauteur.
+/// et fondu. Les deux pages occupent toute la zone, pour éviter les sauts de position.
 class StoryPageTransition extends StatefulWidget {
   final int pageIndex;
   final Widget child;
@@ -122,10 +183,11 @@ class _StoryPageTransitionState extends State<StoryPageTransition> {
       switchInCurve: Curves.easeOutCubic,
       switchOutCurve: Curves.easeInCubic,
       layoutBuilder: (currentChild, previousChildren) => Stack(
+        fit: StackFit.expand,
         clipBehavior: Clip.none,
         children: [
           for (final previous in previousChildren)
-            Positioned(top: 0, left: 0, right: 0, child: previous),
+            Positioned.fill(child: previous),
           if (currentChild != null) currentChild,
         ],
       ),
@@ -143,10 +205,7 @@ class _StoryPageTransitionState extends State<StoryPageTransition> {
           ),
         );
       },
-      child: KeyedSubtree(
-        key: currentKey,
-        child: SizedBox(width: double.infinity, child: widget.child),
-      ),
+      child: KeyedSubtree(key: currentKey, child: widget.child),
     );
   }
 }

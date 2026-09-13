@@ -9,10 +9,10 @@ import 'package:lumiconte/widget/b2_image.dart';
 import 'package:lumiconte/models/profile_model.dart';
 import 'package:lumiconte/models/story_model.dart';
 import 'package:lumiconte/models/settings_model.dart';
-import 'package:lumiconte/models/audio_sync_model.dart';
 import 'package:lumiconte/pages/story/story_classic_view.dart';
 import 'package:lumiconte/pages/story/story_immersive_view.dart';
 import 'package:lumiconte/pages/story/story_manuscript_view.dart';
+import 'package:lumiconte/pages/story/story_text.dart';
 import 'package:lumiconte/pages/story/story_view_params.dart';
 import 'package:lumiconte/services/reading_progress_service.dart';
 import 'package:lumiconte/services/settings_service.dart';
@@ -30,10 +30,14 @@ class StoryPage extends StatefulWidget {
 }
 
 class _StoryPageState extends State<StoryPage> {
-  late List<String> _pages;
-  final StorySyncService _syncService = StorySyncService();
+  late StoryDocument _document;
 
-  int _currentPage = 0;
+  /// Premier mot de la page courante. On retient un mot plutôt qu'un numéro de
+  /// page, car la pagination change avec la police et la taille de l'écran.
+  int _anchorWord = 0;
+  StoryPagination? _pagination;
+  StoryLayoutRequest? _paginationRequest;
+
   bool _isFavorite = false;
   bool _isPlaying = false;
   bool _isLoading = false;
@@ -82,7 +86,9 @@ class _StoryPageState extends State<StoryPage> {
     _audioBackgroundService = AudioBackgroundService();
     _initializeBackgroundAudioService();
 
-    _initializePages();
+    _document = StoryDocument(storyWordsFromText(widget.story.content));
+    // Une police chargée après coup (Google Fonts) change les mesures du texte
+    PaintingBinding.instance.systemFonts.addListener(_onSystemFontsChanged);
     _loadReadingProgress();
     _loadFavoriteStatus();
 
@@ -160,18 +166,55 @@ class _StoryPageState extends State<StoryPage> {
     }
   }
 
+  void _onSystemFontsChanged() {
+    if (!mounted) return;
+    clearStoryTextCaches();
+    setState(() {
+      _pagination = null;
+      _paginationRequest = null;
+    });
+  }
+
+  int get _currentPageIndex => _pagination?.pageOfWord(_anchorWord) ?? 0;
+
+  StoryPagination _paginate(StoryLayoutRequest request) {
+    final previous = _pagination;
+    if (previous != null && request == _paginationRequest) return previous;
+
+    final next = paginateStory(_document, request);
+    _pagination = next;
+    _paginationRequest = request;
+
+    // Appelé pendant la mise en page : le compteur et les flèches se mettent
+    // à jour à la frame suivante
+    if (previous == null || !previous.hasSameBreaks(next)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() {});
+      });
+    }
+    return next;
+  }
+
+  void _replaceDocument(StoryDocument document) {
+    final readFraction = _document.fractionBefore(_anchorWord);
+    _document = document;
+    _anchorWord = document.wordStartingAt(readFraction);
+    _pagination = null;
+    _paginationRequest = null;
+  }
+
   void _checkPageChangeForAudio(Duration position) {
-    if (_syncService.pages.isNotEmpty && _isPlaying) {
-      final double currentTimeInSeconds = position.inMilliseconds / 1000.0;
-      final targetPage = _syncService.getPageIndexForTime(currentTimeInSeconds);
-      if (targetPage != _currentPage &&
-          targetPage < _pages.length &&
-          targetPage >= 0) {
-        setState(() {
-          _currentPage = targetPage;
-        });
-        _precacheIllustration(targetPage + 1);
-      }
+    final pagination = _pagination;
+    if (pagination == null || !_isPlaying) return;
+
+    final spokenWord =
+        _document.wordAtTime(position.inMilliseconds / 1000.0);
+    if (spokenWord == null) return;
+
+    final targetPage = pagination.pageOfWord(spokenWord);
+    if (targetPage != _currentPageIndex) {
+      setState(() => _anchorWord = pagination.pages[targetPage].start);
+      _precacheIllustration(targetPage + 1);
     }
   }
 
@@ -184,13 +227,13 @@ class _StoryPageState extends State<StoryPage> {
 
       if (progress != null) {
         setState(() {
-          _currentPage = _calculatePageFromProgress(progress.progress);
+          _anchorWord = _document.lastWordReadAt(progress.progress / 100);
           _isProgressLoaded = true;
         });
       } else {
         await _updateReadingProgress(1.0);
         setState(() {
-          _currentPage = 0;
+          _anchorWord = 0;
           _isProgressLoaded = true;
         });
       }
@@ -200,33 +243,16 @@ class _StoryPageState extends State<StoryPage> {
     }
   }
 
-  int _calculatePageFromProgress(double progress) {
-    if (_pages.isEmpty) return 0;
-    final totalCharacters = _pages.fold(0, (total, page) => total + page.length);
-    final targetCharacters = totalCharacters * progress / 100;
-
-    int currentCharacters = 0;
-    for (int i = 0; i < _pages.length; i++) {
-      currentCharacters += _pages[i].length;
-      if (currentCharacters >= targetCharacters) return i;
-    }
-    return _pages.length - 1;
-  }
-
   double _calculateProgress() {
-    if (_pages.isEmpty) return 0.0;
-    if (_currentPage >= _pages.length - 1) return 100.0;
+    final pagination = _pagination;
+    if (pagination == null || _document.isEmpty) return 0.0;
 
-    final totalCharacters = _pages.fold(0, (total, page) => total + page.length);
-    if (totalCharacters == 0) return 0.0;
+    final pageIndex = _currentPageIndex;
+    if (pageIndex >= pagination.pages.length - 1) return 100.0;
 
-    int readCharacters = 0;
-    for (int i = 0; i <= _currentPage; i++) {
-      readCharacters += _pages[i].length;
-    }
-
-    final double percentage = (readCharacters / totalCharacters) * 100;
-    return percentage.clamp(0.0, 100.0);
+    final readFraction =
+        _document.fractionBefore(pagination.pages[pageIndex].end);
+    return (readFraction * 100).clamp(0.0, 100.0);
   }
 
   Future<void> _updateReadingProgress(double progress) async {
@@ -241,64 +267,23 @@ class _StoryPageState extends State<StoryPage> {
     }
   }
 
-  void _initializePages() {
-    final rawText = widget.story.content
-        .replaceAll(r'\n', '\n\n')
-        .replaceAll(RegExp(r'[ \t]+'), ' ')
-        .replaceAll(RegExp(r'«\s*'), '«\u00A0')
-        .replaceAll(RegExp(r'\s*»'), '\u00A0»')
-        .trim();
-
-    _pages = _splitTextIntoPages(rawText);
-  }
-
-  List<String> _splitTextIntoPages(String text) {
-    const int maxCharsPerPage = 150;
-    final sentenceRegExp = RegExp(r'[^.!?]+[.!?]+[\s»"”\)]*');
-    Iterable<RegExpMatch> matches = sentenceRegExp.allMatches(text);
-
-    List<String> units = matches.map((m) => m.group(0)!.trim()).toList();
-    if (units.isEmpty) units = [text.trim()];
-
-    final pages = <String>[];
-    String currentPage = '';
-
-    for (var unit in units) {
-      if (currentPage.isEmpty) {
-        currentPage = unit;
-        continue;
-      }
-
-      final testPage = '$currentPage $unit';
-      final bool endsWithQuote = RegExp(r'[»"”\)]\s*$').hasMatch(unit);
-      final int allowedLimit =
-          endsWithQuote ? maxCharsPerPage + 25 : maxCharsPerPage;
-
-      if (testPage.length > allowedLimit) {
-        pages.add(currentPage.trim());
-        currentPage = unit;
-      } else {
-        currentPage = testPage;
-      }
-    }
-
-    if (currentPage.isNotEmpty) pages.add(currentPage.trim());
-    return pages.isEmpty ? [text] : pages;
-  }
-
   String? _getCalculatedImageUrl([int? pageIndex]) {
-    final pattern = RegExp(r'\[img:(\d+)\]');
     final illustrationsPath = widget.story.illustrations;
 
     if (illustrationsPath != null && illustrationsPath.isNotEmpty) {
-      for (int i = pageIndex ?? _currentPage; i >= 0; i--) {
-        if (i < _pages.length) {
-          final match = pattern.firstMatch(_pages[i]);
-          if (match != null) {
-            final imgNumber = match.group(1);
-            return '$illustrationsPath/img$imgNumber.webp';
-          }
-        }
+      final pagination = _pagination;
+      final int pageEnd;
+      if (pagination == null) {
+        pageEnd = _anchorWord + 1;
+      } else {
+        final index = (pageIndex ?? _currentPageIndex)
+            .clamp(0, pagination.pages.length - 1);
+        pageEnd = pagination.pages[index].end;
+      }
+
+      final imageNumber = _document.imageNumberBefore(pageEnd);
+      if (imageNumber != null) {
+        return '$illustrationsPath/img$imageNumber.webp';
       }
     }
 
@@ -340,36 +325,21 @@ class _StoryPageState extends State<StoryPage> {
     _currentVoiceKey = targetKey;
 
     if (_isAudio && voiceData != null) {
-      _syncService.initializeFromAudioTimes(
-        voiceData.audioTimes,
-        maxCharsPerPage: 150,
+      // Avec l'audio, on affiche les mots minutés de la voix pour pouvoir les surligner
+      final audioWords = storyWordsFromSegments(
+        StorySyncService.parseSegments(voiceData.audioTimes),
       );
 
-      // Met à jour la liste des pages avec les données de synchronisation audio
-      if (_syncService.pages.isNotEmpty) {
-        final newPages = _syncService.pages.map((p) => p.text).toList();
-        if (_pages.length != newPages.length) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) {
-              setState(() {
-                _pages = newPages;
-                if (_currentPage >= _pages.length) {
-                  _currentPage = _pages.length - 1;
-                }
-              });
-            }
-          });
-        }
-      }
-
-      // Remet l'état audio à jour lors d'une réinitialisation de voix
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          setState(() {
-            _isPlaying = false;
-            _audioPosition = Duration.zero;
-          });
-        }
+        if (!mounted) return;
+        setState(() {
+          _replaceDocument(StoryDocument(audioWords.isNotEmpty
+              ? audioWords
+              : storyWordsFromText(widget.story.content)));
+          // Remet l'état audio à jour lors d'une réinitialisation de voix
+          _isPlaying = false;
+          _audioPosition = Duration.zero;
+        });
       });
 
       await _audioBackgroundService.setStory(
@@ -440,170 +410,21 @@ class _StoryPageState extends State<StoryPage> {
     // _isLoading and _isPlaying are updated via the playbackState stream
   }
 
-  List<TextSpan> _parseWordToDyslexiaSpans(
-    String word,
-    TextStyle baseDysStyle,
-    Color defaultTextColor,
-  ) {
-    final Color colorRed = Colors.red.shade700;
-    final Color colorBlue = Colors.blue.shade700;
-    final Color colorSilent = defaultTextColor.withOpacity(0.35);
-
-    if (word.trim().isEmpty) {
-      return [
-        TextSpan(
-            text: word, style: baseDysStyle.copyWith(color: defaultTextColor))
-      ];
-    }
-
-    final matchStart = RegExp(r'^[^a-zA-ZÀ-ÿ«»]+').firstMatch(word);
-    final matchEnd = RegExp(r'[^a-zA-ZÀ-ÿ«»]+$').firstMatch(word);
-
-    String prefix = matchStart?.group(0) ?? '';
-    String suffix = matchEnd?.group(0) ?? '';
-    String cleanWord = word;
-
-    if (prefix.length + suffix.length < word.length) {
-      cleanWord = word.substring(prefix.length, word.length - suffix.length);
-    } else {
-      return [
-        TextSpan(
-            text: word, style: baseDysStyle.copyWith(color: defaultTextColor))
-      ];
-    }
-
-    if (cleanWord.isEmpty) {
-      return [
-        TextSpan(
-            text: word, style: baseDysStyle.copyWith(color: defaultTextColor))
-      ];
-    }
-
-    String silentLetters = '';
-    final silentMatch = RegExp(r'(ts|ds|es|[stdxega])$', caseSensitive: false)
-        .firstMatch(cleanWord);
-
-    if (silentMatch != null &&
-        cleanWord.length > 2 &&
-        !['les', 'des', 'mes', 'tes', 'ses', 'est']
-            .contains(cleanWord.toLowerCase())) {
-      String potentialSilent = silentMatch.group(0) ?? '';
-      if (cleanWord.length > potentialSilent.length) {
-        silentLetters = potentialSilent;
-        cleanWord =
-            cleanWord.substring(0, cleanWord.length - silentLetters.length);
-      }
-    }
-
-    List<TextSpan> wordSpans = [];
-    if (prefix.isNotEmpty) {
-      wordSpans.add(TextSpan(
-          text: prefix, style: baseDysStyle.copyWith(color: defaultTextColor)));
-    }
-
-    List<String> syllables = [];
-    if (cleanWord.length <= 3) {
-      syllables.add(cleanWord);
-    } else {
-      final regex = RegExp(
-        r'[^aeiouyéèàùûâîôœüéèêë]*[aeiouyéèàùûâîôœüéèêë]+(?:[^aeiouyéèàùûâîôœüéèêë](?![aeiouyéèàùûâîôœüéèêë]))*',
-        caseSensitive: false,
-      );
-      final matches = regex.allMatches(cleanWord);
-      if (matches.isEmpty) {
-        syllables.add(cleanWord);
-      } else {
-        for (var m in matches) {
-          syllables.add(m.group(0) ?? '');
-        }
-        int totalLength = syllables.join().length;
-        if (totalLength < cleanWord.length && syllables.isNotEmpty) {
-          syllables[syllables.length - 1] += cleanWord.substring(totalLength);
-        }
-      }
-    }
-
-    for (int i = 0; i < syllables.length; i++) {
-      if (syllables[i].isEmpty) continue;
-      wordSpans.add(TextSpan(
-        text: syllables[i],
-        style: baseDysStyle.copyWith(color: i % 2 == 0 ? colorBlue : colorRed),
-      ));
-    }
-
-    if (silentLetters.isNotEmpty) {
-      wordSpans.add(TextSpan(
-        text: silentLetters,
-        style: baseDysStyle.copyWith(
-          color: colorSilent,
-          fontWeight: FontWeight.w300,
-          fontStyle: FontStyle.italic,
-        ),
-      ));
-    }
-
-    if (suffix.isNotEmpty) {
-      wordSpans.add(TextSpan(
-          text: suffix, style: baseDysStyle.copyWith(color: defaultTextColor)));
-    }
-
-    return wordSpans;
-  }
-
-  TextSpan _buildColorizedText({
-    required String text,
-    required double baseFontSize,
-    required Color defaultTextColor,
-    required bool isDyslexiaEnabled,
-  }) {
-    if (!isDyslexiaEnabled) {
-      return TextSpan(
-        text: text,
-        style: TextStyle(
-          color: defaultTextColor,
-          fontSize: baseFontSize,
-          height: 1.8,
-          letterSpacing: 0.2,
-        ),
-      );
-    }
-
-    final double dysFontSize = baseFontSize + 4;
-    const double dysLetterSpacing = 1.8;
-    const double dysLineHeight = 1.6;
-
-    final TextStyle baseDysStyle = TextStyle(
-      fontSize: dysFontSize,
-      letterSpacing: dysLetterSpacing,
-      height: dysLineHeight,
-      fontWeight: FontWeight.bold,
-    );
-
-    List<TextSpan> allSpans = [];
-    List<String> words = text.split(' ');
-
-    for (int i = 0; i < words.length; i++) {
-      allSpans.addAll(
-          _parseWordToDyslexiaSpans(words[i], baseDysStyle, defaultTextColor));
-      if (i < words.length - 1) {
-        allSpans.add(TextSpan(text: ' ', style: baseDysStyle));
-      }
-    }
-
-    return TextSpan(children: allSpans);
-  }
-
   void _goToNextPage() {
-    if (_currentPage < _pages.length - 1) {
-      setState(() => _currentPage++);
+    final pagination = _pagination;
+    if (pagination == null) return;
+    final pageIndex = _currentPageIndex;
+    if (pageIndex < pagination.pages.length - 1) {
+      setState(() => _anchorWord = pagination.pages[pageIndex + 1].start);
       _updateReadingProgress(_calculateProgress());
-      _precacheIllustration(_currentPage + 1);
+      _precacheIllustration(pageIndex + 2);
     }
   }
 
   // Charge à l'avance l'illustration d'une page pour qu'elle s'affiche sans attente
   void _precacheIllustration(int pageIndex) {
-    if (pageIndex >= _pages.length) return;
+    final pagination = _pagination;
+    if (pagination == null || pageIndex >= pagination.pages.length) return;
     final imageKey = _getCalculatedImageUrl(pageIndex);
     if (imageKey == null || imageKey.isEmpty) return;
     precacheImage(
@@ -614,12 +435,12 @@ class _StoryPageState extends State<StoryPage> {
   }
 
   Future<void> _restartStory() async {
-    if (_currentPage == 0 && _audioPosition == Duration.zero) return;
+    if (_currentPageIndex == 0 && _audioPosition == Duration.zero) return;
 
     // _isSeeking empêche la synchro audio de ramener la page d'avant pendant le seek
     setState(() {
       _isSeeking = _isAudio;
-      _currentPage = 0;
+      _anchorWord = 0;
       _audioPosition = Duration.zero;
     });
     _updateReadingProgress(_calculateProgress());
@@ -634,8 +455,11 @@ class _StoryPageState extends State<StoryPage> {
   }
 
   void _goToPreviousPage() {
-    if (_currentPage > 0) {
-      setState(() => _currentPage--);
+    final pagination = _pagination;
+    if (pagination == null) return;
+    final pageIndex = _currentPageIndex;
+    if (pageIndex > 0) {
+      setState(() => _anchorWord = pagination.pages[pageIndex - 1].start);
       _updateReadingProgress(_calculateProgress());
     }
   }
@@ -688,6 +512,7 @@ class _StoryPageState extends State<StoryPage> {
 
   @override
   void dispose() {
+    PaintingBinding.instance.systemFonts.removeListener(_onSystemFontsChanged);
     _audioBackgroundService.stop();
     _readingSaveTimer?.cancel();
     _readingTimer.stop();
@@ -721,18 +546,12 @@ class _StoryPageState extends State<StoryPage> {
         _registerReading(settings);
         _initializeAudio(settings);
 
-        final int safePageIndex =
-            _pages.isNotEmpty ? _currentPage.clamp(0, _pages.length - 1) : 0;
-
-        final currentSegments = (_syncService.pages.isNotEmpty &&
-                safePageIndex < _syncService.pages.length)
-            ? _syncService.pages[safePageIndex].segments
-            : <SegmentTiming>[];
-
         final storyParams = StoryViewParams(
-          currentPageText: _pages.isNotEmpty ? _pages[safePageIndex] : '',
-          currentPageIndex: safePageIndex,
-          totalPages: _pages.length,
+          document: _document,
+          anchorWord: _anchorWord,
+          paginate: _paginate,
+          currentPageIndex: _currentPageIndex,
+          totalPages: _pagination?.pages.length ?? 1,
           isFavorite: _isFavorite,
           isAudio: _isAudio,
           isPlaying: _isPlaying,
@@ -742,8 +561,6 @@ class _StoryPageState extends State<StoryPage> {
           fontSize: settings.fontSize.toDouble(),
           isDyslexia: settings.dyslexia,
           image: _getCalculatedImageUrl(),
-          illustrationsPath: widget.story.illustrations,
-          currentSegments: currentSegments,
           onBack: () => Navigator.pop(context),
           onToggleFavorite: () => _toggleFavorite(),
           onRestart: _restartStory,
@@ -754,7 +571,6 @@ class _StoryPageState extends State<StoryPage> {
           onSeekAudio: _seekAudio,
           onRewind: _onRewind,
           onFastForward: _onFastForward,
-          buildColorizedText: _buildColorizedText,
         );
         final bool isDarkTheme = settings.theme == 'dark';
 

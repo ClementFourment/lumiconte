@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:lumiconte/pages/story/story_text.dart';
 import 'package:lumiconte/pages/story/story_view_params.dart';
 import 'package:lumiconte/pages/story/story_widgets.dart';
 
@@ -127,15 +128,24 @@ class StoryClassicView extends StatelessWidget {
                                     child: Column(
                                       children: [
                                         Expanded(
-                                          child: SingleChildScrollView(
+                                          child: Padding(
                                             padding: const EdgeInsets.fromLTRB(
                                                 28, 16, 28, 12),
-                                            child: Center(
-                                              child: StoryPageTransition(
-                                                pageIndex:
-                                                    params.currentPageIndex,
-                                                child: _buildTextContent(
-                                                    textColor),
+                                            child: StoryTextArea(
+                                              params: params,
+                                              metrics: StoryTextMetrics(
+                                                fontSize: params.fontSize,
+                                                textAlign: TextAlign.center,
+                                                dyslexia: params.isDyslexia,
+                                              ),
+                                              colors: StoryTextColors(
+                                                text: textColor,
+                                                activeText: isDark
+                                                    ? const Color(0xFFFDE68A)
+                                                    : const Color(0xFF92400E),
+                                                highlight: isDark
+                                                    ? const Color(0x40D97706)
+                                                    : const Color(0x80FDE68A),
                                               ),
                                             ),
                                           ),
@@ -302,61 +312,6 @@ class StoryClassicView extends StatelessWidget {
             ),
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildTextContent(Color defaultTextColor) {
-    if (params.currentSegments.isNotEmpty) {
-      final double currentTimeInSeconds =
-          params.audioPosition.inMilliseconds / 1000.0;
-
-      final Color highlightBg = isDark
-          ? const Color(0xFFD97706).withOpacity(0.25)
-          : const Color(0xFFFDE68A).withOpacity(0.5);
-
-      final Color activeTextColor =
-          isDark ? const Color(0xFFFDE68A) : const Color(0xFF92400E);
-
-      return Wrap(
-        alignment: WrapAlignment.center,
-        spacing: 4.0,
-        runSpacing: 6.0,
-        children: params.currentSegments.expand((segment) {
-          return segment.words.map((wordTiming) {
-            final bool isActive = currentTimeInSeconds >= wordTiming.start &&
-                currentTimeInSeconds <= wordTiming.end;
-
-            return AnimatedContainer(
-              duration: const Duration(milliseconds: 120),
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 3.0, vertical: 1.0),
-              decoration: BoxDecoration(
-                color: isActive ? highlightBg : Colors.transparent,
-                borderRadius: BorderRadius.circular(4.0),
-              ),
-              child: Text(
-                wordTiming.word,
-                style: TextStyle(
-                  fontSize: params.fontSize,
-                  fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
-                  color: isActive ? activeTextColor : defaultTextColor,
-                  height: 1.5,
-                ),
-              ),
-            );
-          });
-        }).toList(),
-      );
-    }
-
-    return RichText(
-      textAlign: TextAlign.center,
-      text: params.buildColorizedText(
-        text: StoryUtils.getCleanPageText(params.currentPageText),
-        baseFontSize: params.fontSize,
-        defaultTextColor: defaultTextColor,
-        isDyslexiaEnabled: params.isDyslexia,
       ),
     );
   }
