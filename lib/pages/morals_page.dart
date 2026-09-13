@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:lumiconte/models/profile_model.dart';
+import 'package:lumiconte/models/reading_progress_model.dart';
 import 'package:lumiconte/models/story_model.dart';
 import 'package:lumiconte/widget/b2_image.dart';
 
@@ -57,7 +58,7 @@ class MoralsPage extends StatelessWidget {
       body: StreamBuilder<QuerySnapshot>(
         stream: readingProgressRef.snapshots(),
         builder: (context, snapshot) {
-          final Map<String, int> readProgress = {};
+          final Set<String> unlockedStoryIds = {};
           final Map<String, DateTime> unlockDates = {};
 
           if (snapshot.hasData) {
@@ -66,8 +67,9 @@ class MoralsPage extends StatelessWidget {
               if (data == null) continue;
 
               final String storyId = data['storyId'] as String? ?? doc.id;
-              final num rawProgress = data['progress'] ?? 0;
-              readProgress[storyId] = rawProgress.toInt();
+              if (ReadingProgressModel.moraleUnlockedFrom(data)) {
+                unlockedStoryIds.add(storyId);
+              }
 
               if (data['updatedAt'] is Timestamp) {
                 unlockDates[storyId] = (data['updatedAt'] as Timestamp).toDate();
@@ -78,10 +80,8 @@ class MoralsPage extends StatelessWidget {
           }
 
           final sortedStories = List<StoryModel>.from(stories)..sort((a, b) {
-            final progressA = readProgress[a.id] ?? 0;
-            final progressB = readProgress[b.id] ?? 0;
-            final isUnlockedA = progressA >= 100;
-            final isUnlockedB = progressB >= 100;
+            final isUnlockedA = unlockedStoryIds.contains(a.id);
+            final isUnlockedB = unlockedStoryIds.contains(b.id);
 
             if (isUnlockedA && !isUnlockedB) return -1;
             if (!isUnlockedA && isUnlockedB) return 1;
@@ -95,10 +95,9 @@ class MoralsPage extends StatelessWidget {
             return 0;
           });
 
-          final unlockedCount = sortedStories.where((story) {
-            final progress = readProgress[story.id] ?? 0;
-            return progress >= 100;
-          }).length;
+          final unlockedCount = sortedStories
+              .where((story) => unlockedStoryIds.contains(story.id))
+              .length;
 
           return Column(
             children: [
@@ -149,8 +148,8 @@ class MoralsPage extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                   itemBuilder: (context, index) {
                     final story = sortedStories[index];
-                    final int progress = readProgress[story.id] ?? 0;
-                    final bool isUnlocked = progress >= 100;
+                    final bool isUnlocked =
+                        unlockedStoryIds.contains(story.id);
 
                     return _buildMoralCard(context, story, isUnlocked);
                   },

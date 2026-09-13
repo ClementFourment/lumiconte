@@ -40,6 +40,9 @@ class _HomePageState extends State<HomePage> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       appSettings.requestNotificationPermissions();
     });
+    _readingProgressService
+        .addMissingMoraleUnlocked(widget.profile.id)
+        .catchError((e) => debugPrint('Erreur ajout moraleUnlocked : $e'));
   }
 
   @override
@@ -228,11 +231,12 @@ class _HomePageState extends State<HomePage> {
                   ],
 
                   if (adaptedFromAgeStories.isNotEmpty)
-                    _carrousel(
-                        context, "Adapté à ton âge", adaptedFromAgeStories, readingProgress),
+                    _carrousel(context, "Adapté à ton âge",
+                        adaptedFromAgeStories, readingProgress),
                   _carrousel(context, "Histoires populaires",
                       widget.stories.sublist(0, 10), readingProgress),
-                  _carrousel(context, "Nouveautés", latestStories, readingProgress),
+                  _carrousel(
+                      context, "Nouveautés", latestStories, readingProgress),
                 ],
               ),
             ),
@@ -364,7 +368,8 @@ class _HomePageState extends State<HomePage> {
                   const SizedBox(height: 8),
                   SizedBox(
                     width: 80,
-                    child: LanternProgressBar(progress: progress.progress / 100),
+                    child:
+                        LanternProgressBar(progress: progress.progress / 100),
                   ),
                 ],
               ],
@@ -375,8 +380,8 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _carrousel(
-      BuildContext context, String titleText, List<StoryModel> stories, List<ReadingProgressModel> readingProgress) {
+  Widget _carrousel(BuildContext context, String titleText,
+      List<StoryModel> stories, List<ReadingProgressModel> readingProgress) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final textTheme = theme.textTheme;
@@ -418,6 +423,7 @@ class _HomePageState extends State<HomePage> {
                       storyId: '',
                       progress: 0.0,
                       lastRead: DateTime.now(),
+                      moraleUnlocked: false,
                     ),
                   );
                   return GestureDetector(
