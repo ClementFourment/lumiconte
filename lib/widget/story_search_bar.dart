@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:lumiconte/models/story_model.dart';
 import 'package:lumiconte/services/story_service.dart';
 import 'package:lumiconte/widget/b2_image.dart';
-import 'package:lumiconte/utils/string_utils.dart';
+import 'package:lumiconte/utils/story_search.dart';
 
 class StorySearchBar extends StatefulWidget {
   const StorySearchBar({
@@ -80,7 +80,7 @@ class _StorySearchBarState extends State<StorySearchBar>
 
   void _onTextChanged() {
     setState(() {
-      final search = normalizeText(_controller.text.trim());
+      final search = _controller.text.trim();
 
       if (search.isEmpty) {
         _results = [];
@@ -88,29 +88,20 @@ class _StorySearchBarState extends State<StorySearchBar>
         return;
       }
 
-      _results = _stories.where((story) {
-        return normalizeText(story.name).contains(search) ||
-            story.categoryIds.any(
-              (category) => normalizeText(category).contains(search),
-            );
-      }).toList();
+      final scored = <(StoryModel, int)>[];
+      for (final story in _stories) {
+        final score = storySearchScore(search, story.name, story.categoryIds);
+        if (score != null) scored.add((story, score));
+      }
 
-      // Tri intelligent : priorité aux correspondances au début du nom
-      _results.sort((a, b) {
-        final aStarts = normalizeText(a.name).startsWith(search);
-        final bStarts = normalizeText(b.name).startsWith(search);
-
-        if (aStarts && !bStarts) return -1;
-        if (!aStarts && bStarts) return 1;
-
-        // Ensuite, trier par longueur du nom (plus court d'abord)
-        return a.name.length.compareTo(b.name.length);
+      // Plus pertinent d'abord, puis titre le plus court
+      scored.sort((a, b) {
+        final byScore = b.$2.compareTo(a.$2);
+        if (byScore != 0) return byScore;
+        return a.$1.name.length.compareTo(b.$1.name.length);
       });
 
-      // Limiter les résultats
-      if (_results.length > widget.maxResults) {
-        _results = _results.sublist(0, widget.maxResults);
-      }
+      _results = scored.take(widget.maxResults).map((e) => e.$1).toList();
 
       if (_focusNode.hasFocus) {
         _showOverlay();
