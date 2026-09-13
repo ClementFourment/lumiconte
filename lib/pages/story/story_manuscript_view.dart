@@ -159,8 +159,13 @@ class StoryManuscriptView extends StatelessWidget {
                                             child: SingleChildScrollView(
                                               physics:
                                                   const BouncingScrollPhysics(),
-                                              child: _buildBookCompositionText(
-                                                  textColor),
+                                              child: StoryPageTransition(
+                                                pageIndex:
+                                                    params.currentPageIndex,
+                                                child:
+                                                    _buildBookCompositionText(
+                                                        textColor),
+                                              ),
                                             ),
                                           ),
                                         ),
@@ -519,124 +524,105 @@ class StoryManuscriptView extends StatelessWidget {
           ? firstWordTiming.word.substring(1)
           : '';
 
-      return AnimatedSwitcher(
-        duration: const Duration(milliseconds: 300),
-        child: KeyedSubtree(
-          key: ValueKey(params.currentPageIndex),
-          child: Wrap(
-            alignment: WrapAlignment.start,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            spacing: 4.0,
-            runSpacing: 6.0,
-            children: [
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 120),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 3.0, vertical: 1.0),
-                decoration: BoxDecoration(
-                  color: isFirstActive ? highlightBg : Colors.transparent,
-                  borderRadius: BorderRadius.circular(4.0),
+      return Wrap(
+        alignment: WrapAlignment.start,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: 4.0,
+        runSpacing: 6.0,
+        children: [
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 120),
+            padding: const EdgeInsets.symmetric(horizontal: 3.0, vertical: 1.0),
+            decoration: BoxDecoration(
+              color: isFirstActive ? highlightBg : Colors.transparent,
+              borderRadius: BorderRadius.circular(4.0),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.baseline,
+              textBaseline: TextBaseline.alphabetic,
+              children: [
+                Text(
+                  firstLetter,
+                  style: GoogleFonts.cormorantGaramond(
+                    fontSize: adjustedFontSize * 2.2,
+                    fontWeight: FontWeight.bold,
+                    color: isFirstActive ? activeInkColor : inkColor,
+                    height: 0.8,
+                  ),
                 ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.baseline,
-                  textBaseline: TextBaseline.alphabetic,
-                  children: [
-                    Text(
-                      firstLetter,
-                      style: GoogleFonts.cormorantGaramond(
-                        fontSize: adjustedFontSize * 2.2,
-                        fontWeight: FontWeight.bold,
-                        color: isFirstActive ? activeInkColor : inkColor,
-                        height: 0.8,
-                      ),
-                    ),
-                    Text(
-                      restOfFirstWord,
-                      style: TextStyle(
-                        fontSize: adjustedFontSize,
-                        fontWeight:
-                            isFirstActive ? FontWeight.w600 : FontWeight.normal,
-                        color: isFirstActive ? activeInkColor : inkColor,
-                        height: 1.5,
-                      ),
-                    ),
-                  ],
+                Text(
+                  restOfFirstWord,
+                  style: TextStyle(
+                    fontSize: adjustedFontSize,
+                    fontWeight:
+                        isFirstActive ? FontWeight.w600 : FontWeight.normal,
+                    color: isFirstActive ? activeInkColor : inkColor,
+                    height: 1.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          ...otherWords.map((wordTiming) {
+            final bool isActive = currentTimeInSeconds >= wordTiming.start &&
+                currentTimeInSeconds <= wordTiming.end;
+
+            return AnimatedContainer(
+              duration: const Duration(milliseconds: 120),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 3.0, vertical: 1.0),
+              decoration: BoxDecoration(
+                color: isActive ? highlightBg : Colors.transparent,
+                borderRadius: BorderRadius.circular(4.0),
+              ),
+              child: Text(
+                wordTiming.word,
+                style: TextStyle(
+                  fontSize: adjustedFontSize,
+                  fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
+                  color: isActive ? activeInkColor : inkColor,
+                  height: 1.5,
                 ),
               ),
-              ...otherWords.map((wordTiming) {
-                final bool isActive =
-                    currentTimeInSeconds >= wordTiming.start &&
-                        currentTimeInSeconds <= wordTiming.end;
-
-                return AnimatedContainer(
-                  duration: const Duration(milliseconds: 120),
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 3.0, vertical: 1.0),
-                  decoration: BoxDecoration(
-                    color: isActive ? highlightBg : Colors.transparent,
-                    borderRadius: BorderRadius.circular(4.0),
-                  ),
-                  child: Text(
-                    wordTiming.word,
-                    style: TextStyle(
-                      fontSize: adjustedFontSize,
-                      fontWeight:
-                          isActive ? FontWeight.w600 : FontWeight.normal,
-                      color: isActive ? activeInkColor : inkColor,
-                      height: 1.5,
-                    ),
-                  ),
-                );
-              }),
-            ],
-          ),
-        ),
+            );
+          }),
+        ],
       );
     }
 
     if (params.isDyslexia) {
-      return AnimatedSwitcher(
-        duration: const Duration(milliseconds: 300),
-        child: RichText(
-          key: ValueKey(params.currentPageIndex),
-          textAlign: TextAlign.justify,
-          text: params.buildColorizedText(
-            text: cleanText,
-            baseFontSize: adjustedFontSize,
-            defaultTextColor: inkColor,
-            isDyslexiaEnabled: params.isDyslexia,
-          ),
+      return RichText(
+        textAlign: TextAlign.justify,
+        text: params.buildColorizedText(
+          text: cleanText,
+          baseFontSize: adjustedFontSize,
+          defaultTextColor: inkColor,
+          isDyslexiaEnabled: params.isDyslexia,
         ),
       );
     }
 
-    return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 300),
-      child: KeyedSubtree(
-        key: ValueKey(params.currentPageIndex),
-        child: DropCapText(
-          cleanText,
-          style: GoogleFonts.cormorantGaramond(
-            fontSize: adjustedFontSize,
-            color: inkColor,
-            height: 1.6,
-            letterSpacing: -0.15,
-          ),
-          textAlign: TextAlign.justify,
-          dropCapChars: 1,
-          indentation: Offset.zero,
-          dropCapStyle: GoogleFonts.cormorantGaramond(
-            fontSize: adjustedFontSize * 4.6,
-            fontWeight: FontWeight.w700,
-            color: inkColor,
-            height: 0.65,
-          ),
-          dropCapPadding: const EdgeInsets.only(
-            right: 4,
-            bottom: 1,
-          ),
-        ),
+    return DropCapText(
+      cleanText,
+      style: GoogleFonts.cormorantGaramond(
+        fontSize: adjustedFontSize,
+        color: inkColor,
+        height: 1.6,
+        letterSpacing: -0.15,
+      ),
+      textAlign: TextAlign.justify,
+      dropCapChars: 1,
+      indentation: Offset.zero,
+      dropCapStyle: GoogleFonts.cormorantGaramond(
+        fontSize: adjustedFontSize * 4.6,
+        fontWeight: FontWeight.w700,
+        color: inkColor,
+        height: 0.65,
+      ),
+      dropCapPadding: const EdgeInsets.only(
+        right: 4,
+        bottom: 1,
       ),
     );
   }

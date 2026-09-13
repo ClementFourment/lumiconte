@@ -74,11 +74,78 @@ class StoryImage extends StatelessWidget {
   Widget build(BuildContext context) {
     return SizedBox.expand(
       child: B2Image(
-        key: ValueKey(imageKey),
         objectKey: imageKey,
         width: double.infinity,
         height: double.infinity,
         fit: BoxFit.cover,
+        fadeInDuration: const Duration(milliseconds: 200),
+        fadeOutDuration: Duration.zero,
+        useOldImageOnUrlChange: true,
+      ),
+    );
+  }
+}
+
+/// Transition courte entre deux pages : glissement léger dans le sens de lecture
+/// et fondu. L'ancienne page n'influence pas la mise en page, pour éviter les sauts de hauteur.
+class StoryPageTransition extends StatefulWidget {
+  final int pageIndex;
+  final Widget child;
+
+  const StoryPageTransition({
+    super.key,
+    required this.pageIndex,
+    required this.child,
+  });
+
+  @override
+  State<StoryPageTransition> createState() => _StoryPageTransitionState();
+}
+
+class _StoryPageTransitionState extends State<StoryPageTransition> {
+  int _direction = 1;
+
+  @override
+  void didUpdateWidget(StoryPageTransition oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.pageIndex != oldWidget.pageIndex) {
+      _direction = widget.pageIndex > oldWidget.pageIndex ? 1 : -1;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final currentKey = ValueKey(widget.pageIndex);
+
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 220),
+      switchInCurve: Curves.easeOutCubic,
+      switchOutCurve: Curves.easeInCubic,
+      layoutBuilder: (currentChild, previousChildren) => Stack(
+        clipBehavior: Clip.none,
+        children: [
+          for (final previous in previousChildren)
+            Positioned(top: 0, left: 0, right: 0, child: previous),
+          if (currentChild != null) currentChild,
+        ],
+      ),
+      transitionBuilder: (child, animation) {
+        final isIncoming = child.key == currentKey;
+        final shift = 0.06 * _direction * (isIncoming ? 1 : -1);
+        return FadeTransition(
+          opacity: animation,
+          child: SlideTransition(
+            position: Tween<Offset>(
+              begin: Offset(shift, 0),
+              end: Offset.zero,
+            ).animate(animation),
+            child: child,
+          ),
+        );
+      },
+      child: KeyedSubtree(
+        key: currentKey,
+        child: SizedBox(width: double.infinity, child: widget.child),
       ),
     );
   }

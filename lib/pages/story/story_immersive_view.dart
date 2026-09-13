@@ -110,12 +110,9 @@ class StoryImmersiveView extends StatelessWidget {
                   Expanded(
                     child: SingleChildScrollView(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 300),
-                        child: KeyedSubtree(
-                          key: ValueKey(params.currentPageIndex),
-                          child: _buildTextContent(textColor),
-                        ),
+                      child: StoryPageTransition(
+                        pageIndex: params.currentPageIndex,
+                        child: _buildTextContent(textColor),
                       ),
                     ),
                   ),
