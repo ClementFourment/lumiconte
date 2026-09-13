@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:audio_service/audio_service.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:lumiconte/widget/b2_image.dart';
 import 'package:lumiconte/models/profile_model.dart';
 import 'package:lumiconte/models/story_model.dart';
 import 'package:lumiconte/models/settings_model.dart';
@@ -45,6 +47,8 @@ class _StoryPageState extends State<StoryPage> {
 
   late final String _uid;
   late final CollectionReference _settingsCollection;
+  // Créé une seule fois : un nouvel abonnement à chaque build relançait des rebuilds complets
+  late final Stream<QuerySnapshot> _settingsStream;
   late final CollectionReference _favoritesCollection;
 
   final ReadingProgressService _readingProgressService =
@@ -66,6 +70,7 @@ class _StoryPageState extends State<StoryPage> {
         .collection('profiles')
         .doc(widget.profile.id)
         .collection('settings');
+    _settingsStream = _settingsCollection.snapshots();
 
     _favoritesCollection = FirebaseFirestore.instance
         .collection('users')
@@ -165,6 +170,7 @@ class _StoryPageState extends State<StoryPage> {
         setState(() {
           _currentPage = targetPage;
         });
+        _precacheIllustration(targetPage + 1);
       }
     }
   }
@@ -280,12 +286,12 @@ class _StoryPageState extends State<StoryPage> {
     return pages.isEmpty ? [text] : pages;
   }
 
-  String? _getCalculatedImageUrl() {
+  String? _getCalculatedImageUrl([int? pageIndex]) {
     final pattern = RegExp(r'\[img:(\d+)\]');
     final illustrationsPath = widget.story.illustrations;
 
     if (illustrationsPath != null && illustrationsPath.isNotEmpty) {
-      for (int i = _currentPage; i >= 0; i--) {
+      for (int i = pageIndex ?? _currentPage; i >= 0; i--) {
         if (i < _pages.length) {
           final match = pattern.firstMatch(_pages[i]);
           if (match != null) {
@@ -591,7 +597,20 @@ class _StoryPageState extends State<StoryPage> {
     if (_currentPage < _pages.length - 1) {
       setState(() => _currentPage++);
       _updateReadingProgress(_calculateProgress());
+      _precacheIllustration(_currentPage + 1);
     }
+  }
+
+  // Charge à l'avance l'illustration d'une page pour qu'elle s'affiche sans attente
+  void _precacheIllustration(int pageIndex) {
+    if (pageIndex >= _pages.length) return;
+    final imageKey = _getCalculatedImageUrl(pageIndex);
+    if (imageKey == null || imageKey.isEmpty) return;
+    precacheImage(
+      CachedNetworkImageProvider(B2Image.urlFor(imageKey)),
+      context,
+      onError: (_, __) {},
+    );
   }
 
   void _goToPreviousPage() {
@@ -665,7 +684,7 @@ class _StoryPageState extends State<StoryPage> {
       );
     }
     return StreamBuilder<QuerySnapshot>(
-      stream: _settingsCollection.snapshots(),
+      stream: _settingsStream,
       builder: (context, snapshot) {
         if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
           return const Scaffold(

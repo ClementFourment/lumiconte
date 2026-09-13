@@ -121,15 +121,11 @@ class StoryClassicView extends StatelessWidget {
                                             padding: const EdgeInsets.fromLTRB(
                                                 28, 16, 28, 12),
                                             child: Center(
-                                              child: AnimatedSwitcher(
-                                                duration: const Duration(
-                                                    milliseconds: 300),
-                                                child: KeyedSubtree(
-                                                  key: ValueKey(
-                                                      params.currentPageIndex),
-                                                  child: _buildTextContent(
-                                                      textColor),
-                                                ),
+                                              child: StoryPageTransition(
+                                                pageIndex:
+                                                    params.currentPageIndex,
+                                                child: _buildTextContent(
+                                                    textColor),
                                               ),
                                             ),
                                           ),
