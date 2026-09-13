@@ -338,8 +338,16 @@ class _ProfilePageState extends State<ProfilePage> {
                                       '$storiesReadCount'),
                                   _buildStatCard(context, 'Temps de\nlecture',
                                       timeDisplay),
-                                  _buildStatCard(context, 'Série en\ncours',
-                                      streakDisplay),
+                                  _buildStatCard(
+                                    context,
+                                    'Lecture\nd\'affilée',
+                                    streakDisplay,
+                                    icon: Icons.local_fire_department_rounded,
+                                    iconColor: streakDisplay == '0 jour'
+                                        ? theme.colorScheme.onSurface
+                                            .withValues(alpha: 0.3)
+                                        : Colors.deepOrange,
+                                  ),
                                 ],
                               ),
                               const SizedBox(height: 28),
@@ -672,8 +680,19 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  Widget _buildStatCard(BuildContext context, String label, String value) {
+  Widget _buildStatCard(BuildContext context, String label, String value,
+      {IconData? icon, Color? iconColor}) {
     final theme = Theme.of(context);
+    final valueText = Text(
+      value,
+      style: const TextStyle(
+        fontSize: 18,
+        fontWeight: FontWeight.bold,
+        color: AppTheme.accentColor,
+      ),
+      textAlign: TextAlign.center,
+    );
+
     return Expanded(
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 4),
@@ -684,15 +703,21 @@ class _ProfilePageState extends State<ProfilePage> {
         ),
         child: Column(
           children: [
-            Text(
-              value,
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: AppTheme.accentColor,
+            if (icon == null)
+              valueText
+            else
+              // Réduit l'ensemble si « 12 jours » + icône ne tient pas dans la carte
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(icon, size: 20, color: iconColor),
+                    const SizedBox(width: 2),
+                    valueText,
+                  ],
+                ),
               ),
-              textAlign: TextAlign.center,
-            ),
             const SizedBox(height: 4),
             Text(
               label,
