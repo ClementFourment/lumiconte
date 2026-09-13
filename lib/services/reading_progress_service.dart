@@ -35,10 +35,13 @@ class ReadingProgressService {
     final docSnapshot = await docRef.get();
 
     if (docSnapshot.exists) {
-      // Si le document existe déjà, on met à jour avec la progression transmise
+      // Une morale débloquée le reste, même si on relit l'histoire depuis le début
+      final wasUnlocked =
+          ReadingProgressModel.moraleUnlockedFrom(docSnapshot.data()!);
       await docRef.update({
         'progress': progress,
         'lastRead': FieldValue.serverTimestamp(),
+        'moraleUnlocked': wasUnlocked || progress >= 100,
       });
       debugPrint('ReadingProgress mis à jour à $progress pour $storyId');
     } else {
@@ -47,8 +50,29 @@ class ReadingProgressService {
         'storyId': storyId,
         'progress': 0.0, // Initialisation forcée à 0
         'lastRead': FieldValue.serverTimestamp(),
+        'moraleUnlocked': false,
       });
       debugPrint('ReadingProgress créé à 0 pour $storyId');
+    }
+  }
+
+  /// Ajoute `moraleUnlocked` aux documents qui ne l'ont pas encore.
+  Future<void> addMissingMoraleUnlocked(String profileId) async {
+    final snapshot = await _readingProgressCollection(profileId).get();
+    final batch = _firestore.batch();
+    var missingCount = 0;
+
+    for (final doc in snapshot.docs) {
+      if (doc.data().containsKey('moraleUnlocked')) continue;
+      batch.update(doc.reference, {
+        'moraleUnlocked': ReadingProgressModel.moraleUnlockedFrom(doc.data()),
+      });
+      missingCount++;
+    }
+
+    if (missingCount > 0) {
+      await batch.commit();
+      debugPrint('moraleUnlocked ajouté à $missingCount progression(s)');
     }
   }
 

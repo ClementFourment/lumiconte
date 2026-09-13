@@ -102,6 +102,7 @@ Future<void> seedDatabase() async {
     'storyId': storyRef.id,
     'progress': 75,
     'lastRead': FieldValue.serverTimestamp(),
+    'moraleUnlocked': false,
   });
 
   print('Seed: terminé, toutes les données respectent les models existants.');
