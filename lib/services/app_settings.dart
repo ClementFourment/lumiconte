@@ -30,8 +30,8 @@ class AppSettings extends ChangeNotifier {
   // 🟢 Méthode d'initialisation explicite appelée après Firebase.initializeApp()
   Future<void> init() async {
     if (Firebase.apps.isNotEmpty) {
-    _initAuthListener();
-  }
+      _initAuthListener();
+    }
     await initNotifications();
   }
 
@@ -59,7 +59,7 @@ class AppSettings extends ChangeNotifier {
     }
 
     const initializationSettingsAndroid =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
+        AndroidInitializationSettings('@drawable/ic_notification');
 
     const initializationSettingsDarwin = DarwinInitializationSettings(
       requestAlertPermission: true,
@@ -231,6 +231,9 @@ class AppSettings extends ChangeNotifier {
         importance: Importance.max,
         priority: Priority.high,
         playSound: true,
+        icon: '@drawable/ic_notification',
+        largeIcon: DrawableResourceAndroidBitmap('@mipmap/launcher_icon'),
+        color: Color(0xFFF59E0B),
       );
       const platformDetails = NotificationDetails(android: androidDetails);
 
