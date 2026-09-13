@@ -61,6 +61,18 @@ class StoryManuscriptView extends StatelessWidget {
                           Row(
                             children: [
                               StoryCircleIconButton(
+                                icon: Icons.restart_alt,
+                                onPressed:
+                                    params.isAtStart ? null : params.onRestart,
+                                backgroundColor: iconBtnBg,
+                                iconColor: params.isAtStart
+                                    ? textColor.withOpacity(0.3)
+                                    : textColor,
+                                size: 34,
+                                hasBorder: true,
+                              ),
+                              const SizedBox(width: 8),
+                              StoryCircleIconButton(
                                 icon: params.isFavorite
                                     ? Icons.favorite
                                     : Icons.favorite_border,

@@ -18,6 +18,7 @@ class StoryViewParams {
   final List<SegmentTiming> currentSegments; // <-- Ajout des segments synchronisés
   final VoidCallback onBack;
   final VoidCallback onToggleFavorite;
+  final VoidCallback onRestart;
   final VoidCallback onNextPage;
   final VoidCallback onPreviousPage;
   final VoidCallback onToggleAudio;
@@ -31,6 +32,9 @@ class StoryViewParams {
     required Color defaultTextColor,
     required bool isDyslexiaEnabled,
   }) buildColorizedText;
+
+  bool get isAtStart =>
+      currentPageIndex == 0 && audioPosition == Duration.zero;
 
   StoryViewParams({
     required this.currentPageText,
@@ -49,6 +53,7 @@ class StoryViewParams {
     this.currentSegments = const [],
     required this.onBack,
     required this.onToggleFavorite,
+    required this.onRestart,
     required this.onNextPage,
     required this.onPreviousPage,
     required this.onToggleAudio,
