@@ -613,6 +613,26 @@ class _StoryPageState extends State<StoryPage> {
     );
   }
 
+  Future<void> _restartStory() async {
+    if (_currentPage == 0 && _audioPosition == Duration.zero) return;
+
+    // _isSeeking empêche la synchro audio de ramener la page d'avant pendant le seek
+    setState(() {
+      _isSeeking = _isAudio;
+      _currentPage = 0;
+      _audioPosition = Duration.zero;
+    });
+    _updateReadingProgress(_calculateProgress());
+    _precacheIllustration(1);
+
+    if (!_isAudio) return;
+    try {
+      await _audioBackgroundService.seek(Duration.zero);
+    } finally {
+      if (mounted) setState(() => _isSeeking = false);
+    }
+  }
+
   void _goToPreviousPage() {
     if (_currentPage > 0) {
       setState(() => _currentPage--);
@@ -726,6 +746,7 @@ class _StoryPageState extends State<StoryPage> {
           currentSegments: currentSegments,
           onBack: () => Navigator.pop(context),
           onToggleFavorite: () => _toggleFavorite(),
+          onRestart: _restartStory,
           onNextPage: _goToNextPage,
           onPreviousPage: _goToPreviousPage,
           onToggleAudio: _toggleAudio,
