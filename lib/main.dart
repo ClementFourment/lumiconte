@@ -3,7 +3,6 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:lumiconte/config/firebase_options.dart';
 import 'package:lumiconte/config/router.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:lumiconte/services/app_settings.dart';
 import 'package:lumiconte/theme/app_theme.dart';
 import 'package:audio_service/audio_service.dart';
@@ -15,14 +14,7 @@ void main() async {
   // 1. Indispensable avant tout appel async natif
   WidgetsFlutterBinding.ensureInitialized();
 
-  // 2. Chargement du fichier .env
-  try {
-    await dotenv.load();
-  } catch (e) {
-    debugPrint("Erreur chargement dotenv: $e");
-  }
-
-  // 3. Initialisation de Firebase sécurisée
+  // 2. Initialisation de Firebase sécurisée
   try {
     if (Firebase.apps.isEmpty) {
       await Firebase.initializeApp(
@@ -35,7 +27,7 @@ void main() async {
     debugPrint("Erreur lors de initializeApp: $e");
   }
 
-  // 4. Initialisation des services
+  // 3. Initialisation des services
   appSettings = AppSettings();
   await appSettings.init();
 
@@ -52,7 +44,7 @@ void main() async {
     ),
   );
 
-  // 5. Lancement de l'application
+  // 4. Lancement de l'application
   runApp(const LumiconteApp());
 }
 
