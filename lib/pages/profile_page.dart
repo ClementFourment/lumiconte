@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:lumiconte/constants/avatars.dart';
 import 'package:lumiconte/main.dart';
 import 'package:lumiconte/models/profile_model.dart';
+import 'package:lumiconte/models/reading_progress_model.dart';
 import 'package:lumiconte/models/settings_model.dart';
 import 'package:lumiconte/pages/feedback_page.dart';
 import 'package:lumiconte/pages/manage_profiles_page.dart';
@@ -186,8 +187,9 @@ class _ProfilePageState extends State<ProfilePage> {
               final int storiesReadCount = progressSnapshot.hasData
                   ? progressSnapshot.data!.docs.where((doc) {
                       final data = doc.data() as Map<String, dynamic>?;
-                      // On considère lue uniquement si progress == 100 (ou progress >= 100)
-                      return (data?['progress'] ?? 0) >= 100;
+                      // Une histoire est lue quand sa morale a été débloquée
+                      return data != null &&
+                          ReadingProgressModel.moraleUnlockedFrom(data);
                     }).length
                   : 0;
 
