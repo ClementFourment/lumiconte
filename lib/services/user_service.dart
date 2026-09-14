@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:lumiconte/models/user_model.dart';
 import 'firebase_service.dart';
@@ -7,10 +8,13 @@ class UserService extends FirebaseService {
   // CRÉATION & LECTURE
   // ---------------------------------------------------------------------------
 
-  /// Créer ou mettre à jour un utilisateur complet
+  /// Créer ou mettre à jour un utilisateur complet.
+  /// `merge` conserve les champs gérés par le serveur (ex : `subscription`).
   Future<void> createOrUpdateUser(UserModel user) async {
     try {
-      await setData('users/${user.uid}', user.toMap());
+      await firestore
+          .doc('users/${user.uid}')
+          .set(user.toMap(), SetOptions(merge: true));
     } catch (e) {
       debugPrint('Erreur création/update user: $e');
       rethrow;
@@ -56,16 +60,6 @@ class UserService extends FirebaseService {
   // ---------------------------------------------------------------------------
   // MISES À JOUR SPÉCIFIQUES
   // ---------------------------------------------------------------------------
-
-  /// Mettre à jour le statut d'abonnement
-  Future<void> updateSubscription(String userId, bool subscribed) async {
-    try {
-      await updateData('users/$userId', {'subscribed': subscribed});
-    } catch (e) {
-      debugPrint('Erreur update subscription: $e');
-      rethrow;
-    }
-  }
 
   /// Mettre à jour le profil (nom d'affichage et/ou photo)
   Future<void> updateUserProfile(
