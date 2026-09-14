@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/rendering.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:lumiconte/models/subscription_model.dart';
 import 'package:lumiconte/models/user_model.dart';
 import 'firebase_service.dart';
 import 'user_service.dart';
@@ -58,7 +59,7 @@ class AuthService extends FirebaseService {
         email: firebaseUser.email ?? existingUser?.email ?? '',
         displayName: firebaseUser.displayName ?? existingUser?.displayName,
         photoUrl: firebaseUser.photoURL ?? existingUser?.photoUrl,
-        subscribed: existingUser?.subscribed ?? false,
+        subscription: existingUser?.subscription ?? const SubscriptionModel(),
         createdAt: existingUser?.createdAt ?? DateTime.now(),
         authProvider: UserAuthProvider.google,
         activeProfileId: existingUser?.activeProfileId,
@@ -118,7 +119,7 @@ class AuthService extends FirebaseService {
         email: firebaseUser.email ?? existingUser?.email ?? '',
         displayName: displayName ?? existingUser?.displayName,
         photoUrl: existingUser?.photoUrl,
-        subscribed: existingUser?.subscribed ?? false,
+        subscription: existingUser?.subscription ?? const SubscriptionModel(),
         createdAt: existingUser?.createdAt ?? DateTime.now(),
         authProvider: UserAuthProvider.apple,
         activeProfileId: existingUser?.activeProfileId,
@@ -174,7 +175,6 @@ class AuthService extends FirebaseService {
         email: email,
         displayName: null,
         photoUrl: null,
-        subscribed: false,
         createdAt: DateTime.now(),
         authProvider: UserAuthProvider.email,
       );

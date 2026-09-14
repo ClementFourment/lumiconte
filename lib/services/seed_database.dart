@@ -63,7 +63,6 @@ Future<void> seedDatabase() async {
   final user = UserModel(
     uid: 'test_user_id',
     email: 'leo.parent@example.com',
-    subscribed: true,
     createdAt: DateTime.now(),
     authProvider: UserAuthProvider.email,
   );
