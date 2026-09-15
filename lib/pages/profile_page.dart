@@ -13,6 +13,7 @@ import 'package:lumiconte/pages/parent_space_page.dart';
 import 'package:lumiconte/pages/rewards_page.dart';
 import 'package:lumiconte/theme/app_theme.dart';
 import 'package:lumiconte/utils/reading_stats.dart';
+import 'package:lumiconte/widget/mascot.dart';
 import 'package:lumiconte/widget/parental_gate.dart';
 
 /// Onglet « Moi » de l'enfant : uniquement du contenu adapté aux enfants.
@@ -138,6 +139,7 @@ class _ProfilePageState extends State<ProfilePage> {
     }
 
     return Scaffold(
+      backgroundColor: Colors.transparent,
       body: SafeArea(
         child: StreamBuilder<DocumentSnapshot>(
           stream: _profileStream,
@@ -206,6 +208,15 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
+  /// La mascotte encourage l'enfant selon sa série de lecture.
+  String _mascotMessage(int streak) {
+    if (streak >= 2) return 'Bravo ! Tu lis depuis $streak jours d\'affilée !';
+    if (streak == 1) {
+      return 'C\'est parti ! Reviens lire demain pour faire grandir ta flamme.';
+    }
+    return 'Lis une histoire pour allumer ta flamme !';
+  }
+
   Widget _buildContent(BuildContext context, ProfileModel profile,
       int storiesReadCount, int streak) {
     final theme = Theme.of(context);
@@ -249,13 +260,12 @@ class _ProfilePageState extends State<ProfilePage> {
         Text(
           profile.name,
           textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: 28,
-            fontWeight: FontWeight.bold,
-            color: onSurface,
-          ),
+          style: theme.textTheme.headlineMedium?.copyWith(color: onSurface),
         ),
-        const SizedBox(height: 28),
+        const SizedBox(height: 20),
+
+        Mascot(message: _mascotMessage(streak)),
+        const SizedBox(height: 16),
 
         // Mes exploits
         Row(
@@ -328,11 +338,10 @@ class _ProfilePageState extends State<ProfilePage> {
               fit: BoxFit.scaleDown,
               child: Text(
                 value,
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: onSurface,
-                ),
+                style: Theme.of(context)
+                    .textTheme
+                    .headlineSmall
+                    ?.copyWith(fontSize: 26, color: onSurface),
               ),
             ),
             const SizedBox(height: 2),
@@ -381,11 +390,10 @@ class _ProfilePageState extends State<ProfilePage> {
               Expanded(
                 child: Text(
                   title,
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: onSurface,
-                  ),
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleMedium
+                      ?.copyWith(fontSize: 19, color: onSurface),
                 ),
               ),
               Icon(Icons.chevron_right_rounded,

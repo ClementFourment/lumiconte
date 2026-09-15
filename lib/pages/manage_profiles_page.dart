@@ -9,6 +9,8 @@ import 'package:lumiconte/main.dart';
 import 'package:lumiconte/models/profile_model.dart';
 import 'package:lumiconte/services/profile_service.dart';
 import 'package:lumiconte/theme/app_theme.dart';
+import 'package:lumiconte/widget/mascot.dart';
+import 'package:lumiconte/widget/night_sky_background.dart';
 import 'package:lumiconte/widget/parental_gate.dart';
 
 /// Par défaut : simple choix du lecteur, sans action sensible (écran vu par
@@ -366,14 +368,15 @@ class _ManageProfilesPageState extends State<ManageProfilesPage> {
       );
     }
 
-    return Scaffold(
-      backgroundColor: backgroundColor,
+    final scaffold = Scaffold(
+      // Écran enfant : le ciel étoilé est dessiné derrière
+      backgroundColor: editMode ? backgroundColor : Colors.transparent,
       appBar: AppBar(
         title: Text(
           editMode ? 'Gérer les profils' : 'Qui lit aujourd\'hui ?',
-          style: GoogleFonts.nunito(
-            fontWeight: FontWeight.bold,
-            fontSize: 22,
+          style: GoogleFonts.fredoka(
+            fontWeight: FontWeight.w600,
+            fontSize: 24,
             color: primaryTextColor,
           ),
         ),
@@ -407,7 +410,7 @@ class _ManageProfilesPageState extends State<ManageProfilesPage> {
           final int itemCount =
               canAddProfile ? profiles.length + 1 : profiles.length;
 
-          return GridView.builder(
+          final grid = GridView.builder(
             padding: const EdgeInsets.all(24),
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 2,
@@ -562,8 +565,22 @@ class _ManageProfilesPageState extends State<ManageProfilesPage> {
               );
             },
           );
+
+          if (editMode) return grid;
+
+          return Column(
+            children: [
+              const Padding(
+                padding: EdgeInsets.fromLTRB(24, 8, 24, 0),
+                child: Mascot(message: 'Coucou ! Qui vient lire avec moi ?'),
+              ),
+              Expanded(child: grid),
+            ],
+          );
         },
       ),
     );
+
+    return editMode ? scaffold : NightSkyBackground(child: scaffold);
   }
 }

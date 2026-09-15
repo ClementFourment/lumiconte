@@ -134,6 +134,7 @@ class _LibraryPageState extends State<LibraryPage> {
         }
 
         return Scaffold(
+          backgroundColor: Colors.transparent,
           appBar: AppBar(
             elevation: 0,
             title: Text(
