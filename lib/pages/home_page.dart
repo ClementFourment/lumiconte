@@ -7,11 +7,11 @@ import 'package:lumiconte/models/profile_model.dart';
 import 'package:lumiconte/navigation/bottom_nav.dart';
 import 'package:lumiconte/services/reading_progress_service.dart';
 import 'package:lumiconte/widget/b2_image.dart';
-import 'package:lumiconte/widget/story_search_bar.dart';
-import 'package:lumiconte/pages/story/story_page.dart';
+import 'package:lumiconte/pages/story_search_page.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lumiconte/widget/lantern_progress_bar.dart';
 import 'package:lumiconte/widget/mascot.dart';
+import 'package:lumiconte/widget/story_cover_card.dart';
 
 class HomePage extends StatefulWidget {
   final ProfileModel profile;
@@ -164,42 +164,17 @@ class _HomePageState extends State<HomePage> {
 
                   const SizedBox(height: 20),
 
-                  // Barre de Recherche
+                  // Bouton de recherche : ouvre l'écran de recherche
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: StorySearchBar(
-                      onStorySelected: (story) {
-                        Navigator.push(
-                          context,
-                          PageRouteBuilder(
-                            transitionDuration:
-                                const Duration(milliseconds: 300),
-                            reverseTransitionDuration:
-                                const Duration(milliseconds: 250),
-                            pageBuilder: (_, __, ___) => StoryPage(
-                              story: story,
-                              profile: widget.profile,
-                            ),
-                            transitionsBuilder: (_, animation, __, child) {
-                              final curved = CurvedAnimation(
-                                parent: animation,
-                                curve: Curves.easeOut,
-                              );
-
-                              return FadeTransition(
-                                opacity: curved,
-                                child: SlideTransition(
-                                  position: Tween<Offset>(
-                                    begin: const Offset(0, 0.03),
-                                    end: Offset.zero,
-                                  ).animate(curved),
-                                  child: child,
-                                ),
-                              );
-                            },
-                          ),
-                        );
-                      },
+                    child: StorySearchButton(
+                      onTap: () => openStorySearch(
+                        context,
+                        profile: widget.profile,
+                        stories: widget.stories,
+                        categories: widget.categories,
+                        readingProgress: readingProgress,
+                      ),
                     ),
                   ),
 
@@ -334,72 +309,6 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildStoryCard(
-    BuildContext context,
-    StoryModel story,
-    ReadingProgressModel progress,
-  ) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return Container(
-      width: 115,
-      height: 175,
-      margin: const EdgeInsets.only(right: 14),
-      clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        color: colorScheme.surfaceContainerHigh,
-      ),
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          B2Image(objectKey: story.image, fit: BoxFit.cover),
-          Container(
-            alignment: Alignment.bottomCenter,
-            padding: const EdgeInsets.all(10),
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.bottomCenter,
-                end: Alignment.topCenter,
-                colors: [
-                  Colors.black87,
-                  Colors.black38,
-                  Colors.transparent,
-                ],
-                stops: [0.0, 0.6, 1.0],
-              ),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Text(
-                  story.name,
-                  maxLines: 3,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 12,
-                  ),
-                ),
-                if (progress.progress > 0) ...[
-                  const SizedBox(height: 8),
-                  SizedBox(
-                    width: 80,
-                    child:
-                        LanternProgressBar(progress: progress.progress / 100),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _carrousel(BuildContext context, String titleText,
       List<StoryModel> stories, List<ReadingProgressModel> readingProgress) {
     final theme = Theme.of(context);
@@ -436,22 +345,22 @@ class _HomePageState extends State<HomePage> {
                 itemCount: stories.length,
                 itemBuilder: (context, index) {
                   final story = stories[index];
-                  final progress = readingProgress.firstWhere(
-                    (p) => p.storyId == story.id,
-                    orElse: () => ReadingProgressModel(
-                      id: '',
-                      storyId: '',
-                      progress: 0.0,
-                      lastRead: DateTime.now(),
-                      moraleUnlocked: false,
+                  final progress = readingProgress
+                      .where((p) => p.storyId == story.id)
+                      .firstOrNull;
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 14),
+                    child: SizedBox(
+                      width: 115,
+                      child: StoryCoverCard(
+                        story: story,
+                        progress: progress?.progress ?? 0,
+                        onTap: () => context.push('/story', extra: {
+                          'story': story,
+                          'profile': widget.profile,
+                        }),
+                      ),
                     ),
-                  );
-                  return GestureDetector(
-                    onTap: () => context.push('/story', extra: {
-                      'story': story,
-                      'profile': widget.profile,
-                    }),
-                    child: _buildStoryCard(context, story, progress),
                   );
                 },
               ),
