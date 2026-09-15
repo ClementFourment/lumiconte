@@ -234,8 +234,8 @@ class _HomePageState extends State<HomePage> {
                   if (adaptedFromAgeStories.isNotEmpty)
                     _carrousel(context, "Adapté à ton âge",
                         adaptedFromAgeStories, readingProgress),
-                  _carrousel(context, "Histoires populaires",
-                      widget.stories.sublist(0, 10), readingProgress),
+                  // _carrousel(context, "Histoires populaires",
+                  //     widget.stories.sublist(0, 10), readingProgress),
                   _carrousel(
                       context, "Nouveautés", latestStories, readingProgress),
                 ],
