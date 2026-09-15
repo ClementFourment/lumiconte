@@ -6,6 +6,7 @@ import 'package:lumiconte/models/story_model.dart';
 import 'package:lumiconte/models/profile_model.dart';
 import 'package:lumiconte/navigation/bottom_nav.dart';
 import 'package:lumiconte/services/reading_progress_service.dart';
+import 'package:lumiconte/services/story_queue_player.dart';
 import 'package:lumiconte/widget/b2_image.dart';
 import 'package:lumiconte/pages/story_search_page.dart';
 import 'package:go_router/go_router.dart';
@@ -42,6 +43,7 @@ class _HomePageState extends State<HomePage> {
     _readingProgressService
         .addMissingMoraleUnlocked(widget.profile.id)
         .catchError((e) => debugPrint('Erreur ajout moraleUnlocked : $e'));
+    StoryQueuePlayer().followLanguage(widget.profile);
   }
 
   /// Petite phrase de la mascotte, adaptée au moment de la journée.

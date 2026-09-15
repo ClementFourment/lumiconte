@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart' show ProcessingState;
 import 'package:lumiconte/models/badge_model.dart';
 import 'package:lumiconte/models/profile_model.dart';
+import 'package:lumiconte/models/settings_model.dart';
 import 'package:lumiconte/models/story_model.dart';
 import 'package:lumiconte/services/audio_background_service.dart';
 import 'package:lumiconte/services/badge_service.dart';
@@ -50,6 +51,23 @@ class StoryQueuePlayer extends ChangeNotifier {
   /// Voix de l'histoire en cours, null tant que son audio n'est pas choisi.
   AudioVoiceData? get currentVoice => _currentVoice;
 
+  StreamSubscription? _languageSubscription;
+  String? _languageProfileId;
+
+  /// Donne à la file la langue du profil, et la suit quand un parent la change.
+  void followLanguage(ProfileModel profile) {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null || _languageProfileId == profile.id) return;
+    _languageSubscription?.cancel();
+    _languageProfileId = profile.id;
+    _languageSubscription =
+        _settingsService.getSettingsStream(uid, profile.id).listen(
+              (settings) => _queue.language =
+                  settings?.language ?? SettingsModel.defaultLanguage,
+              onError: (e) => debugPrint('Erreur langue de la file : $e'),
+            );
+  }
+
   /// Écoute la file préparée, depuis la première histoire.
   Future<void> start(ProfileModel profile) async {
     final first = _changeStory(_queue.start);
@@ -65,7 +83,7 @@ class StoryQueuePlayer extends ChangeNotifier {
     StoryModel story, {
     Duration Function(Duration duration)? startAt,
   }) async {
-    if (!StoryQueue.canQueue(story)) return;
+    if (!_queue.canQueue(story)) return;
     _changeStory(() => _queue.playNow(story));
     await _activate(profile);
     await _load(story, startAt: startAt);
@@ -154,7 +172,8 @@ class StoryQueuePlayer extends ChangeNotifier {
     notifyListeners();
 
     // Relu à chaque histoire : un changement de voix vaut pour la suivante
-    final voice = story.voiceFor(await _voiceGender());
+    final settings = await _settings();
+    final voice = story.voiceFor(settings?.language, settings?.voiceGender);
     if (generation != _loadGeneration) return;
     if (voice == null) {
       await _advance();
@@ -175,12 +194,12 @@ class StoryQueuePlayer extends ChangeNotifier {
         .catchError((e) => debugPrint('Erreur progression : $e'));
   }
 
-  Future<String?> _voiceGender() async {
+  Future<SettingsModel?> _settings() async {
     final uid = _uid;
     final profileId = _profileId;
     if (uid == null || profileId == null) return null;
     try {
-      return (await _settingsService.getSettings(uid, profileId))?.voiceGender;
+      return await _settingsService.getSettings(uid, profileId);
     } catch (e) {
       debugPrint('Erreur paramètres de voix : $e');
       return null;

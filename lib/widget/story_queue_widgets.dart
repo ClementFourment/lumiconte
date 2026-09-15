@@ -22,12 +22,13 @@ class QueueToggleButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (!StoryQueue.canQueue(story)) return const SizedBox.shrink();
     final queue = StoryQueue();
 
     return ListenableBuilder(
       listenable: queue,
       builder: (context, _) {
+        // Suit la langue : la pastille disparaît si l'histoire n'y a pas de voix
+        if (!queue.canQueue(story)) return const SizedBox.shrink();
         final index = queue.indexOf(story.id);
         final inQueue = index >= 0;
         final disabled = !inQueue && queue.isFull;

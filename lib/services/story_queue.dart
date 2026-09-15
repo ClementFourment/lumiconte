@@ -33,10 +33,25 @@ class StoryQueue extends ChangeNotifier {
   bool get hasNext =>
       _currentIndex != null && _currentIndex! < _stories.length - 1;
 
+  /// Langue du profil, suivie par StoryQueuePlayer.followLanguage.
+  String _language = 'fr';
+
+  String get language => _language;
+
+  /// Les histoires en attente sans voix dans la nouvelle langue ne seraient
+  /// pas lues : elles sont retirées. L'histoire en cours d'écoute reste.
+  set language(String value) {
+    if (value == _language) return;
+    _language = value;
+    final current = this.current;
+    _stories.removeWhere((s) => !identical(s, current) && !canQueue(s));
+    if (current != null) _currentIndex = _stories.indexOf(current);
+    notifyListeners();
+  }
+
   /// Seules les histoires audio s'enchaînent toutes seules. Même règle que la
-  /// lecture : une voix que voiceFor ne sait pas lire ne compte pas.
-  /// voiceFor se rabat sur l'autre voix : une seule voix disponible suffit.
-  static bool canQueue(StoryModel story) => story.voiceFor(null) != null;
+  /// lecture : il faut une voix lisible dans la langue du profil.
+  bool canQueue(StoryModel story) => story.voiceFor(_language, null) != null;
 
   /// Position (à partir de 0) de l'histoire dans la file, -1 si elle n'y est pas.
   int indexOf(String storyId) => _stories.indexWhere((s) => s.id == storyId);

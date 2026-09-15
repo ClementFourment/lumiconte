@@ -33,7 +33,7 @@ class StoryModel {
   final String morals;
   final String? image;
   final String? illustrations;
-  final Map<String, AudioVoiceData>? audio; // Map de types de voix ("femme", "homme")
+  final Map<String, AudioVoiceData>? audio; // Voix par langue ("fr_femme", "en_homme", "es_femme"...)
   final List<String> categoryIds;
   final String? type;
   final String? createdByProfileId;
@@ -111,13 +111,18 @@ class StoryModel {
     );
   }
 
-  /// Voix demandée dans les paramètres si elle existe, sinon l'autre voix.
-  AudioVoiceData? voiceFor(String? voiceGender) {
+  /// Langues des voix : les clés audio sont préfixées ("fr_femme", "en_homme"...).
+  static const List<String> voiceLanguages = ['fr', 'en', 'es'];
+
+  /// Voix de la langue choisie : le genre demandé s'il existe, sinon l'autre
+  /// voix de la même langue. Jamais de voix d'une autre langue.
+  AudioVoiceData? voiceFor(String? language, String? voiceGender) {
+    final lang = voiceLanguages.contains(language) ? language! : 'fr';
     final requested =
         (voiceGender == 'homme' || voiceGender == 'male') ? 'homme' : 'femme';
     final alternate = requested == 'homme' ? 'femme' : 'homme';
-    for (final key in [requested, alternate]) {
-      final voice = audio?[key];
+    for (final gender in [requested, alternate]) {
+      final voice = audio?['${lang}_$gender'];
       if (voice != null && voice.url.trim().isNotEmpty) return voice;
     }
     return null;
