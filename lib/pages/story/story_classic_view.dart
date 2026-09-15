@@ -55,6 +55,18 @@ class StoryClassicView extends StatelessWidget {
                     ),
                     Row(
                       children: [
+                        if (params.isInQueue != null) ...[
+                          StoryCircleIconButton(
+                            icon: params.isInQueue!
+                                ? Icons.playlist_add_check_rounded
+                                : Icons.playlist_add_rounded,
+                            onPressed: params.onToggleQueue,
+                            backgroundColor: iconBtnBg,
+                            iconColor:
+                                params.isInQueue! ? accentColor : textColor,
+                          ),
+                          const SizedBox(width: 6),
+                        ],
                         StoryCircleIconButton(
                           icon: Icons.restart_alt,
                           onPressed: params.isAtStart ? null : params.onRestart,
@@ -257,6 +269,24 @@ class StoryClassicView extends StatelessWidget {
                             color: subtleTextColor,
                           ),
                         ),
+                        if (params.onSkipToPrevious != null) ...[
+                          const SizedBox(width: 6),
+                          StoryCircleIconButton(
+                            icon: Icons.skip_previous_rounded,
+                            onPressed: params.onSkipToPrevious,
+                            backgroundColor: iconBtnBg,
+                            iconColor: textColor,
+                          ),
+                        ],
+                        if (params.onSkipToNext != null) ...[
+                          const SizedBox(width: 6),
+                          StoryCircleIconButton(
+                            icon: Icons.skip_next_rounded,
+                            onPressed: params.onSkipToNext,
+                            backgroundColor: iconBtnBg,
+                            iconColor: textColor,
+                          ),
+                        ],
                       ],
                     ),
                   ),

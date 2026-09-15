@@ -56,6 +56,28 @@ class ReadingProgressService {
     }
   }
 
+  /// Histoire écoutée jusqu'au bout.
+  Future<void> markFinished({
+    required String profileId,
+    required String storyId,
+  }) async {
+    await ensureExists(profileId: profileId, storyId: storyId);
+    await createOrUpdate(profileId: profileId, storyId: storyId, progress: 100);
+  }
+
+  /// createOrUpdate crée un document absent à 0 sans tenir compte de la
+  /// progression demandée : à appeler avant d'écrire une progression.
+  Future<void> ensureExists({
+    required String profileId,
+    required String storyId,
+  }) async {
+    final progress =
+        await getStoryProgress(profileId: profileId, storyId: storyId);
+    if (progress == null) {
+      await createOrUpdate(profileId: profileId, storyId: storyId, progress: 0);
+    }
+  }
+
   /// Ajoute `moraleUnlocked` aux documents qui ne l'ont pas encore.
   Future<void> addMissingMoraleUnlocked(String profileId) async {
     final snapshot = await _readingProgressCollection(profileId).get();

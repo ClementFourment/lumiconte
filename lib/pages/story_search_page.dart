@@ -10,6 +10,7 @@ import 'package:lumiconte/utils/story_search.dart';
 import 'package:lumiconte/widget/mascot.dart';
 import 'package:lumiconte/widget/night_sky_background.dart';
 import 'package:lumiconte/widget/story_cover_card.dart';
+import 'package:lumiconte/widget/story_queue_widgets.dart';
 
 /// Ouvre l'écran de recherche en fondu.
 void openStorySearch(
@@ -182,6 +183,10 @@ class _StorySearchPageState extends State<StorySearchPage> {
     return NightSkyBackground(
       child: Scaffold(
         backgroundColor: Colors.transparent,
+        bottomNavigationBar: SafeArea(
+          top: false,
+          child: StoryQueueBar(profile: widget.profile),
+        ),
         body: SafeArea(
           child: Column(
             children: [

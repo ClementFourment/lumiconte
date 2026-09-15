@@ -21,6 +21,39 @@ class AudioBackgroundService extends BaseAudioHandler
   int? _lastPositionUpdate;
   static const String _cdnBaseUrl = 'https://lumiconte-cdn.clementfourment.fr/';
 
+  /// Histoires avant / après dans la file de lecture : boutons "précédent" et
+  /// "suivant" affichés sur l'écran verrouillé et dans la notification.
+  bool _hasPrevious = false;
+  bool _hasNext = false;
+
+  /// Appelés par les boutons "précédent" et "suivant" de la file.
+  Future<void> Function()? onSkipToPrevious;
+  Future<void> Function()? onSkipToNext;
+
+  /// Boutons grisés qui ne font rien, affichés à la place de "précédent" ou
+  /// "suivant" quand il n'y a pas d'histoire avant ou après. Ce sont des
+  /// actions personnalisées : Android 13+ les place dans les emplacements
+  /// laissés libres par "précédent" et "suivant", dans cet ordre.
+  static const _previousDisabled = MediaControl(
+    androidIcon: 'drawable/ic_skip_previous_disabled',
+    label: 'Pas d\'histoire précédente',
+    action: MediaAction.custom,
+    customAction: CustomMediaAction(name: 'previous_disabled'),
+  );
+  static const _nextDisabled = MediaControl(
+    androidIcon: 'drawable/ic_skip_next_disabled',
+    label: 'Pas d\'histoire suivante',
+    action: MediaAction.custom,
+    customAction: CustomMediaAction(name: 'next_disabled'),
+  );
+
+  void setQueueControls({required bool hasPrevious, required bool hasNext}) {
+    if (_hasPrevious == hasPrevious && _hasNext == hasNext) return;
+    _hasPrevious = hasPrevious;
+    _hasNext = hasNext;
+    _updateState();
+  }
+
   // Helper pour mettre à jour l'état avec les contrôles toujours présents
   void _updateState({
     bool? playing,
@@ -28,18 +61,32 @@ class AudioBackgroundService extends BaseAudioHandler
     Duration? updatePosition,
     Duration? bufferedPosition,
   }) {
+    final isPlaying = playing ?? playbackState.value.playing;
+    // Pas de ±10 s : depuis Android 13, le système placerait ces boutons à la
+    // place d'un "précédent" ou "suivant" absent. On avance ou recule avec la
+    // barre de progression de la notification (action seek).
+    final controls = [
+      _hasPrevious ? MediaControl.skipToPrevious : _previousDisabled,
+      isPlaying ? MediaControl.pause : MediaControl.play,
+      _hasNext ? MediaControl.skipToNext : _nextDisabled,
+    ];
+    // Avant Android 13, les actions personnalisées ne sont pas dans la
+    // notification : la vue réduite ne compte que les autres boutons
+    final notificationButtons =
+        controls.where((control) => control.customAction == null).length;
+
     playbackState.add(
       playbackState.value.copyWith(
-        playing: playing ?? playbackState.value.playing,
+        playing: isPlaying,
         processingState: processingState ?? playbackState.value.processingState,
         updatePosition: updatePosition ?? playbackState.value.updatePosition,
         bufferedPosition:
             bufferedPosition ?? playbackState.value.bufferedPosition,
-        controls: [
-          MediaControl.rewind,
-          MediaControl.play,
-          MediaControl.pause,
-          MediaControl.fastForward,
+        controls: controls,
+        // Barre de progression déplaçable dans la notification et sur l'écran verrouillé
+        systemActions: const {MediaAction.seek},
+        androidCompactActionIndices: [
+          for (var i = 0; i < notificationButtons; i++) i,
         ],
       ),
     );
@@ -154,12 +201,7 @@ class AudioBackgroundService extends BaseAudioHandler
   @override
   Future<void> play() async {
     try {
-      playbackState.add(
-        playbackState.value.copyWith(
-          playing: true,
-          processingState: AudioProcessingState.ready,
-        ),
-      );
+      _updateState(playing: true, processingState: AudioProcessingState.ready);
       await _audioPlayer.play();
     } catch (e) {
       debugPrint('Erreur play: $e');
@@ -186,13 +228,19 @@ class AudioBackgroundService extends BaseAudioHandler
   }
 
   @override
+  Future<void> skipToPrevious() async {
+    await onSkipToPrevious?.call();
+  }
+
+  @override
+  Future<void> skipToNext() async {
+    await onSkipToNext?.call();
+  }
+
+  @override
   Future<void> pause() async {
     try {
-      playbackState.add(
-        playbackState.value.copyWith(
-          playing: false,
-        ),
-      );
+      _updateState(playing: false);
       await _audioPlayer.pause();
     } catch (e) {
       debugPrint('Erreur pause: $e');

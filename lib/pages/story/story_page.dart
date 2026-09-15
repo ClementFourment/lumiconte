@@ -6,7 +6,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:audio_service/audio_service.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:lumiconte/widget/b2_image.dart';
-import 'package:lumiconte/models/badge_model.dart';
 import 'package:lumiconte/models/profile_model.dart';
 import 'package:lumiconte/models/story_model.dart';
 import 'package:lumiconte/models/settings_model.dart';
@@ -15,12 +14,16 @@ import 'package:lumiconte/pages/story/story_immersive_view.dart';
 import 'package:lumiconte/pages/story/story_manuscript_view.dart';
 import 'package:lumiconte/pages/story/story_text.dart';
 import 'package:lumiconte/pages/story/story_view_params.dart';
-import 'package:lumiconte/services/badge_service.dart';
 import 'package:lumiconte/services/reading_progress_service.dart';
 import 'package:lumiconte/services/settings_service.dart';
 import 'package:lumiconte/services/audio_background_service.dart';
+import 'package:lumiconte/services/story_queue.dart';
+import 'package:lumiconte/services/story_queue_player.dart';
 import 'package:lumiconte/services/story_sync_service.dart';
 
+/// Page de lecture d'une histoire. L'audio passe toujours par la file de
+/// lecture ([StoryQueuePlayer]) : le bouton lecture crée une file d'une
+/// histoire, qui continue quand on quitte la page.
 class StoryPage extends StatefulWidget {
   final StoryModel story;
   final ProfileModel profile;
@@ -32,6 +35,8 @@ class StoryPage extends StatefulWidget {
 }
 
 class _StoryPageState extends State<StoryPage> {
+  /// Histoire affichée : suit la file quand elle passe à la suivante.
+  late StoryModel _story;
   late StoryDocument _document;
 
   /// Premier mot de la page courante. On retient un mot plutôt qu'un numéro de
@@ -45,11 +50,16 @@ class _StoryPageState extends State<StoryPage> {
   bool _isLoading = false;
   bool _isSeeking = false;
   bool _isAudio = false;
-  bool _isAudioInitialized = false;
-  String? _currentVoiceKey;
   Duration _audioPosition = Duration.zero;
   Duration _audioDuration = Duration.zero;
   bool _isProgressLoaded = false;
+
+  /// Voix dont les mots minutés sont affichés.
+  AudioVoiceData? _voice;
+
+  /// La page suit la file : elle affiche l'histoire en cours d'écoute et passe
+  /// à la suivante avec elle.
+  bool _followsQueue = false;
 
   late final String _uid;
   late final CollectionReference _settingsCollection;
@@ -59,16 +69,24 @@ class _StoryPageState extends State<StoryPage> {
 
   final ReadingProgressService _readingProgressService =
       ReadingProgressService();
-  late AudioBackgroundService _audioBackgroundService;
+  final AudioBackgroundService _audioBackgroundService =
+      AudioBackgroundService();
+  final List<StreamSubscription> _audioSubscriptions = [];
+  final StoryQueue _queue = StoryQueue();
+  final StoryQueuePlayer _queuePlayer = StoryQueuePlayer();
 
   final SettingsService _settingsService = SettingsService();
   final Stopwatch _readingTimer = Stopwatch();
   Timer? _readingSaveTimer;
   int _savedReadingSeconds = 0;
 
+  /// L'histoire affichée est celle qu'on écoute.
+  bool get _isCurrent => _queuePlayer.currentStory?.id == _story.id;
+
   @override
   void initState() {
     super.initState();
+    _story = widget.story;
     _uid = FirebaseAuth.instance.currentUser!.uid;
     _settingsCollection = FirebaseFirestore.instance
         .collection('users')
@@ -89,20 +107,38 @@ class _StoryPageState extends State<StoryPage> {
         .doc(widget.profile.id)
         .collection('favorites');
 
-    _audioBackgroundService = AudioBackgroundService();
-    _initializeBackgroundAudioService();
+    // Rouverte depuis le mini-lecteur : la page reprend l'écoute en cours
+    _followsQueue = _isCurrent;
+    if (_followsQueue) {
+      _isAudio = true;
+      _voice = _queuePlayer.currentVoice;
+    }
+    _document = _documentFor(_story, _voice);
 
-    _document = StoryDocument(storyWordsFromText(widget.story.content));
+    _queue.addListener(_onQueueChanged);
+    _queuePlayer.addListener(_onQueueChanged);
+    _listenToAudio();
+
     // Une police chargée après coup (Google Fonts) change les mesures du texte
     PaintingBinding.instance.systemFonts.addListener(_onSystemFontsChanged);
     _loadReadingProgress();
     _loadFavoriteStatus();
 
-    _readingTimer.start();
+    _updateReadingTimer();
     _readingSaveTimer = Timer.periodic(
       const Duration(seconds: 30),
       (_) => _saveReadingTime(),
     );
+  }
+
+  /// Le temps passé sur la page compte comme lecture, sauf pendant l'écoute :
+  /// StoryQueuePlayer compte déjà ce temps.
+  void _updateReadingTimer() {
+    if (_isCurrent && _isPlaying) {
+      _readingTimer.stop();
+    } else {
+      _readingTimer.start();
+    }
   }
 
   Future<void> _saveReadingTime() async {
@@ -125,9 +161,10 @@ class _StoryPageState extends State<StoryPage> {
   }
 
   Future<void> _loadFavoriteStatus() async {
+    final storyId = _story.id;
     try {
-      final doc = await _favoritesCollection.doc(widget.story.id).get();
-      if (mounted) {
+      final doc = await _favoritesCollection.doc(storyId).get();
+      if (mounted && storyId == _story.id) {
         setState(() {
           _isFavorite = doc.exists;
         });
@@ -137,42 +174,110 @@ class _StoryPageState extends State<StoryPage> {
     }
   }
 
-  Future<void> _initializeBackgroundAudioService() async {
+  /// L'état du lecteur n'est affiché que si l'histoire de la page est celle
+  /// qu'on écoute.
+  Future<void> _listenToAudio() async {
     try {
       await _audioBackgroundService.init();
+      if (!mounted) return;
+      final player = _audioBackgroundService.audioPlayer;
 
-      _audioBackgroundService.playbackState.listen((playbackState) {
-        // play() ne se termine qu'à la fin ou à la pause : le badge est
-        // attribué dès que la lecture démarre réellement
-        if (playbackState.playing) _awardFirstListen();
-        if (mounted) {
-          setState(() {
-            _isPlaying = playbackState.playing;
-            _isLoading = playbackState.processingState == AudioProcessingState.loading ||
-                playbackState.processingState == AudioProcessingState.buffering;
-          });
-        }
-      });
+      _audioSubscriptions
+          .add(_audioBackgroundService.playbackState.listen((playbackState) {
+        if (!mounted || !_isCurrent) return;
+        setState(() {
+          _isPlaying = playbackState.playing;
+          _isLoading = playbackState.processingState ==
+                  AudioProcessingState.loading ||
+              playbackState.processingState == AudioProcessingState.buffering;
+        });
+        _updateReadingTimer();
+      }));
 
-      _audioBackgroundService.audioPlayer.positionStream.listen((position) {
-        if (mounted && !_isSeeking) {
-          setState(() {
-            _audioPosition = position;
-          });
-          _checkPageChangeForAudio(_audioPosition);
-        }
-      });
+      _audioSubscriptions.add(player.positionStream.listen((position) {
+        if (!mounted || _isSeeking || !_isCurrent) return;
+        setState(() => _audioPosition = position);
+        _checkPageChangeForAudio(position);
+      }));
 
-      _audioBackgroundService.audioPlayer.durationStream.listen((duration) {
-        if (mounted) {
-          setState(() {
-            _audioDuration = duration ?? Duration.zero;
-          });
-        }
-      });
+      _audioSubscriptions.add(player.durationStream.listen((duration) {
+        if (!mounted || !_isCurrent) return;
+        setState(() => _audioDuration = duration ?? Duration.zero);
+      }));
     } catch (e) {
       debugPrint('Erreur initialisation service audio: $e');
     }
+  }
+
+  void _onQueueChanged() {
+    if (!mounted) return;
+    final previousStoryId = _story.id;
+    setState(_applyQueueState);
+    if (_story.id != previousStoryId) _loadFavoriteStatus();
+    _updateReadingTimer();
+  }
+
+  /// Aligne la page sur la file. Une page qui suit la file passe à l'histoire
+  /// suivante avec elle ; à la fin de la file, la dernière histoire reste affichée.
+  void _applyQueueState() {
+    final current = _queuePlayer.currentStory;
+    if (current == null || (current.id != _story.id && !_followsQueue)) {
+      _followsQueue = false;
+      _resetAudioState();
+      return;
+    }
+
+    final voice = _queuePlayer.currentVoice;
+    if (current.id != _story.id) {
+      _story = current;
+      _isFavorite = false;
+      _anchorWord = 0;
+      _resetAudioState();
+      _voice = voice;
+      _replaceDocument(_documentFor(current, voice));
+    } else if (voice != null && !identical(voice, _voice)) {
+      _voice = voice;
+      _replaceDocument(_documentFor(current, voice));
+    }
+    _followsQueue = true;
+    _isAudio = true;
+  }
+
+  void _resetAudioState() {
+    _isPlaying = false;
+    _isLoading = false;
+    _audioPosition = Duration.zero;
+    _audioDuration = Duration.zero;
+  }
+
+  /// Avec l'audio, on affiche les mots minutés de la voix pour pouvoir les surligner.
+  StoryDocument _documentFor(StoryModel story, AudioVoiceData? voice) {
+    if (voice != null) {
+      final audioWords = storyWordsFromSegments(
+        StorySyncService.parseSegments(voice.audioTimes),
+      );
+      if (audioWords.isNotEmpty) return StoryDocument(audioWords);
+    }
+    return StoryDocument(storyWordsFromText(story.content));
+  }
+
+  /// Voix choisie dans les paramètres. Pendant l'écoute, c'est la voix jouée
+  /// qui compte : un changement de voix vaut pour la prochaine écoute.
+  void _applySettingsVoice(SettingsModel settings) {
+    if (_isCurrent) return;
+    final voice = _story.voiceFor(settings.voiceGender);
+    _isAudio = voice != null;
+    if (identical(voice, _voice)) return;
+    _voice = voice;
+
+    // Appelé pendant le build : le document est remplacé après la frame
+    final story = _story;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _story.id != story.id || !identical(_voice, voice)) {
+        return;
+      }
+      setState(() => _replaceDocument(_documentFor(story, voice)));
+    });
   }
 
   void _onSystemFontsChanged() {
@@ -216,8 +321,7 @@ class _StoryPageState extends State<StoryPage> {
     final pagination = _pagination;
     if (pagination == null || !_isPlaying) return;
 
-    final spokenWord =
-        _document.wordAtTime(position.inMilliseconds / 1000.0);
+    final spokenWord = _document.wordAtTime(position.inMilliseconds / 1000.0);
     if (spokenWord == null) return;
 
     final targetPage = pagination.pageOfWord(spokenWord);
@@ -231,7 +335,7 @@ class _StoryPageState extends State<StoryPage> {
     try {
       final progress = await _readingProgressService.getStoryProgress(
         profileId: widget.profile.id,
-        storyId: widget.story.id,
+        storyId: _story.id,
       );
 
       if (progress != null) {
@@ -268,7 +372,7 @@ class _StoryPageState extends State<StoryPage> {
     try {
       await _readingProgressService.createOrUpdate(
         profileId: widget.profile.id,
-        storyId: widget.story.id,
+        storyId: _story.id,
         progress: progress,
       );
     } catch (e) {
@@ -277,7 +381,7 @@ class _StoryPageState extends State<StoryPage> {
   }
 
   String? _getCalculatedImageUrl([int? pageIndex]) {
-    final illustrationsPath = widget.story.illustrations;
+    final illustrationsPath = _story.illustrations;
 
     if (illustrationsPath != null && illustrationsPath.isNotEmpty) {
       final pagination = _pagination;
@@ -296,108 +400,37 @@ class _StoryPageState extends State<StoryPage> {
       }
     }
 
-    return widget.story.image;
+    return _story.image;
   }
 
-  Future<void> _initializeAudio(SettingsModel settings) async {
-    final requestedVoiceKey =
-        (settings.voiceGender == 'homme' || settings.voiceGender == 'male')
-            ? 'homme'
-            : 'femme';
-
-    if (_isAudioInitialized && _currentVoiceKey == requestedVoiceKey) {
-      return;
-    }
-
-    final audioMap = widget.story.audio;
-    if (audioMap == null || audioMap.isEmpty) {
-      _isAudio = false;
-      _isAudioInitialized = true;
-      return;
-    }
-
-    String targetKey = requestedVoiceKey;
-    AudioVoiceData? voiceData = audioMap[targetKey];
-
-    if (voiceData == null || voiceData.url.trim().isEmpty) {
-      final alternateKey = targetKey == 'homme' ? 'femme' : 'homme';
-      if (audioMap.containsKey(alternateKey) &&
-          audioMap[alternateKey]!.url.trim().isNotEmpty) {
-        targetKey = alternateKey;
-        voiceData = audioMap[targetKey];
-      }
-    }
-
-    final selectedAudioPath = voiceData?.url.trim() ?? '';
-    _isAudio = selectedAudioPath.isNotEmpty;
-    _isAudioInitialized = true;
-    _currentVoiceKey = targetKey;
-
-    if (_isAudio && voiceData != null) {
-      // Avec l'audio, on affiche les mots minutés de la voix pour pouvoir les surligner
-      final audioWords = storyWordsFromSegments(
-        StorySyncService.parseSegments(voiceData.audioTimes),
-      );
-
-      final documentReady = Completer<void>();
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          setState(() {
-            _replaceDocument(StoryDocument(audioWords.isNotEmpty
-                ? audioWords
-                : storyWordsFromText(widget.story.content)));
-            // Remet l'état audio à jour lors d'une réinitialisation de voix
-            _isPlaying = false;
-            _audioPosition = Duration.zero;
-          });
-        }
-        documentReady.complete();
-      });
-
-      await Future.wait([
-        _audioBackgroundService.setStory(widget.story, selectedAudioPath),
-        documentReady.future,
-      ]);
-      await _seekAudioToCurrentPage();
-    }
-  }
-
-  /// Place l'audio au début de la page affichée (reprise de lecture, changement de voix).
-  Future<void> _seekAudioToCurrentPage() async {
-    // La pagination est recalculée pendant la mise en page qui suit le changement de document
-    if (mounted && _pagination == null) {
-      await WidgetsBinding.instance.endOfFrame;
-    }
-    if (!mounted) return;
+  /// Lance l'écoute de l'histoire affichée, depuis le début de la page affichée.
+  Future<void> _startListening() async {
     final pagination = _pagination;
     final pageStart = pagination == null
         ? _anchorWord
         : pagination.pages[_currentPageIndex].start;
-    if (pageStart <= 0) return;
-
-    final Duration position;
-    final wordStart = _document.words[pageStart].start;
-    if (wordStart != null) {
-      position = Duration(milliseconds: (wordStart * 1000).round());
-    } else if (_audioDuration > Duration.zero) {
-      // Sans minutage, on se place au prorata du texte déjà lu
-      position = _audioDuration * _document.fractionBefore(pageStart);
-    } else {
-      return;
-    }
+    final wordStart = pageStart > 0 ? _document.words[pageStart].start : null;
+    final readFraction = _document.fractionBefore(pageStart);
 
     setState(() {
-      _isSeeking = true;
-      _audioPosition = position;
+      _followsQueue = true;
+      _resetAudioState();
+      _isLoading = true;
     });
-    try {
-      await _audioBackgroundService.seek(position);
-    } finally {
-      if (mounted) setState(() => _isSeeking = false);
-    }
+    await _queuePlayer.playStory(
+      widget.profile,
+      _story,
+      startAt: pageStart <= 0
+          ? null
+          : (duration) => wordStart != null
+              ? Duration(milliseconds: (wordStart * 1000).round())
+              // Sans minutage, on se place au prorata du texte déjà lu
+              : duration * readFraction,
+    );
   }
 
   void _onSeekAudioChanged(double value) {
+    if (!_isCurrent) return;
     setState(() {
       _isSeeking = true;
       _audioPosition = Duration(seconds: value.toInt());
@@ -405,6 +438,7 @@ class _StoryPageState extends State<StoryPage> {
   }
 
   Future<void> _seekAudio(double value) async {
+    if (!_isCurrent) return;
     setState(() => _isSeeking = true);
     try {
       await _audioBackgroundService.seek(Duration(seconds: value.toInt()));
@@ -419,14 +453,19 @@ class _StoryPageState extends State<StoryPage> {
   }
 
   void _onRewind() {
-    _audioBackgroundService.rewind();
+    if (_isCurrent) _audioBackgroundService.rewind();
   }
 
   void _onFastForward() {
-    _audioBackgroundService.fastForward();
+    if (_isCurrent) _audioBackgroundService.fastForward();
   }
 
   Future<void> _toggleAudio() async {
+    if (!_isCurrent) {
+      await _startListening();
+      return;
+    }
+
     if (_isPlaying) {
       await _audioBackgroundService.pause();
       return;
@@ -458,15 +497,17 @@ class _StoryPageState extends State<StoryPage> {
     // _isLoading and _isPlaying are updated via the playbackState stream
   }
 
-  bool _firstListenAwarded = false;
-
-  /// La première écoute n'est visible dans aucune donnée : le badge est
-  /// enregistré directement, et fêté par le BadgeWatcher.
-  void _awardFirstListen() {
-    if (_firstListenAwarded) return;
-    _firstListenAwarded = true;
-    BadgeService()
-        .award(_uid, widget.profile.id, const [BadgeModel.firstListenId]);
+  void _toggleQueue() {
+    if (_queue.contains(_story.id)) {
+      _queue.remove(_story.id);
+    } else if (!_queue.add(_story)) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(const SnackBar(
+          content: Text(
+              'La file est pleine : ${StoryQueue.maxLength} histoires maximum'),
+        ));
+    }
   }
 
   void _goToNextPage() {
@@ -495,17 +536,18 @@ class _StoryPageState extends State<StoryPage> {
 
   Future<void> _restartStory() async {
     if (_currentPageIndex == 0 && _audioPosition == Duration.zero) return;
+    final seekAudio = _isCurrent;
 
     // _isSeeking empêche la synchro audio de ramener la page d'avant pendant le seek
     setState(() {
-      _isSeeking = _isAudio;
+      _isSeeking = seekAudio;
       _anchorWord = 0;
       _audioPosition = Duration.zero;
     });
     _updateReadingProgress(_calculateProgress());
     _precacheIllustration(1);
 
-    if (!_isAudio) return;
+    if (!seekAudio) return;
     try {
       await _audioBackgroundService.seek(Duration.zero);
     } finally {
@@ -528,10 +570,11 @@ class _StoryPageState extends State<StoryPage> {
     setState(() => _isFavorite = newState);
 
     try {
-      final docRef = _favoritesCollection.doc(widget.story.id);
+      final storyId = _story.id;
+      final docRef = _favoritesCollection.doc(storyId);
       if (newState) {
         await docRef.set({
-          'storyId': widget.story.id,
+          'storyId': storyId,
           'addedAt': FieldValue.serverTimestamp(),
         });
       } else {
@@ -573,7 +616,12 @@ class _StoryPageState extends State<StoryPage> {
   @override
   void dispose() {
     PaintingBinding.instance.systemFonts.removeListener(_onSystemFontsChanged);
-    _audioBackgroundService.stop();
+    // L'écoute continue quand on quitte la page : le mini-lecteur prend le relais
+    for (final subscription in _audioSubscriptions) {
+      subscription.cancel();
+    }
+    _queue.removeListener(_onQueueChanged);
+    _queuePlayer.removeListener(_onQueueChanged);
     _readingSaveTimer?.cancel();
     _readingTimer.stop();
     _saveReadingTime();
@@ -604,8 +652,9 @@ class _StoryPageState extends State<StoryPage> {
         );
 
         _registerReading(settings);
-        _initializeAudio(settings);
+        _applySettingsVoice(settings);
 
+        final isCurrent = _isCurrent;
         final storyParams = StoryViewParams(
           document: _document,
           anchorWord: _anchorWord,
@@ -621,7 +670,7 @@ class _StoryPageState extends State<StoryPage> {
           fontSize: settings.fontSize.toDouble(),
           isDyslexia: settings.dyslexia,
           image: _getCalculatedImageUrl(),
-          cover: widget.story.image,
+          cover: _story.image,
           onBack: () => Navigator.pop(context),
           onToggleFavorite: () => _toggleFavorite(),
           onRestart: _restartStory,
@@ -632,6 +681,17 @@ class _StoryPageState extends State<StoryPage> {
           onSeekAudio: _seekAudio,
           onRewind: _onRewind,
           onFastForward: _onFastForward,
+          onSkipToPrevious: isCurrent && _queuePlayer.hasPrevious
+              ? () => _queuePlayer.skipToPrevious()
+              : null,
+          onSkipToNext: isCurrent && _queuePlayer.hasNext
+              ? () => _queuePlayer.skipToNext()
+              : null,
+          // Pas de "+" pour l'histoire qu'on écoute déjà
+          isInQueue: StoryQueue.canQueue(_story) && !isCurrent
+              ? _queue.contains(_story.id)
+              : null,
+          onToggleQueue: _toggleQueue,
         );
         final bool isDarkTheme = settings.theme == 'dark';
 

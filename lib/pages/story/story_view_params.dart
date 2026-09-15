@@ -30,6 +30,14 @@ class StoryViewParams {
   final VoidCallback onRewind;
   final VoidCallback onFastForward;
 
+  /// Histoire précédente / suivante de la file ; null s'il n'y en a pas.
+  final VoidCallback? onSkipToPrevious;
+  final VoidCallback? onSkipToNext;
+
+  /// Histoire dans la file de lecture ; null si le bouton "+" est masqué.
+  final bool? isInQueue;
+  final VoidCallback? onToggleQueue;
+
   bool get isAtStart =>
       currentPageIndex == 0 && audioPosition == Duration.zero;
 
@@ -59,5 +67,9 @@ class StoryViewParams {
     required this.onSeekAudio,
     required this.onRewind,
     required this.onFastForward,
+    this.onSkipToPrevious,
+    this.onSkipToNext,
+    this.isInQueue,
+    this.onToggleQueue,
   });
 }

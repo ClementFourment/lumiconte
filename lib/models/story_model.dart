@@ -111,6 +111,18 @@ class StoryModel {
     );
   }
 
+  /// Voix demandée dans les paramètres si elle existe, sinon l'autre voix.
+  AudioVoiceData? voiceFor(String? voiceGender) {
+    final requested =
+        (voiceGender == 'homme' || voiceGender == 'male') ? 'homme' : 'femme';
+    final alternate = requested == 'homme' ? 'femme' : 'homme';
+    for (final key in [requested, alternate]) {
+      final voice = audio?[key];
+      if (voice != null && voice.url.trim().isNotEmpty) return voice;
+    }
+    return null;
+  }
+
   Map<String, dynamic> toMap() {
     return {
       'name': name,
