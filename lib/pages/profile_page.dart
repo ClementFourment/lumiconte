@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import 'package:lumiconte/constants/avatars.dart';
 import 'package:lumiconte/main.dart';
+import 'package:lumiconte/models/badge_model.dart';
 import 'package:lumiconte/models/profile_model.dart';
 import 'package:lumiconte/models/reading_progress_model.dart';
 import 'package:lumiconte/models/settings_model.dart';
@@ -13,6 +14,7 @@ import 'package:lumiconte/pages/manage_profiles_page.dart';
 import 'package:lumiconte/pages/morals_page.dart';
 import 'package:lumiconte/pages/parent_space_page.dart';
 import 'package:lumiconte/pages/rewards_page.dart';
+import 'package:lumiconte/services/badge_service.dart';
 import 'package:lumiconte/theme/app_theme.dart';
 import 'package:lumiconte/utils/reading_stats.dart';
 import 'package:lumiconte/widget/mascot.dart';
@@ -46,6 +48,7 @@ class _ProfilePageState extends State<ProfilePage> {
   late Stream<DocumentSnapshot> _profileStream;
   late Stream<QuerySnapshot> _progressStream;
   late Stream<QuerySnapshot> _settingsStream;
+  late Stream<BadgeProgress> _badgeStream;
 
   StreamSubscription? _progressSubscription;
   StreamSubscription? _settingsSubscription;
@@ -72,6 +75,8 @@ class _ProfilePageState extends State<ProfilePage> {
     _profileStream = _profileDoc.snapshots();
     _progressStream = _readingProgressCollection.snapshots();
     _settingsStream = _settingsCollection.snapshots();
+    _badgeStream =
+        BadgeService().watch(_uid!, widget.profileId, widget.stories);
   }
 
   void _initSubscriptions() {
@@ -223,7 +228,7 @@ class _ProfilePageState extends State<ProfilePage> {
     if (streak == 1) {
       return 'C\'est parti ! Reviens lire demain pour faire grandir ta flamme.';
     }
-    return 'Lis une histoire pour allumer ta flamme !';
+    return 'Lis une histoire pour allumer ta flamme !';
   }
 
   Widget _buildContent(BuildContext context, ProfileModel profile,
@@ -324,14 +329,32 @@ class _ProfilePageState extends State<ProfilePage> {
           ),
         ),
         const SizedBox(height: 12),
-        _buildActionCard(
-          context,
-          icon: Icons.emoji_events_rounded,
-          iconColor: const Color(0xFFF1C40F),
-          title: 'Mes récompenses',
-          onTap: () => _push(
-            RewardsPage(userId: _uid ?? '', profileId: widget.profileId),
-          ),
+        StreamBuilder<BadgeProgress>(
+          stream: _badgeStream,
+          builder: (context, badgeSnapshot) {
+            final total = BadgeModel.all.length;
+            final earned = badgeSnapshot.data?.earned;
+            final earnedCount = earned == null
+                ? null
+                : BadgeModel.all.where((b) => earned.contains(b.id)).length;
+
+            return _buildActionCard(
+              context,
+              icon: Icons.emoji_events_rounded,
+              iconColor: const Color(0xFFF1C40F),
+              title: 'Mes badges',
+              subtitle: earnedCount == null ? null : '$earnedCount / $total gagnés',
+              progress: earnedCount == null ? null : earnedCount / total,
+              onTap: () => _push(
+                NightSkyBackground(
+                  child: RewardsPage(
+                    profileId: widget.profileId,
+                    stories: widget.stories,
+                  ),
+                ),
+              ),
+            );
+          },
         ),
         const SizedBox(height: 12),
         _buildActionCard(

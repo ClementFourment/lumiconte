@@ -18,6 +18,7 @@ import 'package:lumiconte/pages/library_page.dart';
 
 import 'package:lumiconte/constants/avatars.dart';
 import 'package:lumiconte/navigation/floating_nav_bar.dart';
+import 'package:lumiconte/widget/badge_celebration.dart';
 import 'package:lumiconte/widget/night_sky_background.dart';
 
 class BottomNav extends StatefulWidget {
@@ -179,10 +180,15 @@ class BottomNavState extends State<BottomNav> {
                       extendBody: true,
                       // Ciel partagé derrière les onglets (leurs Scaffold
                       // sont transparents)
-                      body: NightSkyBackground(
-                        child: IndexedStack(
-                          index: currentIndex,
-                          children: pages,
+                      body: BadgeWatcher(
+                        key: ValueKey('badges_${activeProfile.id}'),
+                        profileId: activeProfile.id,
+                        stories: stories,
+                        child: NightSkyBackground(
+                          child: IndexedStack(
+                            index: currentIndex,
+                            children: pages,
+                          ),
                         ),
                       ),
                       bottomNavigationBar: FloatingNavBar(

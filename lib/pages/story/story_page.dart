@@ -6,6 +6,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:audio_service/audio_service.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:lumiconte/widget/b2_image.dart';
+import 'package:lumiconte/models/badge_model.dart';
 import 'package:lumiconte/models/profile_model.dart';
 import 'package:lumiconte/models/story_model.dart';
 import 'package:lumiconte/models/settings_model.dart';
@@ -14,6 +15,7 @@ import 'package:lumiconte/pages/story/story_immersive_view.dart';
 import 'package:lumiconte/pages/story/story_manuscript_view.dart';
 import 'package:lumiconte/pages/story/story_text.dart';
 import 'package:lumiconte/pages/story/story_view_params.dart';
+import 'package:lumiconte/services/badge_service.dart';
 import 'package:lumiconte/services/reading_progress_service.dart';
 import 'package:lumiconte/services/settings_service.dart';
 import 'package:lumiconte/services/audio_background_service.dart';
@@ -140,6 +142,9 @@ class _StoryPageState extends State<StoryPage> {
       await _audioBackgroundService.init();
 
       _audioBackgroundService.playbackState.listen((playbackState) {
+        // play() ne se termine qu'à la fin ou à la pause : le badge est
+        // attribué dès que la lecture démarre réellement
+        if (playbackState.playing) _awardFirstListen();
         if (mounted) {
           setState(() {
             _isPlaying = playbackState.playing;
@@ -451,6 +456,17 @@ class _StoryPageState extends State<StoryPage> {
       }
     }
     // _isLoading and _isPlaying are updated via the playbackState stream
+  }
+
+  bool _firstListenAwarded = false;
+
+  /// La première écoute n'est visible dans aucune donnée : le badge est
+  /// enregistré directement, et fêté par le BadgeWatcher.
+  void _awardFirstListen() {
+    if (_firstListenAwarded) return;
+    _firstListenAwarded = true;
+    BadgeService()
+        .award(_uid, widget.profile.id, const [BadgeModel.firstListenId]);
   }
 
   void _goToNextPage() {
