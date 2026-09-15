@@ -237,11 +237,12 @@ class SettingsService extends FirebaseService {
         .snapshots()
         .map((snapshot) {
       if (snapshot.docs.isNotEmpty) {
-        // Recherche prioritaire du doc 'default' ou du premier trouvé
-        final doc = snapshot.docs.firstWhere(
-          (d) => d.id == settingsId,
-          orElse: () => snapshot.docs.first,
-        );
+        // Recherche prioritaire du doc 'default' ou du premier trouvé.
+        // Pas de firstWhere(orElse:) : la liste est typée plus finement à
+        // l'exécution et la closure orElse y lève une TypeError.
+        final doc =
+            snapshot.docs.where((d) => d.id == settingsId).firstOrNull ??
+                snapshot.docs.first;
         return SettingsModel.fromMap(doc.data(), doc.id);
       }
       return null;

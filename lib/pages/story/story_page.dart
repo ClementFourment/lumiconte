@@ -115,6 +115,7 @@ class _StoryPageState extends State<StoryPage> {
     }
     _document = _documentFor(_story, _voice);
 
+    _queuePlayer.followLanguage(widget.profile);
     _queue.addListener(_onQueueChanged);
     _queuePlayer.addListener(_onQueueChanged);
     _listenToAudio();
@@ -265,7 +266,7 @@ class _StoryPageState extends State<StoryPage> {
   /// qui compte : un changement de voix vaut pour la prochaine écoute.
   void _applySettingsVoice(SettingsModel settings) {
     if (_isCurrent) return;
-    final voice = _story.voiceFor(settings.voiceGender);
+    final voice = _story.voiceFor(settings.language, settings.voiceGender);
     _isAudio = voice != null;
     if (identical(voice, _voice)) return;
     _voice = voice;
@@ -688,7 +689,7 @@ class _StoryPageState extends State<StoryPage> {
               ? () => _queuePlayer.skipToNext()
               : null,
           // Pas de "+" pour l'histoire qu'on écoute déjà
-          isInQueue: StoryQueue.canQueue(_story) && !isCurrent
+          isInQueue: _queue.canQueue(_story) && !isCurrent
               ? _queue.contains(_story.id)
               : null,
           onToggleQueue: _toggleQueue,

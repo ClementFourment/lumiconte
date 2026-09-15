@@ -5,6 +5,7 @@ import 'package:lumiconte/models/category_model.dart';
 import 'package:lumiconte/models/profile_model.dart';
 import 'package:lumiconte/models/story_model.dart';
 import 'package:lumiconte/models/reading_progress_model.dart';
+import 'package:lumiconte/services/story_queue_player.dart';
 import 'package:lumiconte/widget/b2_image.dart';
 import 'package:lumiconte/widget/lantern_progress_bar.dart';
 import 'package:lumiconte/widget/story_queue_widgets.dart';
@@ -28,6 +29,12 @@ class LibraryPage extends StatefulWidget {
 
 class _LibraryPageState extends State<LibraryPage> {
   String _selectedFilter = 'tous';
+
+  @override
+  void initState() {
+    super.initState();
+    StoryQueuePlayer().followLanguage(widget.profile);
+  }
 
   /// Combine en temps réel la progression de lecture et les favoris du profil
   Stream<List<QuerySnapshot>> _combineStreams(DocumentReference profileRef) {

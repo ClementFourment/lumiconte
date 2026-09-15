@@ -44,11 +44,11 @@ Future<void> seedDatabase() async {
     image: 'lien_image_story',
     illustrations: 'lien_illustrations',
     audio: {
-      'femme': AudioVoiceData(
+      'fr_femme': AudioVoiceData(
         url: 'audio/mission_lune_femme.mp3',
         audioTimes: '{"segments":[]}',
       ),
-      'homme': AudioVoiceData(
+      'fr_homme': AudioVoiceData(
         url: 'audio/mission_lune_homme.mp3',
         audioTimes: '{"segments":[]}',
       ),

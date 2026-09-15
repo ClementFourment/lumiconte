@@ -9,7 +9,7 @@ StoryModel _story(String id, {bool withAudio = true}) => StoryModel(
       age_max: null,
       content: '',
       audio: withAudio
-          ? {'femme': AudioVoiceData(url: 'audio/$id.mp3', audioTimes: '')}
+          ? {'fr_femme': AudioVoiceData(url: 'audio/$id.mp3', audioTimes: '')}
           : null,
     );
 
@@ -37,7 +37,7 @@ void main() {
       age_min: null,
       age_max: null,
       content: '',
-      audio: {'fr_femme': AudioVoiceData(url: 'audio/x.mp3', audioTimes: '')},
+      audio: {'femme': AudioVoiceData(url: 'audio/x.mp3', audioTimes: '')},
     );
     final emptyUrl = StoryModel(
       id: 'vide',
@@ -45,11 +45,62 @@ void main() {
       age_min: null,
       age_max: null,
       content: '',
-      audio: {'femme': AudioVoiceData(url: ' ', audioTimes: '')},
+      audio: {'fr_femme': AudioVoiceData(url: ' ', audioTimes: '')},
     );
 
     expect(queue.add(otherKey), isFalse);
     expect(queue.add(emptyUrl), isFalse);
+  });
+
+  test("n'accepte que les histoires ayant une voix dans la langue du profil",
+      () {
+    final queue = StoryQueue.forTesting();
+    final bilingual = StoryModel(
+      id: 'bi',
+      name: 'bi',
+      age_min: null,
+      age_max: null,
+      content: '',
+      audio: {
+        'fr_femme': AudioVoiceData(url: 'audio/bi_fr.mp3', audioTimes: ''),
+        'en_homme': AudioVoiceData(url: 'audio/bi_en.mp3', audioTimes: ''),
+      },
+    );
+    // Même cas que dans la base : clé en_ présente, url vide
+    final frenchOnly = StoryModel(
+      id: 'fr',
+      name: 'fr',
+      age_min: null,
+      age_max: null,
+      content: '',
+      audio: {
+        'fr_femme': AudioVoiceData(url: 'audio/fr.mp3', audioTimes: ''),
+        'en_femme': AudioVoiceData(url: '', audioTimes: ''),
+      },
+    );
+
+    queue
+      ..add(bilingual)
+      ..add(frenchOnly);
+    expect(queue.stories.map((s) => s.id), ['bi', 'fr']);
+
+    // Passage à l'anglais : l'histoire sans voix anglaise quitte la file
+    queue.language = 'en';
+    expect(queue.canQueue(frenchOnly), isFalse);
+    expect(queue.stories.map((s) => s.id), ['bi']);
+    expect(queue.add(frenchOnly), isFalse);
+  });
+
+  test("changer de langue garde l'histoire en cours d'écoute", () {
+    final queue = StoryQueue.forTesting()
+      ..add(_story('a'))
+      ..add(_story('b'));
+
+    queue.start();
+    queue.next();
+    queue.language = 'es';
+    expect(queue.stories.map((s) => s.id), ['b']);
+    expect(queue.current?.id, 'b');
   });
 
   test("enchaîne les histoires puis se vide après la dernière", () {
