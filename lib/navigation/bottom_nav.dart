@@ -17,6 +17,7 @@ import 'package:lumiconte/pages/library_page.dart';
 import 'package:lumiconte/pages/morals_page.dart';
 
 import 'package:lumiconte/theme/app_theme.dart';
+import 'package:lumiconte/widget/night_sky_background.dart';
 
 class BottomNav extends StatefulWidget {
   const BottomNav({super.key});
@@ -99,14 +100,16 @@ class BottomNavState extends State<BottomNav> {
               .doc(_uid)
               .snapshots()
               .distinct((prev, next) =>
-                  prev.data()?['activeProfileId'] == next.data()?['activeProfileId']),
+                  prev.data()?['activeProfileId'] ==
+                  next.data()?['activeProfileId']),
           builder: (context, userSnapshot) {
             final activeProfileId =
                 userSnapshot.data?.data()?['activeProfileId'] as String?;
 
             return StreamBuilder<List<ProfileModel>>(
-              stream: _profileService.getUserProfilesStream(_uid!)
-                  .distinct((prev, next) => prev.length == next.length &&
+              stream: _profileService.getUserProfilesStream(_uid!).distinct(
+                  (prev, next) =>
+                      prev.length == next.length &&
                       prev.every((p) => p.id == next[prev.indexOf(p)].id)),
               builder: (context, profilesSnapshot) {
                 if (profilesSnapshot.connectionState ==
@@ -162,9 +165,13 @@ class BottomNavState extends State<BottomNav> {
                   valueListenable: _currentIndexNotifier,
                   builder: (context, currentIndex, child) {
                     return Scaffold(
-                      body: IndexedStack(
-                        index: currentIndex,
-                        children: pages,
+                      // Ciel partagé derrière les onglets (leurs Scaffold
+                      // sont transparents)
+                      body: NightSkyBackground(
+                        child: IndexedStack(
+                          index: currentIndex,
+                          children: pages,
+                        ),
                       ),
                       bottomNavigationBar: BottomNavigationBar(
                         backgroundColor: AppTheme.getCardColor(context),
@@ -188,8 +195,8 @@ class BottomNavState extends State<BottomNav> {
                             label: "Morales",
                           ),
                           BottomNavigationBarItem(
-                            icon: Icon(Icons.person_rounded),
-                            label: "Profil",
+                            icon: Icon(Icons.face_rounded),
+                            label: "Moi",
                           ),
                         ],
                       ),

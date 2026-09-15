@@ -77,6 +77,12 @@ class _ProfileCreationPageState extends State<ProfileCreationPage> {
 
       appSettings.toggleDarkMode(profileId, false);
 
+      // Création de profil = parcours parent : c'est ici qu'on demande
+      // l'autorisation des rappels, jamais sur les écrans de l'enfant
+      if (appSettings.isNotificationsEnabled) {
+        await appSettings.requestNotificationPermissions();
+      }
+
       if (mounted) {
         context.go('/home');
       }

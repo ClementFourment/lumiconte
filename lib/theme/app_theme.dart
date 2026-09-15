@@ -1,6 +1,27 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
+  /// Titres en Fredoka (police arrondie, identité enfant), textes courants en
+  /// Nunito (très lisible).
+  static TextTheme buildTextTheme(TextTheme base) {
+    final body = GoogleFonts.nunitoTextTheme(base);
+    TextStyle? title(TextStyle? style) =>
+        GoogleFonts.fredoka(textStyle: style, fontWeight: FontWeight.w600);
+
+    return body.copyWith(
+      displayLarge: title(body.displayLarge),
+      displayMedium: title(body.displayMedium),
+      displaySmall: title(body.displaySmall),
+      headlineLarge: title(body.headlineLarge),
+      headlineMedium: title(body.headlineMedium),
+      headlineSmall: title(body.headlineSmall),
+      titleLarge: title(body.titleLarge),
+      titleMedium: title(body.titleMedium),
+      titleSmall: title(body.titleSmall),
+    );
+  }
+
   // Couleurs réutilisables Lumiconte
   static const Color accentColor = Color(0xFFFDB833); // Doré Lumiconte
 
@@ -31,16 +52,16 @@ class AppTheme {
       surface: lightCard,
       onSurface: Colors.black87,
     ),
-    appBarTheme: const AppBarTheme(
+    appBarTheme: AppBarTheme(
       backgroundColor: Colors.transparent,
       surfaceTintColor: Colors.transparent,
       elevation: 0,
       centerTitle: false,
       foregroundColor: Colors.black,
-      titleTextStyle: TextStyle(
+      titleTextStyle: GoogleFonts.fredoka(
         color: Colors.black,
-        fontSize: 18,
-        fontWeight: FontWeight.bold,
+        fontSize: 22,
+        fontWeight: FontWeight.w600,
       ),
     ),
     cardTheme: CardThemeData(
@@ -64,16 +85,16 @@ class AppTheme {
       surface: darkCard,
       onSurface: Colors.white,
     ),
-    appBarTheme: const AppBarTheme(
+    appBarTheme: AppBarTheme(
       backgroundColor: Colors.transparent,
       surfaceTintColor: Colors.transparent,
       elevation: 0,
       centerTitle: false,
       foregroundColor: Colors.white,
-      titleTextStyle: TextStyle(
+      titleTextStyle: GoogleFonts.fredoka(
         color: Colors.white,
-        fontSize: 18,
-        fontWeight: FontWeight.bold,
+        fontSize: 22,
+        fontWeight: FontWeight.w600,
       ),
     ),
     cardTheme: CardThemeData(

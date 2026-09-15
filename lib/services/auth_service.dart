@@ -4,6 +4,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:lumiconte/models/subscription_model.dart';
 import 'package:lumiconte/models/user_model.dart';
 import 'firebase_service.dart';
+import 'profile_service.dart';
 import 'user_service.dart';
 import 'dart:convert';
 import 'dart:math';
@@ -196,6 +197,42 @@ class AuthService extends FirebaseService {
     } catch (e) {
       print('Erreur Sign Out: $e');
       rethrow;
+    }
+  }
+
+  /// Firebase exige une connexion récente pour supprimer un compte.
+  bool get canDeleteAccountNow {
+    final lastSignIn = _firebaseAuth.currentUser?.metadata.lastSignInTime;
+    return lastSignIn != null &&
+        DateTime.now().difference(lastSignIn) < const Duration(minutes: 5);
+  }
+
+  // 🗑️ Suppression définitive du compte (obligatoire App Store / Google Play)
+  /// Supprime tous les profils et leurs données, le document utilisateur puis
+  /// le compte Firebase Auth. Vérifier [canDeleteAccountNow] avant l'appel :
+  /// sinon les données seraient effacées alors que le compte resterait.
+  Future<void> deleteAccount() async {
+    final user = _firebaseAuth.currentUser;
+    if (user == null) throw Exception('Utilisateur non connecté');
+
+    // Lecture directe (sans tri) pour n'oublier aucun profil
+    final profileService = ProfileService();
+    final profiles = await firestore
+        .collection('users')
+        .doc(user.uid)
+        .collection('profiles')
+        .get();
+    for (final profile in profiles.docs) {
+      await profileService.deleteProfile(user.uid, profile.id);
+    }
+    await _userService.deleteUser(user.uid);
+    await user.delete();
+
+    try {
+      await _ensureInitialized();
+      await _googleSignIn.signOut();
+    } catch (e) {
+      debugPrint('Déconnexion Google après suppression: $e');
     }
   }
 

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:lumiconte/config/firebase_options.dart';
 import 'package:lumiconte/config/router.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:lumiconte/services/app_settings.dart';
 import 'package:lumiconte/theme/app_theme.dart';
 import 'package:audio_service/audio_service.dart';
@@ -69,28 +68,12 @@ class LumiconteApp extends StatelessWidget {
 
           // ☀️ THÈME CLAIR
           theme: AppTheme.lightTheme.copyWith(
-            textTheme: GoogleFonts.nunitoTextTheme(lightTextTheme).copyWith(
-              titleLarge: GoogleFonts.aBeeZee(
-                fontSize: 48,
-                fontWeight: FontWeight.w900,
-                color: Colors.white,
-                letterSpacing: -1.2,
-                height: 1.0,
-              ),
-            ),
+            textTheme: AppTheme.buildTextTheme(lightTextTheme),
           ),
 
           // 🌙 THÈME SOMBRE
           darkTheme: AppTheme.darkTheme.copyWith(
-            textTheme: GoogleFonts.nunitoTextTheme(darkTextTheme).copyWith(
-              titleLarge: GoogleFonts.aBeeZee(
-                fontSize: 48,
-                fontWeight: FontWeight.w900,
-                color: Colors.white,
-                letterSpacing: -1.2,
-                height: 1.0,
-              ),
-            ),
+            textTheme: AppTheme.buildTextTheme(darkTextTheme),
           ),
         );
       },

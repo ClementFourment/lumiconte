@@ -11,7 +11,7 @@ import 'package:lumiconte/widget/story_search_bar.dart';
 import 'package:lumiconte/pages/story/story_page.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lumiconte/widget/lantern_progress_bar.dart';
-import 'package:lumiconte/main.dart';
+import 'package:lumiconte/widget/mascot.dart';
 
 class HomePage extends StatefulWidget {
   final ProfileModel profile;
@@ -36,13 +36,18 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
-    // Demande les permissions une fois l'écran et l'Activity Android affichés
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      appSettings.requestNotificationPermissions();
-    });
+    // Pas de demande d'autorisation de notifications ici : l'enfant voit cet
+    // écran. Elle est faite côté parent (création de profil, espace parents).
     _readingProgressService
         .addMissingMoraleUnlocked(widget.profile.id)
         .catchError((e) => debugPrint('Erreur ajout moraleUnlocked : $e'));
+  }
+
+  /// Petite phrase de la mascotte, adaptée au moment de la journée.
+  String _greetingSubtitle() {
+    final hour = DateTime.now().hour;
+    if (hour >= 18 || hour < 5) return "Une histoire avant de dormir ?";
+    return "Quelle histoire on lit aujourd'hui ?";
   }
 
   @override
@@ -97,6 +102,7 @@ class _HomePageState extends State<HomePage> {
         }).toList();
 
         return Scaffold(
+          backgroundColor: Colors.transparent,
           body: SafeArea(
             child: SingleChildScrollView(
               physics: const BouncingScrollPhysics(),
@@ -110,16 +116,30 @@ class _HomePageState extends State<HomePage> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
+                        const Mascot(size: 64),
+                        const SizedBox(width: 10),
                         Expanded(
-                          child: Text(
-                            "Bonjour ${widget.profile.name} !",
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: textTheme.headlineSmall?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 22,
-                              color: colorScheme.onSurface,
-                            ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                "Bonjour ${widget.profile.name} !",
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: textTheme.headlineSmall?.copyWith(
+                                  fontSize: 26,
+                                  color: colorScheme.onSurface,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                _greetingSubtitle(),
+                                style: textTheme.bodyMedium?.copyWith(
+                                  color: colorScheme.onSurface
+                                      .withValues(alpha: 0.7),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                         const SizedBox(width: 10),

@@ -44,6 +44,7 @@ class MoralsPage extends StatelessWidget {
         .collection('readingProgress');
 
     return Scaffold(
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         elevation: 0,
         title: Text(
