@@ -45,8 +45,16 @@ class RewardsPage extends StatelessWidget {
           return StreamBuilder<QuerySnapshot>(
             stream: FirebaseFirestore.instance.collection('badges').snapshots(),
             builder: (context, allBadgesSnapshot) {
-              if (userBadgesSnapshot.connectionState == ConnectionState.waiting ||
-                  !allBadgesSnapshot.hasData) {
+              final error = userBadgesSnapshot.error ?? allBadgesSnapshot.error;
+              if (error != null) {
+                debugPrint('Erreur chargement récompenses: $error');
+                return _buildMessage(
+                  'Impossible de charger tes récompenses pour le moment.',
+                  secondaryTextColor,
+                );
+              }
+
+              if (!userBadgesSnapshot.hasData || !allBadgesSnapshot.hasData) {
                 return const Center(
                   child: CircularProgressIndicator(
                     color: AppTheme.accentColor,
@@ -60,7 +68,10 @@ class RewardsPage extends StatelessWidget {
                 return BadgeModel.fromMap(data, doc.id);
               }).toList();
 
-              final Set<String> earnedBadgeIds = userBadges.map((b) => b.name.trim().toLowerCase()).toSet();
+              // Un badge obtenu est reconnu par son id (id du document) ou par son nom
+              final Set<String> earnedBadgeIds = {
+                for (final b in userBadges) ...[b.id, b.name.trim().toLowerCase()],
+              };
 
               // --- CONVERSION TYPÉE : MAPPING DE LA COLLECTION GLOBALE DE BADGES ---
               final List<BadgeModel> allBadges = (allBadgesSnapshot.data?.docs ?? []).map((doc) {
@@ -69,8 +80,15 @@ class RewardsPage extends StatelessWidget {
               }).toList();
 
               final int totalBadges = allBadges.length;
-              final int earnedCount = allBadges.where((b) => earnedBadgeIds.contains(b.id)).length;
+              final int earnedCount = allBadges.where((b) => _isEarned(b, earnedBadgeIds)).length;
               final double progressPercent = totalBadges > 0 ? (earnedCount / totalBadges) : 0.0;
+
+              if (totalBadges == 0) {
+                return _buildMessage(
+                  'Aucune récompense disponible pour le moment.\nContinue à lire des histoires !',
+                  secondaryTextColor,
+                );
+              }
 
               return Column(
                 children: [
@@ -146,7 +164,7 @@ class RewardsPage extends StatelessWidget {
                       itemCount: totalBadges,
                       itemBuilder: (context, index) {
                         final BadgeModel badge = allBadges[index];
-                        final bool isEarned = earnedBadgeIds.contains(badge.id);
+                        final bool isEarned = _isEarned(badge, earnedBadgeIds);
 
                         return _buildBadgeCard(
                           badge: badge, 
@@ -163,6 +181,23 @@ class RewardsPage extends StatelessWidget {
             },
           );
         },
+      ),
+    );
+  }
+
+  bool _isEarned(BadgeModel badge, Set<String> earnedBadgeIds) =>
+      earnedBadgeIds.contains(badge.id) ||
+      earnedBadgeIds.contains(badge.name.trim().toLowerCase());
+
+  Widget _buildMessage(String message, Color color) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Text(
+          message,
+          textAlign: TextAlign.center,
+          style: GoogleFonts.nunito(fontSize: 16, color: color),
+        ),
       ),
     );
   }
