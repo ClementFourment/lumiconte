@@ -561,6 +561,7 @@ class _StoryPageState extends State<StoryPage> {
           fontSize: settings.fontSize.toDouble(),
           isDyslexia: settings.dyslexia,
           image: _getCalculatedImageUrl(),
+          cover: widget.story.image,
           onBack: () => Navigator.pop(context),
           onToggleFavorite: () => _toggleFavorite(),
           onRestart: _restartStory,

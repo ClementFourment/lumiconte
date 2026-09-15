@@ -48,7 +48,7 @@ class StoryImmersiveView extends StatelessWidget {
             Stack(
               fit: StackFit.expand,
               children: [
-                StoryImage(imageKey: params.image),
+                StoryImage(imageKey: params.image, fallbackKey: params.cover),
                 DecoratedBox(
                   decoration: BoxDecoration(
                     gradient: LinearGradient(

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:lumiconte/widget/b2_image.dart';
 import 'package:lumiconte/pages/story/story_text.dart';
 import 'package:lumiconte/pages/story/story_view_params.dart';
@@ -126,22 +127,88 @@ class StoryCircleIconButton extends StatelessWidget {
   }
 }
 
-class StoryImage extends StatelessWidget {
+/// Illustration de la page. Quand la clé change, la nouvelle image n'est
+/// affichée qu'une fois chargée : si elle n'existe pas, on garde la précédente.
+/// S'il n'y a pas d'image précédente, on affiche [fallbackKey] (la couverture).
+class StoryImage extends StatefulWidget {
   final String? imageKey;
+  final String? fallbackKey;
 
-  const StoryImage({super.key, this.imageKey});
+  const StoryImage({super.key, this.imageKey, this.fallbackKey});
+
+  @override
+  State<StoryImage> createState() => _StoryImageState();
+}
+
+class _StoryImageState extends State<StoryImage> {
+  String? _shownKey;
+  ImageStream? _stream;
+  ImageStreamListener? _listener;
+
+  @override
+  void initState() {
+    super.initState();
+    _shownKey = widget.imageKey;
+  }
+
+  @override
+  void didUpdateWidget(StoryImage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.imageKey != oldWidget.imageKey) _load(widget.imageKey);
+  }
+
+  void _load(String? key) {
+    _stopListening();
+    if (key == null || key.isEmpty || key == _shownKey) return;
+
+    final stream = CachedNetworkImageProvider(B2Image.urlFor(key))
+        .resolve(createLocalImageConfiguration(context));
+    final listener = ImageStreamListener(
+      (_, __) {
+        _stopListening();
+        if (mounted) setState(() => _shownKey = key);
+      },
+      onError: (_, __) => _stopListening(),
+    );
+    _stream = stream;
+    _listener = listener;
+    stream.addListener(listener);
+  }
+
+  void _stopListening() {
+    final listener = _listener;
+    if (listener != null) _stream?.removeListener(listener);
+    _stream = null;
+    _listener = null;
+  }
+
+  @override
+  void dispose() {
+    _stopListening();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return SizedBox.expand(
       child: B2Image(
-        objectKey: imageKey,
+        objectKey: _shownKey,
         width: double.infinity,
         height: double.infinity,
         fit: BoxFit.cover,
         fadeInDuration: const Duration(milliseconds: 200),
         fadeOutDuration: Duration.zero,
         useOldImageOnUrlChange: true,
+        errorWidget: _shownKey == widget.fallbackKey
+            ? null
+            : B2Image(
+                objectKey: widget.fallbackKey,
+                width: double.infinity,
+                height: double.infinity,
+                fit: BoxFit.cover,
+                fadeInDuration: const Duration(milliseconds: 200),
+                fadeOutDuration: Duration.zero,
+              ),
       ),
     );
   }
@@ -179,7 +246,7 @@ class _StoryPageTransitionState extends State<StoryPageTransition> {
     final currentKey = ValueKey(widget.pageIndex);
 
     return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 220),
+      duration: const Duration(milliseconds: 50),
       switchInCurve: Curves.easeOutCubic,
       switchOutCurve: Curves.easeInCubic,
       layoutBuilder: (currentChild, previousChildren) => Stack(

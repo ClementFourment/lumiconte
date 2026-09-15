@@ -18,6 +18,7 @@ class StoryViewParams {
   final double fontSize;
   final bool isDyslexia;
   final String? image;
+  final String? cover;
   final VoidCallback onBack;
   final VoidCallback onToggleFavorite;
   final VoidCallback onRestart;
@@ -47,6 +48,7 @@ class StoryViewParams {
     required this.fontSize,
     required this.isDyslexia,
     required this.image,
+    required this.cover,
     required this.onBack,
     required this.onToggleFavorite,
     required this.onRestart,
