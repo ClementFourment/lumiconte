@@ -70,10 +70,10 @@ class SettingsService extends FirebaseService {
       userId,
       profileId,
       settingsId,
-    ).update({
+    ).set({
       'streak': newStreak,
       'stopRead': Timestamp.fromDate(now),
-    });
+    }, SetOptions(merge: true));
   }
 
   // lastReadingDate mis à jour dans Firestore
@@ -83,11 +83,49 @@ class SettingsService extends FirebaseService {
     String settingsId = 'default',
   }) async {
     try {
-      await _getSettingsDocRef(userId, profileId, settingsId).update({
+      await _getSettingsDocRef(userId, profileId, settingsId).set({
         'lastReadingDate': Timestamp.now(),
-      });
+      }, SetOptions(merge: true));
     } catch (e) {
       debugPrint('Erreur mise à jour lastReadingDate: $e');
+      rethrow;
+    }
+  }
+
+  /// Garantit qu'un profil a son document `settings/default`, celui que visent
+  /// toutes les écritures.
+  /// - Déjà présent : rien à faire.
+  /// - Anciens profils dont les paramètres ont un autre identifiant : leur
+  ///   contenu est recopié dans `default` et les anciens documents supprimés,
+  ///   pour que lectures et écritures portent sur le même document.
+  /// - Aucun document : création avec les valeurs par défaut.
+  Future<void> ensureDefaultSettings(String userId, String profileId) async {
+    try {
+      final defaultRef = _getSettingsDocRef(userId, profileId);
+      if ((await defaultRef.get()).exists) return;
+
+      final others = await defaultRef.parent.get();
+      if (others.docs.isEmpty) {
+        await createOrInitSettings(userId, profileId);
+        return;
+      }
+
+      // Plusieurs anciens documents : on garde le plus lu
+      final source = others.docs.reduce((a, b) {
+        final timeA = (a.data()['totalReadingTime'] as num?) ?? 0;
+        final timeB = (b.data()['totalReadingTime'] as num?) ?? 0;
+        return timeB > timeA ? b : a;
+      });
+
+      // Recopie et suppression dans un même batch : tout ou rien
+      final batch = firestore.batch();
+      batch.set(defaultRef, source.data(), SetOptions(merge: true));
+      for (final doc in others.docs) {
+        batch.delete(doc.reference);
+      }
+      await batch.commit();
+    } catch (e) {
+      debugPrint('Erreur migration settings/default: $e');
       rethrow;
     }
   }
@@ -222,7 +260,10 @@ class SettingsService extends FirebaseService {
     Map<String, dynamic> updates,
   ) async {
     try {
-      await _getSettingsDocRef(userId, profileId, settingsId).update(updates);
+      await _getSettingsDocRef(userId, profileId, settingsId).set(
+        updates,
+        SetOptions(merge: true),
+      );
     } catch (e) {
       debugPrint('Erreur update settings: $e');
       rethrow;
@@ -237,9 +278,9 @@ class SettingsService extends FirebaseService {
     String settingsId = 'default',
   }) async {
     try {
-      await _getSettingsDocRef(userId, profileId, settingsId).update({
+      await _getSettingsDocRef(userId, profileId, settingsId).set({
         'totalReadingTime': FieldValue.increment(secondes),
-      });
+      }, SetOptions(merge: true));
     } catch (e) {
       debugPrint('Erreur incrément temps de lecture: $e');
       rethrow;
@@ -254,9 +295,9 @@ class SettingsService extends FirebaseService {
     String settingsId = 'default',
   }) async {
     try {
-      await _getSettingsDocRef(userId, profileId, settingsId).update({
+      await _getSettingsDocRef(userId, profileId, settingsId).set({
         'streak': newStreak,
-      });
+      }, SetOptions(merge: true));
     } catch (e) {
       debugPrint('Erreur mise à jour streak: $e');
       rethrow;

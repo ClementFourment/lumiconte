@@ -48,7 +48,7 @@ class MoralsPage extends StatelessWidget {
       appBar: AppBar(
         elevation: 0,
         title: Text(
-          'Morales débloquées',
+          'Mes morales',
           style: textTheme.headlineSmall?.copyWith(
             fontWeight: FontWeight.bold,
             letterSpacing: 1,

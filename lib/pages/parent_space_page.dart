@@ -61,7 +61,9 @@ class _ParentSpacePageState extends State<ParentSpacePage> {
 
   Future<void> _updateSetting(String docId, String key, dynamic value) async {
     try {
-      await _settingsCollection.doc(docId).update({key: value});
+      await _settingsCollection
+          .doc(docId)
+          .set({key: value}, SetOptions(merge: true));
     } catch (e) {
       debugPrint("Erreur lors de la mise à jour du setting: $e");
     }

@@ -9,14 +9,15 @@ import 'package:lumiconte/models/category_model.dart';
 import 'package:lumiconte/services/category_service.dart';
 import 'package:lumiconte/services/story_service.dart';
 import 'package:lumiconte/services/profile_service.dart';
+import 'package:lumiconte/services/settings_service.dart';
 
 // Importations des pages
 import 'package:lumiconte/pages/home_page.dart';
 import 'package:lumiconte/pages/profile_page.dart';
 import 'package:lumiconte/pages/library_page.dart';
-import 'package:lumiconte/pages/morals_page.dart';
 
-import 'package:lumiconte/theme/app_theme.dart';
+import 'package:lumiconte/constants/avatars.dart';
+import 'package:lumiconte/navigation/floating_nav_bar.dart';
 import 'package:lumiconte/widget/night_sky_background.dart';
 
 class BottomNav extends StatefulWidget {
@@ -56,6 +57,18 @@ class BottomNavState extends State<BottomNav> {
     _currentIndexNotifier.value = index;
   }
 
+  final Set<String> _settingsCheckedProfiles = {};
+
+  /// Crée ou migre `settings/default` une fois par profil ouvert, pour que
+  /// les onglets et l'espace parents trouvent toujours les paramètres.
+  void _ensureSettings(String profileId) {
+    if (!_settingsCheckedProfiles.add(profileId)) return;
+    SettingsService().ensureDefaultSettings(_uid!, profileId).catchError((e) {
+      _settingsCheckedProfiles.remove(profileId);
+      debugPrint('Paramètres du profil $profileId : $e');
+    });
+  }
+
   Future<DataFuture> _loadStaticData() async {
     final categories = await _categoryService.getAllCategories();
     final stories = await _storyService.getAllStories();
@@ -73,8 +86,6 @@ class BottomNavState extends State<BottomNav> {
         body: Center(child: Text("Utilisateur non connecté.")),
       );
     }
-
-    final colorScheme = Theme.of(context).colorScheme;
 
     return FutureBuilder<DataFuture>(
       future: _dataFuture,
@@ -137,6 +148,8 @@ class BottomNavState extends State<BottomNav> {
                   activeProfile = profiles.first;
                 }
 
+                _ensureSettings(activeProfile.id);
+
                 final pages = [
                   HomePage(
                     key: ValueKey('home_${activeProfile.id}'),
@@ -150,14 +163,10 @@ class BottomNavState extends State<BottomNav> {
                     categories: categories,
                     stories: stories,
                   ),
-                  MoralsPage(
-                    key: ValueKey('morals_${activeProfile.id}'),
-                    profile: activeProfile,
-                    stories: stories,
-                  ),
                   ProfilePage(
                     key: ValueKey('profile_${activeProfile.id}'),
                     profileId: activeProfile.id,
+                    stories: stories,
                   ),
                 ];
 
@@ -165,6 +174,9 @@ class BottomNavState extends State<BottomNav> {
                   valueListenable: _currentIndexNotifier,
                   builder: (context, currentIndex, child) {
                     return Scaffold(
+                      // La barre flotte au-dessus du contenu : les pages
+                      // ajoutent MediaQuery.paddingOf(context).bottom en bas
+                      extendBody: true,
                       // Ciel partagé derrière les onglets (leurs Scaffold
                       // sont transparents)
                       body: NightSkyBackground(
@@ -173,30 +185,24 @@ class BottomNavState extends State<BottomNav> {
                           children: pages,
                         ),
                       ),
-                      bottomNavigationBar: BottomNavigationBar(
-                        backgroundColor: AppTheme.getCardColor(context),
-                        selectedItemColor: colorScheme.primary,
-                        unselectedItemColor:
-                            colorScheme.onSurface.withValues(alpha: 0.6),
+                      bottomNavigationBar: FloatingNavBar(
                         currentIndex: currentIndex,
                         onTap: (value) => _currentIndexNotifier.value = value,
-                        type: BottomNavigationBarType.fixed,
-                        items: const [
-                          BottomNavigationBarItem(
-                            icon: Icon(Icons.home_rounded),
+                        items: [
+                          const FloatingNavItem(
+                            icon: Icons.home_rounded,
                             label: "Accueil",
                           ),
-                          BottomNavigationBarItem(
-                            icon: Icon(Icons.menu_book_rounded),
-                            label: "Bibliothèque",
+                          const FloatingNavItem(
+                            icon: Icons.auto_stories_rounded,
+                            label: "Histoires",
                           ),
-                          BottomNavigationBarItem(
-                            icon: Icon(Icons.auto_awesome_rounded),
-                            label: "Morales",
-                          ),
-                          BottomNavigationBarItem(
-                            icon: Icon(Icons.face_rounded),
-                            label: "Moi",
+                          FloatingNavItem(
+                            avatar: AssetImage(
+                              activeProfile.avatarPath ??
+                                  AppAvatars.defaultAvatar,
+                            ),
+                            label: "Mes trésors",
                           ),
                         ],
                       ),

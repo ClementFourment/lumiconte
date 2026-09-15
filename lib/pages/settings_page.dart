@@ -36,7 +36,9 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _updateSetting(String docId, String key, dynamic value) async {
-    await _settingsCollection.doc(docId).update({key: value});
+    await _settingsCollection
+        .doc(docId)
+        .set({key: value}, SetOptions(merge: true));
   }
 
   List<TextSpan> _parseWordToDyslexiaSpans(

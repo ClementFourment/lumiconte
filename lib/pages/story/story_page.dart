@@ -75,6 +75,10 @@ class _StoryPageState extends State<StoryPage> {
         .doc(widget.profile.id)
         .collection('settings');
     _settingsStream = _settingsCollection.snapshots();
+    // Sans document de paramètres, l'écran resterait bloqué sur le chargement
+    _settingsService
+        .ensureDefaultSettings(_uid, widget.profile.id)
+        .catchError((e) => debugPrint('Paramètres du profil : $e'));
 
     _favoritesCollection = FirebaseFirestore.instance
         .collection('users')
@@ -540,8 +544,9 @@ class _StoryPageState extends State<StoryPage> {
       await _settingsService.registerReading(
         _uid,
         widget.profile.id,
+        // Toujours `default` : écrire sur un ancien identifiant le recréerait
+        // juste après sa migration
         settings,
-        settingsId: settings.id,
       );
     } catch (e) {
       _readingRegistered = false;

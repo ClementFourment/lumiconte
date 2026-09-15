@@ -138,7 +138,7 @@ class _LibraryPageState extends State<LibraryPage> {
           appBar: AppBar(
             elevation: 0,
             title: Text(
-              'Bibliothèque',
+              'Histoires',
               style: textTheme.headlineSmall?.copyWith(
                 fontWeight: FontWeight.bold,
                 letterSpacing: 1,
@@ -152,7 +152,11 @@ class _LibraryPageState extends State<LibraryPage> {
               Expanded(
                 child: ListView.builder(
                   itemCount: widget.categories.length,
-                  padding: const EdgeInsets.only(top: 10, bottom: 30),
+                  // Place pour la barre de navigation flottante
+                  padding: EdgeInsets.only(
+                    top: 10,
+                    bottom: MediaQuery.paddingOf(context).bottom + 24,
+                  ),
                   itemBuilder: (context, index) {
                     final category = widget.categories[index];
                     List<StoryModel> categoryStories = widget.stories
