@@ -355,7 +355,7 @@ class _HomePageState extends State<HomePage> {
               children: [
                 Text(
                   story.name,
-                  maxLines: 2,
+                  maxLines: 3,
                   overflow: TextOverflow.ellipsis,
                   textAlign: TextAlign.center,
                   style: const TextStyle(
@@ -393,7 +393,7 @@ class _HomePageState extends State<HomePage> {
     );
 
     return Container(
-        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
+        padding: const EdgeInsets.symmetric(vertical: 8),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

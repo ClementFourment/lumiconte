@@ -56,11 +56,11 @@ class StoryImmersiveView extends StatelessWidget {
                       end: Alignment.bottomCenter,
                       colors: [
                         Colors.transparent,
-                        Colors.black.withOpacity(0.2),
+                        Colors.black.withOpacity(0.55),
                         Colors.black.withOpacity(0.85),
                         Colors.black.withOpacity(0.95),
                       ],
-                      stops: const [0.4, 0.6, 0.85, 1.0],
+                      stops: const [0.3, 0.5, 0.75, 1.0],
                     ),
                   ),
                 ),
@@ -136,7 +136,7 @@ class StoryImmersiveView extends StatelessWidget {
                         colors: StoryTextColors(
                           text: textColor,
                           activeText: const Color(0xFFFDE68A),
-                          highlight: const Color(0x40F59E0B),
+                          highlight: const Color(0x80B45309),
                           shadows: _readabilityShadows,
                         ),
                       ),
@@ -145,10 +145,12 @@ class StoryImmersiveView extends StatelessWidget {
 
                   const SizedBox(height: 12),
 
-                  // Compteur de pages
-                  Text(
-                    '${params.currentPageIndex + 1} / ${params.totalPages}',
-                    style: TextStyle(
+                  // Navigation + compteur de pages (hors de la zone de texte)
+                  StoryPageNavigation(
+                    params: params,
+                    iconColor: textColor,
+                    backgroundColor: iconBtnBg,
+                    counterStyle: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
                       color: subtleTextColor,
@@ -157,7 +159,7 @@ class StoryImmersiveView extends StatelessWidget {
                     ),
                   ),
 
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
 
                   // 3. Barre Audio
                   if (params.isAudio)
@@ -243,44 +245,6 @@ class StoryImmersiveView extends StatelessWidget {
                       ),
                     ),
                 ]),
-              ),
-            ),
-
-            // Navigation Arrows
-            Positioned(
-              left: 8,
-              top: 0,
-              bottom: 0,
-              child: Center(
-                child: StoryCircleIconButton(
-                  icon: Icons.chevron_left,
-                  onPressed: params.currentPageIndex > 0
-                      ? params.onPreviousPage
-                      : null,
-                  backgroundColor: Colors.black.withOpacity(0.3),
-                  iconColor: params.currentPageIndex > 0
-                      ? textColor
-                      : textColor.withOpacity(0.3),
-                  size: 44,
-                ),
-              ),
-            ),
-            Positioned(
-              right: 8,
-              top: 0,
-              bottom: 0,
-              child: Center(
-                child: StoryCircleIconButton(
-                  icon: Icons.chevron_right,
-                  onPressed: params.currentPageIndex < params.totalPages - 1
-                      ? params.onNextPage
-                      : null,
-                  backgroundColor: Colors.black.withOpacity(0.3),
-                  iconColor: params.currentPageIndex < params.totalPages - 1
-                      ? textColor
-                      : textColor.withOpacity(0.3),
-                  size: 44,
-                ),
               ),
             ),
           ],

@@ -107,113 +107,64 @@ class StoryClassicView extends StatelessWidget {
                     ),
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(28),
-                      child: LayoutBuilder(
-                        builder: (context, constraints) {
-                          final double junctionTop =
-                              (constraints.maxHeight * 0.5) - 20;
-
-                          return Stack(
-                            children: [
-                              Column(
-                                children: [
-                                  // Image
-                                  Expanded(
-                                    flex: 5,
-                                    child: StoryImage(
-                                        imageKey: params.image,
-                                        fallbackKey: params.cover),
-                                  ),
-                                  // Texte
-                                  Expanded(
-                                    flex: 5,
-                                    child: Column(
-                                      children: [
-                                        Expanded(
-                                          child: Padding(
-                                            padding: const EdgeInsets.fromLTRB(
-                                                28, 16, 28, 12),
-                                            child: StoryTextArea(
-                                              params: params,
-                                              metrics: StoryTextMetrics(
-                                                fontSize: params.fontSize,
-                                                textAlign: TextAlign.center,
-                                                dyslexia: params.isDyslexia,
-                                              ),
-                                              colors: StoryTextColors(
-                                                text: textColor,
-                                                activeText: isDark
-                                                    ? const Color(0xFFFDE68A)
-                                                    : const Color(0xFF92400E),
-                                                highlight: isDark
-                                                    ? const Color(0x40D97706)
-                                                    : const Color(0x80FDE68A),
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                        // Page Counter
-                                        Padding(
-                                          padding: const EdgeInsets.only(
-                                              bottom: 12, top: 4),
-                                          child: Text(
-                                            '${params.currentPageIndex + 1} / ${params.totalPages}',
-                                            style: TextStyle(
-                                              fontSize: 13,
-                                              fontWeight: FontWeight.w600,
-                                              color: subtleTextColor,
-                                              letterSpacing: 1.5,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
+                      child: Column(
+                        children: [
+                          // Image
+                          Expanded(
+                            flex: 5,
+                            child: StoryImage(
+                                imageKey: params.image,
+                                fallbackKey: params.cover),
+                          ),
+                          // Texte
+                          Expanded(
+                            flex: 5,
+                            child: Column(
+                              children: [
+                                Expanded(
+                                  child: Padding(
+                                    padding: const EdgeInsets.fromLTRB(
+                                        28, 16, 28, 12),
+                                    child: StoryTextArea(
+                                      params: params,
+                                      metrics: StoryTextMetrics(
+                                        fontSize: params.fontSize,
+                                        textAlign: TextAlign.center,
+                                        dyslexia: params.isDyslexia,
+                                      ),
+                                      colors: StoryTextColors(
+                                        text: textColor,
+                                        activeText: isDark
+                                            ? const Color(0xFFFDE68A)
+                                            : const Color(0xFF92400E),
+                                        highlight: isDark
+                                            ? const Color(0x40D97706)
+                                            : const Color(0x80FDE68A),
+                                      ),
                                     ),
                                   ),
-                                ],
-                              ),
-
-                              // Controls Flottants
-                              Positioned(
-                                top: junctionTop,
-                                left: 12,
-                                right: 12,
-                                child: Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    StoryCircleIconButton(
-                                      icon: Icons.chevron_left,
-                                      onPressed: params.currentPageIndex > 0
-                                          ? params.onPreviousPage
-                                          : null,
-                                      backgroundColor: isDark
-                                          ? Colors.black.withOpacity(0.5)
-                                          : Colors.white.withOpacity(0.9),
-                                      iconColor: params.currentPageIndex > 0
-                                          ? textColor
-                                          : textColor.withOpacity(0.3),
-                                      size: 40,
-                                    ),
-                                    StoryCircleIconButton(
-                                      icon: Icons.chevron_right,
-                                      onPressed: params.currentPageIndex <
-                                              params.totalPages - 1
-                                          ? params.onNextPage
-                                          : null,
-                                      backgroundColor: isDark
-                                          ? Colors.black.withOpacity(0.5)
-                                          : Colors.white.withOpacity(0.9),
-                                      iconColor: params.currentPageIndex <
-                                              params.totalPages - 1
-                                          ? textColor
-                                          : textColor.withOpacity(0.3),
-                                      size: 40,
-                                    ),
-                                  ],
                                 ),
-                              ),
-                            ],
-                          );
-                        },
+                                // Navigation + compteur de pages
+                                Padding(
+                                  padding:
+                                      const EdgeInsets.only(bottom: 10, top: 4),
+                                  child: StoryPageNavigation(
+                                    params: params,
+                                    iconColor: textColor,
+                                    backgroundColor: iconBtnBg,
+                                    size: 40,
+                                    counterStyle: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: subtleTextColor,
+                                      letterSpacing: 1.5,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),

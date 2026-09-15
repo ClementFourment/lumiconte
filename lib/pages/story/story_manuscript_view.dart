@@ -196,8 +196,9 @@ class StoryManuscriptView extends StatelessWidget {
                                           children: [
                                             _buildDecorativeFooter(
                                                 subtleTextColor, textColor),
-                                            const SizedBox(height: 6),
-                                            _buildPagination(subtleTextColor),
+                                            const SizedBox(height: 4),
+                                            _buildPagination(
+                                                textColor, subtleTextColor),
                                           ],
                                         ),
                                       ],
@@ -320,44 +321,6 @@ class StoryManuscriptView extends StatelessWidget {
                         ),
                       ),
                   ],
-                ),
-              ),
-            ),
-
-            // Navigation Arrows
-            Positioned(
-              left: 8,
-              top: 0,
-              bottom: 0,
-              child: Center(
-                child: StoryCircleIconButton(
-                  icon: Icons.chevron_left,
-                  onPressed: params.currentPageIndex > 0
-                      ? params.onPreviousPage
-                      : null,
-                  backgroundColor: Colors.transparent,
-                  iconColor: params.currentPageIndex > 0
-                      ? textColor
-                      : textColor.withOpacity(0.3),
-                  size: 44,
-                ),
-              ),
-            ),
-            Positioned(
-              right: 8,
-              top: 0,
-              bottom: 0,
-              child: Center(
-                child: StoryCircleIconButton(
-                  icon: Icons.chevron_right,
-                  onPressed: params.currentPageIndex < params.totalPages - 1
-                      ? params.onNextPage
-                      : null,
-                  backgroundColor: Colors.transparent,
-                  iconColor: params.currentPageIndex < params.totalPages - 1
-                      ? textColor
-                      : textColor.withOpacity(0.3),
-                  size: 44,
                 ),
               ),
             ),
@@ -512,27 +475,20 @@ class StoryManuscriptView extends StatelessWidget {
     );
   }
 
-  Widget _buildPagination(Color subtleColor) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 40,
-          height: 1,
-          color: subtleColor.withOpacity(0.3),
-        ),
-        const SizedBox(height: 6),
-        Text(
-          '${params.currentPageIndex + 1} / ${params.totalPages}',
-          style: TextStyle(
-            fontSize: 10,
-            fontWeight: FontWeight.w500,
-            color: subtleColor,
-            letterSpacing: 2,
-            fontStyle: FontStyle.italic,
-          ),
-        ),
-      ],
+  Widget _buildPagination(Color textColor, Color subtleColor) {
+    return StoryPageNavigation(
+      params: params,
+      iconColor: textColor,
+      backgroundColor: const Color(0xFFE8DDD0),
+      size: 34,
+      hasBorder: true,
+      counterStyle: TextStyle(
+        fontSize: 11,
+        fontWeight: FontWeight.w500,
+        color: subtleColor,
+        letterSpacing: 2,
+        fontStyle: FontStyle.italic,
+      ),
     );
   }
 }
