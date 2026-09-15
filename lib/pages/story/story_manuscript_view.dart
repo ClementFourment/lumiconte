@@ -177,11 +177,11 @@ class StoryManuscriptView extends StatelessWidget {
                                               letterSpacing: -0.15,
                                               textAlign: TextAlign.justify,
                                               dyslexia: params.isDyslexia,
-                                              dropCapFontFamily: GoogleFonts
-                                                      .cormorantGaramond(
+                                              dropCapFontFamily:
+                                                  GoogleFonts.cormorantGaramond(
                                                           fontWeight:
                                                               FontWeight.w700)
-                                                  .fontFamily,
+                                                      .fontFamily,
                                             ),
                                             colors: const StoryTextColors(
                                               text: Color(0xFF32271B),
@@ -503,7 +503,8 @@ class StoryManuscriptView extends StatelessWidget {
             ),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(1),
-              child: StoryImage(imageKey: params.image),
+              child:
+                  StoryImage(imageKey: params.image, fallbackKey: params.cover),
             ),
           ),
         ),

@@ -57,8 +57,7 @@ class StoryClassicView extends StatelessWidget {
                       children: [
                         StoryCircleIconButton(
                           icon: Icons.restart_alt,
-                          onPressed:
-                              params.isAtStart ? null : params.onRestart,
+                          onPressed: params.isAtStart ? null : params.onRestart,
                           backgroundColor: iconBtnBg,
                           iconColor: params.isAtStart
                               ? textColor.withOpacity(0.3)
@@ -120,7 +119,9 @@ class StoryClassicView extends StatelessWidget {
                                   // Image
                                   Expanded(
                                     flex: 5,
-                                    child: StoryImage(imageKey: params.image),
+                                    child: StoryImage(
+                                        imageKey: params.image,
+                                        fallbackKey: params.cover),
                                   ),
                                   // Texte
                                   Expanded(
