@@ -330,22 +330,61 @@ class _StoryPageState extends State<StoryPage> {
         StorySyncService.parseSegments(voiceData.audioTimes),
       );
 
+      final documentReady = Completer<void>();
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        setState(() {
-          _replaceDocument(StoryDocument(audioWords.isNotEmpty
-              ? audioWords
-              : storyWordsFromText(widget.story.content)));
-          // Remet l'état audio à jour lors d'une réinitialisation de voix
-          _isPlaying = false;
-          _audioPosition = Duration.zero;
-        });
+        if (mounted) {
+          setState(() {
+            _replaceDocument(StoryDocument(audioWords.isNotEmpty
+                ? audioWords
+                : storyWordsFromText(widget.story.content)));
+            // Remet l'état audio à jour lors d'une réinitialisation de voix
+            _isPlaying = false;
+            _audioPosition = Duration.zero;
+          });
+        }
+        documentReady.complete();
       });
 
-      await _audioBackgroundService.setStory(
-        widget.story,
-        selectedAudioPath,
-      );
+      await Future.wait([
+        _audioBackgroundService.setStory(widget.story, selectedAudioPath),
+        documentReady.future,
+      ]);
+      await _seekAudioToCurrentPage();
+    }
+  }
+
+  /// Place l'audio au début de la page affichée (reprise de lecture, changement de voix).
+  Future<void> _seekAudioToCurrentPage() async {
+    // La pagination est recalculée pendant la mise en page qui suit le changement de document
+    if (mounted && _pagination == null) {
+      await WidgetsBinding.instance.endOfFrame;
+    }
+    if (!mounted) return;
+    final pagination = _pagination;
+    final pageStart = pagination == null
+        ? _anchorWord
+        : pagination.pages[_currentPageIndex].start;
+    if (pageStart <= 0) return;
+
+    final Duration position;
+    final wordStart = _document.words[pageStart].start;
+    if (wordStart != null) {
+      position = Duration(milliseconds: (wordStart * 1000).round());
+    } else if (_audioDuration > Duration.zero) {
+      // Sans minutage, on se place au prorata du texte déjà lu
+      position = _audioDuration * _document.fractionBefore(pageStart);
+    } else {
+      return;
+    }
+
+    setState(() {
+      _isSeeking = true;
+      _audioPosition = position;
+    });
+    try {
+      await _audioBackgroundService.seek(position);
+    } finally {
+      if (mounted) setState(() => _isSeeking = false);
     }
   }
 
