@@ -8,15 +8,16 @@ import 'package:lumiconte/main.dart';
 import 'package:lumiconte/models/profile_model.dart';
 import 'package:lumiconte/models/reading_progress_model.dart';
 import 'package:lumiconte/models/settings_model.dart';
-import 'package:lumiconte/pages/feedback_page.dart';
 import 'package:lumiconte/pages/manage_profiles_page.dart';
-import 'package:lumiconte/pages/privacy_page.dart';
+import 'package:lumiconte/pages/parent_space_page.dart';
 import 'package:lumiconte/pages/rewards_page.dart';
-import 'package:lumiconte/pages/settings_page.dart';
-import 'package:lumiconte/pages/terms_page.dart';
-import 'package:lumiconte/services/auth_service.dart';
 import 'package:lumiconte/theme/app_theme.dart';
+import 'package:lumiconte/utils/reading_stats.dart';
+import 'package:lumiconte/widget/parental_gate.dart';
 
+/// Onglet « Moi » de l'enfant : uniquement du contenu adapté aux enfants.
+/// Les réglages, le compte et les actions sensibles sont dans
+/// [ParentSpacePage], derrière le contrôle parental.
 class ProfilePage extends StatefulWidget {
   final String profileId;
 
@@ -30,7 +31,6 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends State<ProfilePage> {
-  final AuthService _authService = AuthService();
   final String? _uid = FirebaseAuth.instance.currentUser?.uid;
 
   late DocumentReference _profileDoc;
@@ -43,7 +43,6 @@ class _ProfilePageState extends State<ProfilePage> {
 
   StreamSubscription? _progressSubscription;
   StreamSubscription? _settingsSubscription;
-  bool _isLoading = false;
 
   @override
   void initState() {
@@ -75,19 +74,17 @@ class _ProfilePageState extends State<ProfilePage> {
 
     if (_uid == null) return;
 
-    _progressSubscription =
-        _readingProgressCollection.snapshots().listen((_) {
+    _progressSubscription = _readingProgressCollection.snapshots().listen((_) {
       if (mounted && appSettings.isNotificationsEnabled) {
         appSettings.scheduleReadingReminder();
       }
     });
 
-    _settingsSubscription =
-        _settingsCollection.snapshots().listen((snapshot) {
+    _settingsSubscription = _settingsCollection.snapshots().listen((snapshot) {
       if (mounted && snapshot.docs.isNotEmpty) {
         final rawData =
             snapshot.docs.first.data() as Map<String, dynamic>? ?? {};
-        final isDark = rawData['theme'] == 'dark' ?? appSettings.isDarkMode;
+        final isDark = rawData['theme'] == 'dark';
 
         if (appSettings.isDarkMode != isDark) {
           appSettings.toggleDarkMode(widget.profileId, isDark);
@@ -112,27 +109,19 @@ class _ProfilePageState extends State<ProfilePage> {
     super.dispose();
   }
 
-  Future<void> _updateSetting(String docId, String key, dynamic value) async {
-    try {
-      await _settingsCollection.doc(docId).update({key: value});
-    } catch (e) {
-      debugPrint("Erreur lors de la mise à jour du setting: $e");
-    }
+  Future<void> _openParentSpace() async {
+    final allowed = await showParentalGate(context);
+    if (!allowed || !mounted) return;
+
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ParentSpacePage(profileId: widget.profileId),
+      ),
+    );
   }
 
-  Future<void> _handleSignOut() async {
-    setState(() => _isLoading = true);
-    try {
-      await _authService.signOut();
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erreur : $e')),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
+  void _push(Widget page) {
+    Navigator.of(context).push(MaterialPageRoute(builder: (_) => page));
   }
 
   @override
@@ -148,586 +137,212 @@ class _ProfilePageState extends State<ProfilePage> {
       );
     }
 
-    if (_isLoading) {
-      return Scaffold(
-        body: Center(
-          child: CircularProgressIndicator(color: theme.colorScheme.primary),
-        ),
-      );
-    }
-
     return Scaffold(
-      body: StreamBuilder<DocumentSnapshot>(
-        stream: _profileStream,
-        builder: (context, profileSnapshot) {
-          if (profileSnapshot.connectionState == ConnectionState.waiting) {
-            return Center(
-                child: CircularProgressIndicator(
-                    color: theme.colorScheme.primary));
-          }
-          if (profileSnapshot.hasError) {
-            return Center(
-                child: Text('Erreur : ${profileSnapshot.error}',
-                    style: TextStyle(color: theme.colorScheme.onSurface)));
-          }
-          if (!profileSnapshot.hasData || !profileSnapshot.data!.exists) {
-            return Center(
-                child: Text('Profil introuvable.',
-                    style: TextStyle(color: theme.colorScheme.onSurface)));
-          }
+      body: SafeArea(
+        child: StreamBuilder<DocumentSnapshot>(
+          stream: _profileStream,
+          builder: (context, profileSnapshot) {
+            if (profileSnapshot.connectionState == ConnectionState.waiting) {
+              return Center(
+                  child: CircularProgressIndicator(
+                      color: theme.colorScheme.primary));
+            }
+            if (!profileSnapshot.hasData || !profileSnapshot.data!.exists) {
+              return Center(
+                  child: Text('Profil introuvable.',
+                      style: TextStyle(color: theme.colorScheme.onSurface)));
+            }
 
-          final profileData =
-              profileSnapshot.data!.data() as Map<String, dynamic>? ?? {};
-          final profile = ProfileModel.fromMap(
-              profileData, profileSnapshot.data!.id, _uid!);
+            final profile = ProfileModel.fromMap(
+              profileSnapshot.data!.data() as Map<String, dynamic>? ?? {},
+              profileSnapshot.data!.id,
+              _uid!,
+            );
 
-          return StreamBuilder<QuerySnapshot>(
-            stream: _progressStream,
-            builder: (context, progressSnapshot) {
-              final int storiesReadCount = progressSnapshot.hasData
-                  ? progressSnapshot.data!.docs.where((doc) {
-                      final data = doc.data() as Map<String, dynamic>?;
-                      // Une histoire est lue quand sa morale a été débloquée
-                      return data != null &&
-                          ReadingProgressModel.moraleUnlockedFrom(data);
-                    }).length
-                  : 0;
+            return StreamBuilder<QuerySnapshot>(
+              stream: _progressStream,
+              builder: (context, progressSnapshot) {
+                final int storiesReadCount = progressSnapshot.hasData
+                    ? progressSnapshot.data!.docs.where((doc) {
+                        final data = doc.data() as Map<String, dynamic>?;
+                        // Une histoire est lue quand sa morale a été débloquée
+                        return data != null &&
+                            ReadingProgressModel.moraleUnlockedFrom(data);
+                      }).length
+                    : 0;
 
-              return StreamBuilder<QuerySnapshot>(
-                stream: _settingsStream,
-                builder: (context, settingsSnapshot) {
-                  String currentLangCode = 'fr';
-                  String settingsDocId = '';
-                  String timeDisplay = '0 min';
-                  String streakDisplay = '0 jour';
+                return StreamBuilder<QuerySnapshot>(
+                  stream: _settingsStream,
+                  builder: (context, settingsSnapshot) {
+                    int streak = 0;
 
-                  if (settingsSnapshot.hasData &&
-                      settingsSnapshot.data!.docs.isNotEmpty) {
-                    final settingsDoc = settingsSnapshot.data!.docs.first;
-                    settingsDocId = settingsDoc.id;
+                    if (settingsSnapshot.hasData &&
+                        settingsSnapshot.data!.docs.isNotEmpty) {
+                      final settingsDoc = settingsSnapshot.data!.docs.first;
+                      final settings = SettingsModel.fromMap(
+                        settingsDoc.data() as Map<String, dynamic>? ?? {},
+                        settingsDoc.id,
+                      );
+                      streak = currentStreak(settings);
 
-                    final settings = SettingsModel.fromMap(
-                      settingsDoc.data() as Map<String, dynamic>? ?? {},
-                      settingsDoc.id,
-                    );
-
-                    currentLangCode = settings.language;
-
-                    final int totalSecondes = settings.totalReadingTime;
-
-                    if (totalSecondes < 60) {
-                      timeDisplay = '$totalSecondes sec';
-                    } else {
-                      if (totalSecondes < 60 * 60) {
-                        final minutes = totalSecondes ~/ 60;
-                        timeDisplay = '${minutes}min';
-                      } else {
-                        final heures = totalSecondes ~/ 3600;
-                        final reste = totalSecondes % 3600;
-                        final minutes = reste ~/ 60;
-                        timeDisplay = minutes > 0
-                            ? (minutes < 10
-                                ? '${heures}h0${minutes}'
-                                : '${heures}h${minutes}')
-                            : '${heures}h';
+                      // Série cassée : on la remet à zéro en base
+                      if (streak == 0 && settings.streak != 0) {
+                        Future.microtask(() => _settingsCollection
+                            .doc(settingsDoc.id)
+                            .update({'streak': 0}).catchError((e) =>
+                                debugPrint('Erreur remise à zéro série: $e')));
                       }
                     }
 
-                    if (settings.stopRead != null) {
-                      final DateTime lastReadDate = settings.stopRead!;
-                      final DateTime now = DateTime.now();
-                      final DateTime today =
-                          DateTime(now.year, now.month, now.day);
-                      final DateTime lastReadDay = DateTime(lastReadDate.year,
-                          lastReadDate.month, lastReadDate.day);
-                      final int daysDifference =
-                          today.difference(lastReadDay).inDays;
-
-                      if (daysDifference > 1) {
-                        if (settings.streak != 0) {
-                          Future.microtask(
-                              () => _updateSetting(settingsDocId, 'streak', 0));
-                        }
-                        streakDisplay = '0 jour';
-                      } else {
-                        streakDisplay =
-                            '${settings.streak} ${settings.streak > 1 ? 'jours' : 'jour'}';
-                      }
-                    }
-                  }
-
-                  return SingleChildScrollView(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Header Profil
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.only(
-                              top: 60, bottom: 24, left: 24, right: 24),
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: theme.brightness == Brightness.dark
-                                  ? [
-                                      AppTheme.darkCard,
-                                      theme.scaffoldBackgroundColor
-                                    ]
-                                  : [
-                                      AppTheme.accentColor
-                                          .withValues(alpha: 0.15),
-                                      theme.scaffoldBackgroundColor
-                                    ],
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                            ),
-                          ),
-                          child: Row(
-                            children: [
-                              CircleAvatar(
-                                radius: 40,
-                                backgroundColor: theme.colorScheme.primary
-                                    .withValues(alpha: 0.2),
-                                backgroundImage: AssetImage(
-                                  profile.avatarPath ??
-                                      AppAvatars.defaultAvatar,
-                                ),
-                              ),
-                              const SizedBox(width: 20),
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    profile.name,
-                                    style: TextStyle(
-                                      fontSize: 22,
-                                      fontWeight: FontWeight.bold,
-                                      color: theme.colorScheme.onSurface,
-                                    ),
-                                  ),
-                                  Text(
-                                    '${profile.age} ans',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      color: theme.colorScheme.onSurface
-                                          .withValues(alpha: 0.6),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 20),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // Section Statistiques
-                              Text(
-                                'Statistiques',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: theme.colorScheme.onSurface,
-                                ),
-                              ),
-                              const SizedBox(height: 12),
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  _buildStatCard(context, 'Histoires\nlues',
-                                      '$storiesReadCount'),
-                                  _buildStatCard(context, 'Temps de\nlecture',
-                                      timeDisplay),
-                                  _buildStatCard(
-                                    context,
-                                    'Lecture\nd\'affilée',
-                                    streakDisplay,
-                                    icon: Icons.local_fire_department_rounded,
-                                    iconColor: streakDisplay == '0 jour'
-                                        ? theme.colorScheme.onSurface
-                                            .withValues(alpha: 0.3)
-                                        : Colors.deepOrange,
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 28),
-
-                              // Section Préférences
-                              Text(
-                                'Préférences',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: theme.colorScheme.onSurface,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              Material(
-                                color: AppTheme.getCardColor(context),
-                                borderRadius: BorderRadius.circular(16),
-                                clipBehavior: Clip.antiAlias,
-                                child: Column(
-                                  children: [
-                                    // Langue
-                                    Padding(
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 16.0, vertical: 4.0),
-                                      child: Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.spaceBetween,
-                                        children: [
-                                          Text(
-                                            'Langue',
-                                            style: TextStyle(
-                                              fontSize: 15,
-                                              fontWeight: FontWeight.w500,
-                                              color:
-                                                  theme.colorScheme.onSurface,
-                                            ),
-                                          ),
-                                          DropdownButtonHideUnderline(
-                                            child: DropdownButton<String>(
-                                              value: currentLangCode,
-                                              icon: Icon(
-                                                Icons.arrow_forward_ios,
-                                                size: 14,
-                                                color: theme
-                                                    .colorScheme.onSurface
-                                                    .withValues(alpha: 0.4),
-                                              ),
-                                              style: TextStyle(
-                                                fontSize: 14,
-                                                color:
-                                                    theme.colorScheme.onSurface,
-                                              ),
-                                              dropdownColor:
-                                                  AppTheme.getCardColor(
-                                                      context),
-                                              onChanged: (String? newValue) {
-                                                if (newValue != null &&
-                                                    settingsDocId.isNotEmpty) {
-                                                  _updateSetting(settingsDocId,
-                                                      'language', newValue);
-                                                }
-                                              },
-                                              items: const [
-                                                DropdownMenuItem(
-                                                    value: 'fr',
-                                                    child: Text('Français  ')),
-                                                DropdownMenuItem(
-                                                    value: 'en',
-                                                    child: Text('English  ')),
-                                                DropdownMenuItem(
-                                                    value: 'es',
-                                                    child: Text('Español  ')),
-                                              ],
-                                            ),
-                                          )
-                                        ],
-                                      ),
-                                    ),
-                                    Divider(
-                                      height: 1,
-                                      indent: 16,
-                                      endIndent: 16,
-                                      color: theme.colorScheme.onSurface
-                                          .withValues(alpha: 0.08),
-                                    ),
-
-                                    ValueListenableBuilder<bool>(
-                                      valueListenable: appSettings.notificationsNotifier,
-                                      builder: (context, isNotificationsEnabled, child) {
-                                        return Column(
-                                          children: [
-                                            // Rappels de lecture
-                                            SwitchListTile(
-                                              title: Text(
-                                                'Rappels de lecture',
-                                                style: TextStyle(
-                                                  fontSize: 14,
-                                                  fontWeight: FontWeight.w500,
-                                                  color: theme
-                                                      .colorScheme.onSurface,
-                                                ),
-                                              ),
-                                              value: isNotificationsEnabled,
-                                              onChanged: (bool newValue) {
-                                                appSettings.toggleNotifications(
-                                                    newValue);
-                                              },
-                                              activeColor: AppTheme.accentColor,
-                                            ),
-                                            Divider(
-                                              height: 1,
-                                              indent: 16,
-                                              endIndent: 16,
-                                              color: theme.colorScheme.onSurface
-                                                  .withValues(alpha: 0.08),
-                                            ),
-                                            // Mode Nuit
-                                            SwitchListTile(
-                                              title: Text(
-                                                'Mode nuit',
-                                                style: TextStyle(
-                                                  fontSize: 14,
-                                                  fontWeight: FontWeight.w500,
-                                                  color: theme
-                                                      .colorScheme.onSurface,
-                                                ),
-                                              ),
-                                              value: appSettings.isDarkMode,
-                                              onChanged: (bool newValue) {
-                                                appSettings.toggleDarkMode(
-                                                    widget.profileId, newValue);
-                                              },
-                                              activeColor: AppTheme.accentColor,
-                                            ),
-                                          ],
-                                        );
-                                      },
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(height: 24),
-
-                              // Section Mon Compte
-                              Text(
-                                'Mon Compte',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: theme.colorScheme.onSurface,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              Material(
-                                color: AppTheme.getCardColor(context),
-                                borderRadius: BorderRadius.circular(16),
-                                clipBehavior: Clip.antiAlias,
-                                child: Column(
-                                  children: [
-                                    _buildListTile(
-                                      context,
-                                      'Gérer mes profils',
-                                      icon: Icons.people_outline,
-                                      onTap: () {
-                                        Navigator.of(context).push(
-                                          MaterialPageRoute(
-                                              builder: (context) =>
-                                                  const ManageProfilesPage()),
-                                        );
-                                      },
-                                    ),
-                                    Divider(
-                                      height: 1,
-                                      indent: 16,
-                                      endIndent: 16,
-                                      color: theme.colorScheme.onSurface
-                                          .withValues(alpha: 0.08),
-                                    ),
-                                    _buildListTile(
-                                      context,
-                                      'Mes Récompenses',
-                                      icon: Icons.emoji_events_outlined,
-                                      onTap: () {
-                                        Navigator.of(context).push(
-                                          MaterialPageRoute(
-                                            builder: (context) => RewardsPage(
-                                              userId: _uid ?? '',
-                                              profileId: widget.profileId,
-                                            ),
-                                          ),
-                                        );
-                                      },
-                                    ),
-                                    Divider(
-                                      height: 1,
-                                      indent: 16,
-                                      endIndent: 16,
-                                      color: theme.colorScheme.onSurface
-                                          .withValues(alpha: 0.08),
-                                    ),
-                                    _buildListTile(
-                                      context,
-                                      'Paramètres de lecture',
-                                      icon: Icons.menu_book_outlined,
-                                      onTap: () {
-                                        Navigator.of(context).push(
-                                          MaterialPageRoute(
-                                            builder: (context) => SettingsPage(
-                                                profileId: widget.profileId),
-                                          ),
-                                        );
-                                      },
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(height: 24),
-
-                              // Section Assistance
-                              Text(
-                                'Assistance et Informations',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: theme.colorScheme.onSurface,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              Material(
-                                color: AppTheme.getCardColor(context),
-                                borderRadius: BorderRadius.circular(16),
-                                clipBehavior: Clip.antiAlias,
-                                child: Column(
-                                  children: [
-                                    _buildListTile(
-                                      context,
-                                      'Envoyer un commentaire',
-                                      icon: Icons.chat_bubble_outline,
-                                      onTap: () {
-                                        Navigator.of(context).push(
-                                          MaterialPageRoute(
-                                            builder: (context) => FeedbackPage(
-                                                profileId: widget.profileId),
-                                          ),
-                                        );
-                                      },
-                                    ),
-                                    Divider(
-                                      height: 1,
-                                      indent: 16,
-                                      endIndent: 16,
-                                      color: theme.colorScheme.onSurface
-                                          .withValues(alpha: 0.08),
-                                    ),
-                                    _buildListTile(
-                                      context,
-                                      "Conditions Générales d'Utilisation",
-                                      icon: Icons.description_outlined,
-                                      onTap: () {
-                                        Navigator.of(context).push(
-                                          MaterialPageRoute(
-                                              builder: (context) =>
-                                                  const TermsOfServicePage()),
-                                        );
-                                      },
-                                    ),
-                                    Divider(
-                                      height: 1,
-                                      indent: 16,
-                                      endIndent: 16,
-                                      color: theme.colorScheme.onSurface
-                                          .withValues(alpha: 0.08),
-                                    ),
-                                    _buildListTile(
-                                      context,
-                                      'Politique de Confidentialité',
-                                      icon: Icons.lock_outline,
-                                      onTap: () {
-                                        Navigator.of(context).push(
-                                          MaterialPageRoute(
-                                              builder: (context) =>
-                                                  const PrivacyPolicyPage()),
-                                        );
-                                      },
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(height: 32),
-
-                              // Bouton Déconnexion
-                              SizedBox(
-                                width: double.infinity,
-                                child: OutlinedButton.icon(
-                                  style: OutlinedButton.styleFrom(
-                                    side:
-                                        BorderSide(color: Colors.red.shade400),
-                                    padding: const EdgeInsets.symmetric(
-                                        vertical: 14),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                  ),
-                                  onPressed: _handleSignOut,
-                                  icon: Icon(Icons.logout,
-                                      color: Colors.red.shade400, size: 20),
-                                  label: Text(
-                                    'Se déconnecter',
-                                    style: TextStyle(
-                                      color: Colors.red.shade400,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 15,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 40),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              );
-            },
-          );
-        },
+                    return _buildContent(
+                        context, profile, storiesReadCount, streak);
+                  },
+                );
+              },
+            );
+          },
+        ),
       ),
     );
   }
 
-  Widget _buildStatCard(BuildContext context, String label, String value,
-      {IconData? icon, Color? iconColor}) {
+  Widget _buildContent(BuildContext context, ProfileModel profile,
+      int storiesReadCount, int streak) {
     final theme = Theme.of(context);
-    final valueText = Text(
-      value,
-      style: const TextStyle(
-        fontSize: 18,
-        fontWeight: FontWeight.bold,
-        color: AppTheme.accentColor,
-      ),
-      textAlign: TextAlign.center,
+    final onSurface = theme.colorScheme.onSurface;
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 40),
+      children: [
+        // Accès discret à l'espace parents
+        Align(
+          alignment: Alignment.centerRight,
+          child: TextButton.icon(
+            onPressed: _openParentSpace,
+            style: TextButton.styleFrom(
+              foregroundColor: onSurface.withValues(alpha: 0.6),
+            ),
+            icon: const Icon(Icons.lock_outline_rounded, size: 18),
+            label: const Text('Espace parents'),
+          ),
+        ),
+        const SizedBox(height: 8),
+
+        // Avatar et prénom
+        Center(
+          child: Container(
+            padding: const EdgeInsets.all(4),
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
+              color: AppTheme.accentColor,
+            ),
+            child: CircleAvatar(
+              radius: 58,
+              backgroundColor: AppTheme.getCardColor(context),
+              backgroundImage: AssetImage(
+                profile.avatarPath ?? AppAvatars.defaultAvatar,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 14),
+        Text(
+          profile.name,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 28,
+            fontWeight: FontWeight.bold,
+            color: onSurface,
+          ),
+        ),
+        const SizedBox(height: 28),
+
+        // Mes exploits
+        Row(
+          children: [
+            _buildAchievementTile(
+              context,
+              icon: Icons.local_fire_department_rounded,
+              iconColor: streak == 0
+                  ? onSurface.withValues(alpha: 0.3)
+                  : Colors.deepOrange,
+              value: formatStreak(streak),
+              label: 'de lecture\nd\'affilée',
+            ),
+            const SizedBox(width: 12),
+            _buildAchievementTile(
+              context,
+              icon: Icons.auto_stories_rounded,
+              iconColor: AppTheme.accentColor,
+              value: '$storiesReadCount',
+              label: storiesReadCount > 1
+                  ? 'histoires\nterminées'
+                  : 'histoire\nterminée',
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+
+        _buildActionCard(
+          context,
+          icon: Icons.emoji_events_rounded,
+          iconColor: const Color(0xFFF1C40F),
+          title: 'Mes récompenses',
+          onTap: () => _push(
+            RewardsPage(userId: _uid ?? '', profileId: widget.profileId),
+          ),
+        ),
+        const SizedBox(height: 12),
+        _buildActionCard(
+          context,
+          icon: Icons.swap_horiz_rounded,
+          iconColor: theme.colorScheme.primary,
+          title: 'Changer de lecteur',
+          onTap: () => _push(const ManageProfilesPage()),
+        ),
+      ],
     );
+  }
+
+  Widget _buildAchievementTile(
+    BuildContext context, {
+    required IconData icon,
+    required Color iconColor,
+    required String value,
+    required String label,
+  }) {
+    final onSurface = Theme.of(context).colorScheme.onSurface;
 
     return Expanded(
       child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 4),
-        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+        padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 12),
         decoration: BoxDecoration(
           color: AppTheme.getCardColor(context),
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(24),
         ),
         child: Column(
           children: [
-            if (icon == null)
-              valueText
-            else
-              // Réduit l'ensemble si « 12 jours » + icône ne tient pas dans la carte
-              FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(icon, size: 20, color: iconColor),
-                    const SizedBox(width: 2),
-                    valueText,
-                  ],
+            Icon(icon, size: 40, color: iconColor),
+            const SizedBox(height: 8),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                value,
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: onSurface,
                 ),
               ),
-            const SizedBox(height: 4),
+            ),
+            const SizedBox(height: 2),
             Text(
               label,
-              style: TextStyle(
-                fontSize: 12,
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-              ),
               textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 13,
+                color: onSurface.withValues(alpha: 0.6),
+              ),
             ),
           ],
         ),
@@ -735,27 +350,50 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  Widget _buildListTile(BuildContext context, String title,
-      {required IconData icon, required VoidCallback onTap}) {
-    final theme = Theme.of(context);
-    return ListTile(
-      hoverColor: theme.colorScheme.primary.withValues(alpha: 0.05),
-      leading: Icon(icon,
-          size: 22, color: theme.colorScheme.onSurface.withValues(alpha: 0.8)),
-      title: Text(
-        title,
-        style: TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w500,
-          color: theme.colorScheme.onSurface,
+  Widget _buildActionCard(
+    BuildContext context, {
+    required IconData icon,
+    required Color iconColor,
+    required String title,
+    required VoidCallback onTap,
+  }) {
+    final onSurface = Theme.of(context).colorScheme.onSurface;
+
+    return Material(
+      color: AppTheme.getCardColor(context),
+      borderRadius: BorderRadius.circular(24),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: iconColor.withValues(alpha: 0.15),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, size: 30, color: iconColor),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: onSurface,
+                  ),
+                ),
+              ),
+              Icon(Icons.chevron_right_rounded,
+                  size: 28, color: onSurface.withValues(alpha: 0.4)),
+            ],
+          ),
         ),
       ),
-      trailing: Icon(
-        Icons.arrow_forward_ios,
-        size: 14,
-        color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
-      ),
-      onTap: onTap,
     );
   }
 }

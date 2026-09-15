@@ -11,7 +11,6 @@ import 'package:lumiconte/widget/story_search_bar.dart';
 import 'package:lumiconte/pages/story/story_page.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lumiconte/widget/lantern_progress_bar.dart';
-import 'package:lumiconte/main.dart';
 
 class HomePage extends StatefulWidget {
   final ProfileModel profile;
@@ -36,10 +35,8 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
-    // Demande les permissions une fois l'écran et l'Activity Android affichés
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      appSettings.requestNotificationPermissions();
-    });
+    // Pas de demande d'autorisation de notifications ici : l'enfant voit cet
+    // écran. Elle est faite côté parent (création de profil, espace parents).
     _readingProgressService
         .addMissingMoraleUnlocked(widget.profile.id)
         .catchError((e) => debugPrint('Erreur ajout moraleUnlocked : $e'));

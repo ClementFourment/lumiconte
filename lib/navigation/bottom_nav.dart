@@ -188,8 +188,8 @@ class BottomNavState extends State<BottomNav> {
                             label: "Morales",
                           ),
                           BottomNavigationBarItem(
-                            icon: Icon(Icons.person_rounded),
-                            label: "Profil",
+                            icon: Icon(Icons.face_rounded),
+                            label: "Moi",
                           ),
                         ],
                       ),

@@ -9,9 +9,15 @@ import 'package:lumiconte/main.dart';
 import 'package:lumiconte/models/profile_model.dart';
 import 'package:lumiconte/services/profile_service.dart';
 import 'package:lumiconte/theme/app_theme.dart';
+import 'package:lumiconte/widget/parental_gate.dart';
 
+/// Par défaut : simple choix du lecteur, sans action sensible (écran vu par
+/// l'enfant). Avec [editMode] (après le contrôle parental) : création,
+/// modification et suppression des profils.
 class ManageProfilesPage extends StatefulWidget {
-  const ManageProfilesPage({super.key});
+  final bool editMode;
+
+  const ManageProfilesPage({super.key, this.editMode = false});
 
   @override
   State<ManageProfilesPage> createState() => _ManageProfilesPageState();
@@ -329,8 +335,20 @@ class _ManageProfilesPageState extends State<ManageProfilesPage> {
     }
   }
 
+  Future<void> _openEditMode() async {
+    final allowed = await showParentalGate(context);
+    if (!allowed || !mounted) return;
+
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => const ManageProfilesPage(editMode: true),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final editMode = widget.editMode;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final backgroundColor = isDark ? AppTheme.darkBg : AppTheme.lightBg;
     final cardColor = AppTheme.getCardColor(context);
@@ -352,7 +370,7 @@ class _ManageProfilesPageState extends State<ManageProfilesPage> {
       backgroundColor: backgroundColor,
       appBar: AppBar(
         title: Text(
-          'Gérer les profils',
+          editMode ? 'Gérer les profils' : 'Qui lit aujourd\'hui ?',
           style: GoogleFonts.nunito(
             fontWeight: FontWeight.bold,
             fontSize: 22,
@@ -363,6 +381,17 @@ class _ManageProfilesPageState extends State<ManageProfilesPage> {
         elevation: 0,
         centerTitle: true,
         foregroundColor: primaryTextColor,
+        actions: [
+          if (!editMode)
+            IconButton(
+              tooltip: 'Gérer les profils (parents)',
+              icon: Icon(
+                Icons.lock_outline_rounded,
+                color: primaryTextColor.withValues(alpha: 0.6),
+              ),
+              onPressed: _openEditMode,
+            ),
+        ],
       ),
       body: StreamBuilder<List<ProfileModel>>(
         stream: _profileService.getUserProfilesStream(_uid!),
@@ -374,7 +403,7 @@ class _ManageProfilesPageState extends State<ManageProfilesPage> {
           }
 
           final profiles = snapshot.data ?? [];
-          final bool canAddProfile = profiles.length < 6;
+          final bool canAddProfile = editMode && profiles.length < 6;
           final int itemCount =
               canAddProfile ? profiles.length + 1 : profiles.length;
 
@@ -450,7 +479,14 @@ class _ManageProfilesPageState extends State<ManageProfilesPage> {
                   child: Material(
                     color: Colors.transparent,
                     child: InkWell(
-                      onTap: () => _selectProfile(profile.id, name),
+                      onTap: editMode
+                          ? () => _editProfile(
+                                profile.id,
+                                name,
+                                age,
+                                profile.avatarPath,
+                              )
+                          : () => _selectProfile(profile.id, name),
                       child: Padding(
                         padding: const EdgeInsets.all(16.0),
                         child: Column(
@@ -483,38 +519,40 @@ class _ManageProfilesPageState extends State<ManageProfilesPage> {
                                 fontSize: 13,
                               ),
                             ),
-                            const Spacer(),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                              children: [
-                                IconButton(
-                                  icon: const Icon(
-                                    Icons.edit_outlined,
-                                    size: 20,
-                                    color: Colors.blue,
+                            if (editMode) const Spacer(),
+                            if (editMode)
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceEvenly,
+                                children: [
+                                  IconButton(
+                                    icon: const Icon(
+                                      Icons.edit_outlined,
+                                      size: 20,
+                                      color: Colors.blue,
+                                    ),
+                                    onPressed: () => _editProfile(
+                                      profile.id,
+                                      name,
+                                      age,
+                                      profile.avatarPath,
+                                    ),
+                                    constraints: const BoxConstraints(),
+                                    padding: EdgeInsets.zero,
                                   ),
-                                  onPressed: () => _editProfile(
-                                    profile.id,
-                                    name,
-                                    age,
-                                    profile.avatarPath,
+                                  IconButton(
+                                    icon: Icon(
+                                      Icons.delete_outline,
+                                      size: 20,
+                                      color: Colors.red.shade400,
+                                    ),
+                                    onPressed: () =>
+                                        _deleteProfile(profile.id, name),
+                                    constraints: const BoxConstraints(),
+                                    padding: EdgeInsets.zero,
                                   ),
-                                  constraints: const BoxConstraints(),
-                                  padding: EdgeInsets.zero,
-                                ),
-                                IconButton(
-                                  icon: Icon(
-                                    Icons.delete_outline,
-                                    size: 20,
-                                    color: Colors.red.shade400,
-                                  ),
-                                  onPressed: () =>
-                                      _deleteProfile(profile.id, name),
-                                  constraints: const BoxConstraints(),
-                                  padding: EdgeInsets.zero,
-                                ),
-                              ],
-                            ),
+                                ],
+                              ),
                           ],
                         ),
                       ),
