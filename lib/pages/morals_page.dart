@@ -162,13 +162,15 @@ class MoralsPage extends StatelessWidget {
     );
   }
 
-  // Extraction du préfixe "Le conseil de... :"
-  String _getConseilHeader(String text) {
+  // Aperçu de la morale : on retire le préfixe "Le conseil de... :" pour
+  // afficher directement le conseil (le préfixe seul donnait une carte vide)
+  String _getMoralPreview(String text) {
     final colonIndex = text.indexOf(':');
-    if (colonIndex != -1) {
-      return text.substring(0, colonIndex + 1).trim();
+    if (colonIndex != -1 && colonIndex < 60) {
+      final advice = text.substring(colonIndex + 1).trim();
+      if (advice.isNotEmpty) return advice;
     }
-    return text;
+    return text.trim();
   }
 
   void _showMoralDialog(BuildContext context, StoryModel story) {
@@ -220,7 +222,7 @@ class MoralsPage extends StatelessWidget {
 
     final String displayText = isUnlocked
         ? (story.morals.isNotEmpty
-            ? _getConseilHeader(story.morals)
+            ? _getMoralPreview(story.morals)
             : "Pas de morale enregistrée.")
         : "Terminez cette histoire pour en débloquer la morale.";
 
@@ -298,30 +300,18 @@ class MoralsPage extends StatelessWidget {
                                 color: colorScheme.onSurfaceVariant.withOpacity(0.6),
                               ),
                       ),
-                      if (isUnlocked) ...[
-                        const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            Text(
-                              "Toucher pour lire la suite",
-                              style: theme.textTheme.labelSmall?.copyWith(
-                                color: colorScheme.primary,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            const SizedBox(width: 2),
-                            Icon(
-                              Icons.touch_app,
-                              size: 12,
-                              color: colorScheme.primary,
-                            ),
-                          ],
-                        ),
-                      ],
                     ],
                   ),
                 ),
               ),
+              if (isUnlocked)
+                Padding(
+                  padding: const EdgeInsets.only(right: 10),
+                  child: Icon(
+                    Icons.chevron_right_rounded,
+                    color: colorScheme.primary,
+                  ),
+                ),
             ],
           ),
         ),

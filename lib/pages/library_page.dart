@@ -459,7 +459,7 @@ class _LibraryPageState extends State<LibraryPage> {
                       // Titre
                       Text(
                         story.name,
-                        maxLines: 2,
+                        maxLines: 3,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                           color: Colors.white,

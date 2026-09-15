@@ -127,6 +127,63 @@ class StoryCircleIconButton extends StatelessWidget {
   }
 }
 
+/// Flèches page précédente / suivante de part et d'autre du compteur de pages.
+/// Placées sous le texte pour ne jamais le recouvrir.
+class StoryPageNavigation extends StatelessWidget {
+  final StoryViewParams params;
+  final Color iconColor;
+  final Color backgroundColor;
+  final TextStyle counterStyle;
+  final double size;
+  final bool hasBorder;
+
+  const StoryPageNavigation({
+    super.key,
+    required this.params,
+    required this.iconColor,
+    required this.backgroundColor,
+    required this.counterStyle,
+    this.size = 44,
+    this.hasBorder = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final bool canGoBack = params.currentPageIndex > 0;
+    final bool canGoForward = params.currentPageIndex < params.totalPages - 1;
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        StoryCircleIconButton(
+          icon: Icons.chevron_left,
+          onPressed: canGoBack ? params.onPreviousPage : null,
+          backgroundColor: backgroundColor,
+          iconColor: canGoBack ? iconColor : iconColor.withOpacity(0.3),
+          size: size,
+          hasBorder: hasBorder,
+        ),
+        SizedBox(
+          width: 90,
+          child: Text(
+            '${params.currentPageIndex + 1} / ${params.totalPages}',
+            textAlign: TextAlign.center,
+            style: counterStyle,
+          ),
+        ),
+        StoryCircleIconButton(
+          icon: Icons.chevron_right,
+          onPressed: canGoForward ? params.onNextPage : null,
+          backgroundColor: backgroundColor,
+          iconColor: canGoForward ? iconColor : iconColor.withOpacity(0.3),
+          size: size,
+          hasBorder: hasBorder,
+        ),
+      ],
+    );
+  }
+}
+
 /// Illustration de la page. Quand la clé change, la nouvelle image n'est
 /// affichée qu'une fois chargée : si elle n'existe pas, on garde la précédente.
 /// S'il n'y a pas d'image précédente, on affiche [fallbackKey] (la couverture).
