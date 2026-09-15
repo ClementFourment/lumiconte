@@ -1,265 +1,183 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'package:lumiconte/models/rewards_model.dart';
+import 'package:lumiconte/models/badge_model.dart';
+import 'package:lumiconte/models/story_model.dart';
+import 'package:lumiconte/services/badge_service.dart';
 import 'package:lumiconte/theme/app_theme.dart';
+import 'package:lumiconte/widget/badge_celebration.dart';
+import 'package:lumiconte/widget/badge_medal.dart';
+import 'package:lumiconte/widget/mascot.dart';
 
-class RewardsPage extends StatelessWidget {
-  final String userId;
+/// Badges d'habitudes de lecture. Les badges pas encore gagnés restent des
+/// surprises, avec un indice pour les obtenir.
+class RewardsPage extends StatefulWidget {
   final String profileId;
+  final List<StoryModel> stories;
 
-  const RewardsPage({super.key, required this.userId, required this.profileId});
+  const RewardsPage({
+    super.key,
+    required this.profileId,
+    required this.stories,
+  });
+
+  @override
+  State<RewardsPage> createState() => _RewardsPageState();
+}
+
+class _RewardsPageState extends State<RewardsPage> {
+  final String? _uid = FirebaseAuth.instance.currentUser?.uid;
+  late final Stream<BadgeProgress>? _progressStream = _uid == null
+      ? null
+      : BadgeService().watch(_uid!, widget.profileId, widget.stories);
+
+  String _mascotMessage(int earnedCount) {
+    if (earnedCount == 0) {
+      return 'Des badges surprises t\'attendent ! Lis les indices pour les trouver.';
+    }
+    if (earnedCount == BadgeModel.all.length) {
+      return 'Incroyable, tu as trouvé tous les badges !';
+    }
+    return 'Bravo, tu as déjà $earnedCount badge${earnedCount > 1 ? 's' : ''} ! '
+        'Qui sera le prochain ?';
+  }
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final backgroundColor = isDark ? AppTheme.darkBg : AppTheme.lightBg;
-    final cardColor = AppTheme.getCardColor(context);
-    final primaryTextColor = isDark ? Colors.white : const Color(0xFF1E1E1E);
-    final secondaryTextColor = isDark ? Colors.grey.shade400 : const Color(0xFF2C3E50);
-
-    const goldColor = Color(0xFFF1C40F);
+    final theme = Theme.of(context);
+    final onSurface = theme.colorScheme.onSurface;
 
     return Scaffold(
-      backgroundColor: backgroundColor,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
-        title: Text(
-          'Mes Récompenses', 
-          style: GoogleFonts.nunito(
-            fontWeight: FontWeight.bold, 
-            fontSize: 22,
-            color: primaryTextColor,
-          ),
-        ),
         backgroundColor: Colors.transparent,
         elevation: 0,
-        centerTitle: true,
-        foregroundColor: primaryTextColor,
+        title: Text(
+          'Mes badges',
+          style: theme.textTheme.headlineSmall?.copyWith(color: onSurface),
+        ),
       ),
-      body: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance
-            .collection('users').doc(userId)
-            .collection('profiles').doc(profileId)
-            .collection('badges').snapshots(),
-        builder: (context, userBadgesSnapshot) {
-          return StreamBuilder<QuerySnapshot>(
-            stream: FirebaseFirestore.instance.collection('badges').snapshots(),
-            builder: (context, allBadgesSnapshot) {
-              final error = userBadgesSnapshot.error ?? allBadgesSnapshot.error;
-              if (error != null) {
-                debugPrint('Erreur chargement récompenses: $error');
-                return _buildMessage(
-                  'Impossible de charger tes récompenses pour le moment.',
-                  secondaryTextColor,
-                );
-              }
+      body: StreamBuilder<BadgeProgress>(
+        stream: _progressStream,
+        builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            debugPrint('Erreur chargement badges : ${snapshot.error}');
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(32),
+                child: Text(
+                  'Impossible de charger tes badges pour le moment.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: onSurface.withValues(alpha: 0.7)),
+                ),
+              ),
+            );
+          }
+          if (!snapshot.hasData) {
+            return const Center(
+              child: CircularProgressIndicator(color: AppTheme.accentColor),
+            );
+          }
 
-              if (!userBadgesSnapshot.hasData || !allBadgesSnapshot.hasData) {
-                return const Center(
-                  child: CircularProgressIndicator(
-                    color: AppTheme.accentColor,
+          final earned = snapshot.data!.earned;
+          final earnedCount =
+              BadgeModel.all.where((b) => earned.contains(b.id)).length;
+          // Les badges gagnés d'abord
+          final badges = [
+            ...BadgeModel.all.where((b) => earned.contains(b.id)),
+            ...BadgeModel.all.where((b) => !earned.contains(b.id)),
+          ];
+
+          return CustomScrollView(
+            slivers: [
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+                sliver: SliverToBoxAdapter(
+                  child: Mascot(message: _mascotMessage(earnedCount)),
+                ),
+              ),
+              SliverPadding(
+                padding: EdgeInsets.fromLTRB(
+                    20, 0, 20, MediaQuery.paddingOf(context).bottom + 24),
+                sliver: SliverGrid.builder(
+                  gridDelegate:
+                      const SliverGridDelegateWithMaxCrossAxisExtent(
+                    maxCrossAxisExtent: 220,
+                    mainAxisSpacing: 14,
+                    crossAxisSpacing: 14,
+                    // Hauteur fixe : le texte garde sa place sur les petits écrans
+                    mainAxisExtent: 220,
                   ),
-                );
-              }
-
-              // --- CONVERSION TYPÉE : MAPPING DE LA SOUS-COLLECTION UTILISATEUR ---
-              final List<BadgeModel> userBadges = (userBadgesSnapshot.data?.docs ?? []).map((doc) {
-                final data = doc.data() as Map<String, dynamic>? ?? {};
-                return BadgeModel.fromMap(data, doc.id);
-              }).toList();
-
-              // Un badge obtenu est reconnu par son id (id du document) ou par son nom
-              final Set<String> earnedBadgeIds = {
-                for (final b in userBadges) ...[b.id, b.name.trim().toLowerCase()],
-              };
-
-              // --- CONVERSION TYPÉE : MAPPING DE LA COLLECTION GLOBALE DE BADGES ---
-              final List<BadgeModel> allBadges = (allBadgesSnapshot.data?.docs ?? []).map((doc) {
-                final data = doc.data() as Map<String, dynamic>? ?? {};
-                return BadgeModel.fromMap(data, doc.id);
-              }).toList();
-
-              final int totalBadges = allBadges.length;
-              final int earnedCount = allBadges.where((b) => _isEarned(b, earnedBadgeIds)).length;
-              final double progressPercent = totalBadges > 0 ? (earnedCount / totalBadges) : 0.0;
-
-              if (totalBadges == 0) {
-                return _buildMessage(
-                  'Aucune récompense disponible pour le moment.\nContinue à lire des histoires !',
-                  secondaryTextColor,
-                );
-              }
-
-              return Column(
-                children: [
-                  // --- SECTION COMPTEUR & BARRE DE PROGRESSION ---
-                  Container(
-                    margin: const EdgeInsets.all(20),
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: cardColor,
-                      borderRadius: BorderRadius.circular(24),
-                      boxShadow: !isDark ? [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.03),
-                          blurRadius: 15,
-                          offset: const Offset(0, 5),
-                        )
-                      ] : null,
-                    ),
-                    child: Column(
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              'Progression des badges',
-                              style: GoogleFonts.nunito(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                                color: secondaryTextColor,
-                              ),
-                            ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                              decoration: BoxDecoration(
-                                color: AppTheme.accentColor.withOpacity(0.12),
-                                borderRadius: BorderRadius.circular(30),
-                              ),
-                              child: Text(
-                                '$earnedCount / $totalBadges',
-                                style: GoogleFonts.nunito(
-                                  fontWeight: FontWeight.w900,
-                                  fontSize: 14,
-                                  color: AppTheme.accentColor,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 15),
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(10),
-                          child: LinearProgressIndicator(
-                            value: progressPercent,
-                            minHeight: 12,
-                            backgroundColor: isDark ? Colors.white10 : const Color(0xFFF7F2FA),
-                            valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.accentColor),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  // --- LISTE DES BADGES ---
-                  Expanded(
-                    child: GridView.builder(
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 5),
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2, 
-                        crossAxisSpacing: 18, 
-                        mainAxisSpacing: 18, 
-                        childAspectRatio: 1.05,
-                      ),
-                      itemCount: totalBadges,
-                      itemBuilder: (context, index) {
-                        final BadgeModel badge = allBadges[index];
-                        final bool isEarned = _isEarned(badge, earnedBadgeIds);
-
-                        return _buildBadgeCard(
-                          badge: badge, 
-                          isDark: isDark, 
-                          gold: goldColor, 
-                          isEarned: isEarned,
-                          cardBg: cardColor,
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              );
-            },
+                  itemCount: badges.length,
+                  itemBuilder: (context, index) {
+                    final badge = badges[index];
+                    return _BadgeTile(
+                      badge: badge,
+                      earned: earned.contains(badge.id),
+                    );
+                  },
+                ),
+              ),
+            ],
           );
         },
       ),
     );
   }
+}
 
-  bool _isEarned(BadgeModel badge, Set<String> earnedBadgeIds) =>
-      earnedBadgeIds.contains(badge.id) ||
-      earnedBadgeIds.contains(badge.name.trim().toLowerCase());
+class _BadgeTile extends StatelessWidget {
+  final BadgeModel badge;
+  final bool earned;
 
-  Widget _buildMessage(String message, Color color) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Text(
-          message,
-          textAlign: TextAlign.center,
-          style: GoogleFonts.nunito(fontSize: 16, color: color),
-        ),
-      ),
-    );
-  }
+  const _BadgeTile({required this.badge, required this.earned});
 
-  Widget _buildBadgeCard({
-    required BadgeModel badge, 
-    required bool isDark, 
-    required Color gold, 
-    required bool isEarned,
-    required Color cardBg,
-  }) {
-    final unearnedBgLight = const Color(0xFFF7F2FA);
-    final unearnedBgDark = cardBg.withOpacity(0.5);
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final onSurface = theme.colorScheme.onSurface;
 
-    return Opacity(
-      opacity: isEarned ? 1.0 : 0.45, 
-      child: Container(
-        decoration: BoxDecoration(
-          color: isEarned ? cardBg : (isDark ? unearnedBgDark : unearnedBgLight),
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: isEarned && !isDark ? [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.04),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            )
-          ] : null,
-          border: isEarned 
-              ? Border.all(color: gold.withOpacity(0.5), width: 1.5) 
-              : Border.all(color: Colors.transparent),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: isEarned ? gold.withOpacity(0.15) : Colors.grey.withOpacity(0.1),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                Icons.emoji_events_rounded, 
-                size: 38, 
-                color: isEarned ? gold : Colors.grey.shade500,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8.0),
-              child: Text(
-                badge.name,
+    return Material(
+      color: AppTheme.getCardColor(context)
+          .withValues(alpha: earned ? 1 : 0.6),
+      borderRadius: BorderRadius.circular(24),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: earned
+            ? () => showBadgeCelebration(context, badge, celebrate: false)
+            : null,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 18, 12, 14),
+          child: Column(
+            children: [
+              BadgeMedal(badge: badge, earned: earned),
+              const SizedBox(height: 12),
+              Text(
+                earned ? badge.name : 'Badge surprise',
                 textAlign: TextAlign.center,
-                style: GoogleFonts.nunito(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 15,
-                  color: isDark 
-                      ? (isEarned ? Colors.white : Colors.grey.shade500)
-                      : (isEarned ? const Color(0xFF2C3E50) : Colors.grey.shade600),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontSize: 17,
+                  color: earned ? onSurface : onSurface.withValues(alpha: 0.75),
                 ),
               ),
-            ),
-          ],
+              const SizedBox(height: 4),
+              Expanded(
+                child: Text(
+                  earned ? badge.earnedText : badge.hint,
+                  textAlign: TextAlign.center,
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 13,
+                    height: 1.3,
+                    fontStyle: earned ? FontStyle.normal : FontStyle.italic,
+                    color: onSurface.withValues(alpha: 0.65),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
