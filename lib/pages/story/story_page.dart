@@ -328,6 +328,7 @@ class _StoryPageState extends State<StoryPage> {
     final targetPage = pagination.pageOfWord(spokenWord);
     if (targetPage != _currentPageIndex) {
       setState(() => _anchorWord = pagination.pages[targetPage].start);
+      _updateReadingProgress(_calculateProgress());
       _precacheIllustration(targetPage + 1);
     }
   }
