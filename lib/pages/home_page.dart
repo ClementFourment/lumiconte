@@ -104,9 +104,15 @@ class _HomePageState extends State<HomePage> {
         return Scaffold(
           backgroundColor: Colors.transparent,
           body: SafeArea(
+            // Le bas est géré à la main : le contenu défile sous la barre
+            // flottante mais peut toujours remonter au-dessus
+            bottom: false,
             child: SingleChildScrollView(
               physics: const BouncingScrollPhysics(),
-              padding: const EdgeInsets.only(top: 15, bottom: 40),
+              padding: EdgeInsets.only(
+                top: 15,
+                bottom: MediaQuery.paddingOf(context).bottom + 24,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -147,7 +153,7 @@ class _HomePageState extends State<HomePage> {
                           onTap: () {
                             context
                                 .findAncestorStateOfType<BottomNavState>()
-                                ?.changeTab(3);
+                                ?.changeTab(2);
                           },
                           child: CircleAvatar(
                             radius: 22,

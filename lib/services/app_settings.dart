@@ -172,17 +172,15 @@ class AppSettings extends ChangeNotifier {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
 
-    final query = FirebaseFirestore.instance
+    // Même document que SettingsService ; créé s'il manque
+    await FirebaseFirestore.instance
         .collection('users')
         .doc(uid)
         .collection('profiles')
         .doc(profileId)
-        .collection('settings');
-
-    final snapshot = await query.get();
-    if (snapshot.docs.isNotEmpty) {
-      await snapshot.docs.first.reference.update(updates);
-    }
+        .collection('settings')
+        .doc('default')
+        .set(updates, SetOptions(merge: true));
   }
 
   Future<void> cancelReadingReminder() async {

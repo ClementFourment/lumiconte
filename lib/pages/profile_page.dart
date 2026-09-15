@@ -8,23 +8,28 @@ import 'package:lumiconte/main.dart';
 import 'package:lumiconte/models/profile_model.dart';
 import 'package:lumiconte/models/reading_progress_model.dart';
 import 'package:lumiconte/models/settings_model.dart';
+import 'package:lumiconte/models/story_model.dart';
 import 'package:lumiconte/pages/manage_profiles_page.dart';
+import 'package:lumiconte/pages/morals_page.dart';
 import 'package:lumiconte/pages/parent_space_page.dart';
 import 'package:lumiconte/pages/rewards_page.dart';
 import 'package:lumiconte/theme/app_theme.dart';
 import 'package:lumiconte/utils/reading_stats.dart';
 import 'package:lumiconte/widget/mascot.dart';
+import 'package:lumiconte/widget/night_sky_background.dart';
 import 'package:lumiconte/widget/parental_gate.dart';
 
-/// Onglet « Moi » de l'enfant : uniquement du contenu adapté aux enfants.
+/// Onglet « Mes trésors » de l'enfant : uniquement du contenu adapté aux enfants.
 /// Les réglages, le compte et les actions sensibles sont dans
 /// [ParentSpacePage], derrière le contrôle parental.
 class ProfilePage extends StatefulWidget {
   final String profileId;
+  final List<StoryModel> stories;
 
   const ProfilePage({
     super.key,
     required this.profileId,
+    required this.stories,
   });
 
   @override
@@ -141,6 +146,7 @@ class _ProfilePageState extends State<ProfilePage> {
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: SafeArea(
+        bottom: false,
         child: StreamBuilder<DocumentSnapshot>(
           stream: _profileStream,
           builder: (context, profileSnapshot) {
@@ -191,7 +197,10 @@ class _ProfilePageState extends State<ProfilePage> {
                       if (streak == 0 && settings.streak != 0) {
                         Future.microtask(() => _settingsCollection
                             .doc(settingsDoc.id)
-                            .update({'streak': 0}).catchError((e) =>
+                            .set(
+                                {'streak': 0},
+                                SetOptions(
+                                    merge: true)).catchError((e) =>
                                 debugPrint('Erreur remise à zéro série: $e')));
                       }
                     }
@@ -223,7 +232,9 @@ class _ProfilePageState extends State<ProfilePage> {
     final onSurface = theme.colorScheme.onSurface;
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 40),
+      // Place pour la barre de navigation flottante
+      padding: EdgeInsets.fromLTRB(
+          20, 8, 20, MediaQuery.paddingOf(context).bottom + 24),
       children: [
         // Accès discret à l'espace parents
         Align(
@@ -293,6 +304,26 @@ class _ProfilePageState extends State<ProfilePage> {
         ),
         const SizedBox(height: 16),
 
+        // Une morale est débloquée à chaque histoire terminée
+        _buildActionCard(
+          context,
+          icon: Icons.auto_awesome_rounded,
+          iconColor: AppTheme.accentColor,
+          title: 'Mes morales',
+          subtitle: '$storiesReadCount / ${widget.stories.length} débloquées',
+          progress: widget.stories.isEmpty
+              ? null
+              : storiesReadCount / widget.stories.length,
+          onTap: () => _push(
+            NightSkyBackground(
+              child: MoralsPage(
+                profile: profile,
+                stories: widget.stories,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
         _buildActionCard(
           context,
           icon: Icons.emoji_events_rounded,
@@ -364,6 +395,8 @@ class _ProfilePageState extends State<ProfilePage> {
     required IconData icon,
     required Color iconColor,
     required String title,
+    String? subtitle,
+    double? progress,
     required VoidCallback onTap,
   }) {
     final onSurface = Theme.of(context).colorScheme.onSurface;
@@ -388,12 +421,39 @@ class _ProfilePageState extends State<ProfilePage> {
               ),
               const SizedBox(width: 16),
               Expanded(
-                child: Text(
-                  title,
-                  style: Theme.of(context)
-                      .textTheme
-                      .titleMedium
-                      ?.copyWith(fontSize: 19, color: onSurface),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: Theme.of(context)
+                          .textTheme
+                          .titleMedium
+                          ?.copyWith(fontSize: 19, color: onSurface),
+                    ),
+                    if (subtitle != null) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        subtitle,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: onSurface.withValues(alpha: 0.6),
+                        ),
+                      ),
+                    ],
+                    if (progress != null) ...[
+                      const SizedBox(height: 8),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: LinearProgressIndicator(
+                          value: progress.clamp(0.0, 1.0),
+                          minHeight: 6,
+                          color: iconColor,
+                          backgroundColor: onSurface.withValues(alpha: 0.1),
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ),
               Icon(Icons.chevron_right_rounded,
