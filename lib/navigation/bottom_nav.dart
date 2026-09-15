@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -70,6 +71,22 @@ class BottomNavState extends State<BottomNav> {
     });
   }
 
+  static bool _sameProfiles(List<ProfileModel> prev, List<ProfileModel> next) {
+    if (prev.length != next.length) return false;
+    for (var i = 0; i < prev.length; i++) {
+      final a = prev[i];
+      final b = next[i];
+      if (a.id != b.id ||
+          a.name != b.name ||
+          a.age != b.age ||
+          a.avatarPath != b.avatarPath ||
+          !listEquals(a.interestIds, b.interestIds)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   Future<DataFuture> _loadStaticData() async {
     final categories = await _categoryService.getAllCategories();
     final stories = await _storyService.getAllStories();
@@ -119,10 +136,11 @@ class BottomNavState extends State<BottomNav> {
                 userSnapshot.data?.data()?['activeProfileId'] as String?;
 
             return StreamBuilder<List<ProfileModel>>(
-              stream: _profileService.getUserProfilesStream(_uid!).distinct(
-                  (prev, next) =>
-                      prev.length == next.length &&
-                      prev.every((p) => p.id == next[prev.indexOf(p)].id)),
+              // On compare aussi les champs affichés : sinon une modification
+              // du nom, de l'âge ou de l'avatar n'atteint pas les onglets.
+              stream: _profileService
+                  .getUserProfilesStream(_uid!)
+                  .distinct(_sameProfiles),
               builder: (context, profilesSnapshot) {
                 if (profilesSnapshot.connectionState ==
                     ConnectionState.waiting) {
