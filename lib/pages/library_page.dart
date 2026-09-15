@@ -7,6 +7,7 @@ import 'package:lumiconte/models/story_model.dart';
 import 'package:lumiconte/models/reading_progress_model.dart';
 import 'package:lumiconte/widget/b2_image.dart';
 import 'package:lumiconte/widget/lantern_progress_bar.dart';
+import 'package:lumiconte/widget/story_queue_widgets.dart';
 import 'package:go_router/go_router.dart';
 
 class LibraryPage extends StatefulWidget {
@@ -482,6 +483,12 @@ class _LibraryPageState extends State<LibraryPage> {
                     ],
                   ),
                 ),
+              ),
+
+              Positioned(
+                top: 0,
+                right: 0,
+                child: QueueToggleButton(story: story, size: 30),
               ),
             ],
           ),

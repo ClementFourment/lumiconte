@@ -12,6 +12,7 @@ import 'package:go_router/go_router.dart';
 import 'package:lumiconte/widget/lantern_progress_bar.dart';
 import 'package:lumiconte/widget/mascot.dart';
 import 'package:lumiconte/widget/story_cover_card.dart';
+import 'package:lumiconte/widget/story_queue_widgets.dart';
 
 class HomePage extends StatefulWidget {
   final ProfileModel profile;
@@ -309,7 +310,12 @@ class _HomePageState extends State<HomePage> {
                 ),
               ],
             ),
-          )
+          ),
+          Positioned(
+            top: 0,
+            right: 0,
+            child: QueueToggleButton(story: story),
+          ),
         ],
       ),
     );

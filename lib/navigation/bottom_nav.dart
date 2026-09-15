@@ -21,6 +21,7 @@ import 'package:lumiconte/constants/avatars.dart';
 import 'package:lumiconte/navigation/floating_nav_bar.dart';
 import 'package:lumiconte/widget/badge_celebration.dart';
 import 'package:lumiconte/widget/night_sky_background.dart';
+import 'package:lumiconte/widget/story_queue_widgets.dart';
 
 class BottomNav extends StatefulWidget {
   const BottomNav({super.key});
@@ -209,24 +210,31 @@ class BottomNavState extends State<BottomNav> {
                           ),
                         ),
                       ),
-                      bottomNavigationBar: FloatingNavBar(
-                        currentIndex: currentIndex,
-                        onTap: (value) => _currentIndexNotifier.value = value,
-                        items: [
-                          const FloatingNavItem(
-                            icon: Icons.home_rounded,
-                            label: "Accueil",
-                          ),
-                          const FloatingNavItem(
-                            icon: Icons.auto_stories_rounded,
-                            label: "Histoires",
-                          ),
-                          FloatingNavItem(
-                            avatar: AssetImage(
-                              activeProfile.avatarPath ??
-                                  AppAvatars.defaultAvatar,
-                            ),
-                            label: "Mes trésors",
+                      bottomNavigationBar: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          StoryQueueBar(profile: activeProfile),
+                          FloatingNavBar(
+                            currentIndex: currentIndex,
+                            onTap: (value) =>
+                                _currentIndexNotifier.value = value,
+                            items: [
+                              const FloatingNavItem(
+                                icon: Icons.home_rounded,
+                                label: "Accueil",
+                              ),
+                              const FloatingNavItem(
+                                icon: Icons.auto_stories_rounded,
+                                label: "Histoires",
+                              ),
+                              FloatingNavItem(
+                                avatar: AssetImage(
+                                  activeProfile.avatarPath ??
+                                      AppAvatars.defaultAvatar,
+                                ),
+                                label: "Mes trésors",
+                              ),
+                            ],
                           ),
                         ],
                       ),
