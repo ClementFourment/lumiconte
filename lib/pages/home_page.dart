@@ -1,3 +1,4 @@
+import 'package:lumiconte/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:lumiconte/constants/avatars.dart';
 import 'package:lumiconte/models/category_model.dart';
@@ -47,10 +48,11 @@ class _HomePageState extends State<HomePage> {
   }
 
   /// Petite phrase de la mascotte, adaptée au moment de la journée.
-  String _greetingSubtitle() {
+  String _greetingSubtitle(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final hour = DateTime.now().hour;
-    if (hour >= 18 || hour < 5) return "Une histoire avant de dormir ?";
-    return "Quelle histoire on lit aujourd'hui ?";
+    if (hour >= 18 || hour < 5) return l10n.greetingEvening;
+    return l10n.greetingDay;
   }
 
   @override
@@ -132,7 +134,7 @@ class _HomePageState extends State<HomePage> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                "Bonjour ${widget.profile.name} !",
+                                AppLocalizations.of(context).greetingHello(widget.profile.name),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: textTheme.headlineSmall?.copyWith(
@@ -142,7 +144,7 @@ class _HomePageState extends State<HomePage> {
                               ),
                               const SizedBox(height: 2),
                               Text(
-                                _greetingSubtitle(),
+                                _greetingSubtitle(context),
                                 style: textTheme.bodyMedium?.copyWith(
                                   color: colorScheme.onSurface
                                       .withValues(alpha: 0.7),
@@ -194,7 +196,7 @@ class _HomePageState extends State<HomePage> {
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 20),
                       child: Text(
-                        "Reprendre la lecture",
+                        AppLocalizations.of(context).continueReading,
                         style: sectionTitleStyle,
                       ),
                     ),
@@ -235,12 +237,12 @@ class _HomePageState extends State<HomePage> {
                   ],
 
                   if (adaptedFromAgeStories.isNotEmpty)
-                    _carrousel(context, "Adapté à ton âge",
+                    _carrousel(context, AppLocalizations.of(context).forYourAge,
                         adaptedFromAgeStories, readingProgress),
                   // _carrousel(context, "Histoires populaires",
                   //     widget.stories.sublist(0, 10), readingProgress),
-                  _carrousel(
-                      context, "Nouveautés", latestStories, readingProgress),
+                  _carrousel(context, AppLocalizations.of(context).newStories,
+                      latestStories, readingProgress),
                 ],
               ),
             ),
@@ -289,7 +291,7 @@ class _HomePageState extends State<HomePage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  story.name,
+                  story.displayName,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
@@ -303,7 +305,8 @@ class _HomePageState extends State<HomePage> {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  "${progress.progress.round()}% terminé",
+                  AppLocalizations.of(context)
+                      .percentDone(progress.progress.round()),
                   style: const TextStyle(
                     color: Colors.white70,
                     fontSize: 11,

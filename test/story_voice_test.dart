@@ -5,10 +5,10 @@ AudioVoiceData _voice(String url) => AudioVoiceData(url: url, audioTimes: '');
 
 StoryModel _story(Map<String, AudioVoiceData> audio) => StoryModel(
       id: 's',
-      name: 's',
+      name: const LocalizedText({'fr': 's'}),
       age_min: null,
       age_max: null,
-      content: '',
+      content: const LocalizedText.empty(),
       audio: audio,
     );
 
@@ -46,6 +46,17 @@ void main() {
     final story = _story({'fr_homme': _voice('fr_h')});
 
     expect(story.voiceFor(null, null)?.url, 'fr_h');
-    expect(story.voiceFor('de', 'homme')?.url, 'fr_h');
+    // 'pt' n'est pas proposé dans les réglages : on retombe sur le français
+    expect(story.voiceFor('pt', 'homme')?.url, 'fr_h');
+  });
+
+  test("une langue proposée sans voix enregistrée n'a pas de voix", () {
+    final story = _story({'fr_homme': _voice('fr_h')});
+
+    // L'allemand est une vraie langue des réglages : tant qu'aucune voix
+    // allemande n'est en base, l'histoire n'est pas écoutable dans cette
+    // langue. Elle reste lisible en texte.
+    expect(story.voiceFor('de', 'homme'), isNull);
+    expect(story.voiceFor('ja', 'femme'), isNull);
   });
 }

@@ -1,3 +1,4 @@
+import 'package:lumiconte/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:lumiconte/theme/app_theme.dart';
 
@@ -17,9 +18,9 @@ class FavoritesPage extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          'Mes Favoris',
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+        title: Text(
+          AppLocalizations.of(context).myFavorites,
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
         ),
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -28,7 +29,7 @@ class FavoritesPage extends StatelessWidget {
         child: profileId == null || profileId!.isEmpty
             ? Center(
                 child: Text(
-                  'Aucun profil sélectionné.',
+                  AppLocalizations.of(context).noProfileSelected,
                   style: TextStyle(color: subtitleColor, fontSize: 16),
                 ),
               )
@@ -57,7 +58,7 @@ class FavoritesPage extends StatelessWidget {
                             ),
                             const SizedBox(height: 20),
                             Text(
-                              'Pas encore de favoris',
+                              AppLocalizations.of(context).noFavoritesYet,
                               style: TextStyle(
                                 fontSize: 20,
                                 fontWeight: FontWeight.bold,
@@ -66,7 +67,7 @@ class FavoritesPage extends StatelessWidget {
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              'Enregistrez vos histoires préférées pour les retrouver facilement ici !',
+                              AppLocalizations.of(context).noFavoritesHint,
                               textAlign: TextAlign.center,
                               style: TextStyle(
                                 fontSize: 14,

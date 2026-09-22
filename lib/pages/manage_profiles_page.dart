@@ -1,3 +1,4 @@
+import 'package:lumiconte/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -57,7 +58,7 @@ class _ManageProfilesPageState extends State<ManageProfilesPage> {
                 borderRadius: BorderRadius.circular(24),
               ),
               title: Text(
-                'Modifier le profil',
+                AppLocalizations.of(context).editProfile,
                 style: GoogleFonts.nunito(
                   fontWeight: FontWeight.bold,
                   color: primaryText,
@@ -73,7 +74,7 @@ class _ManageProfilesPageState extends State<ManageProfilesPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Avatar',
+                          AppLocalizations.of(context).avatar,
                           style: GoogleFonts.nunito(
                             fontWeight: FontWeight.bold,
                             color: primaryText,
@@ -119,7 +120,7 @@ class _ManageProfilesPageState extends State<ManageProfilesPage> {
                           controller: nameController,
                           style: GoogleFonts.nunito(color: primaryText),
                           decoration: InputDecoration(
-                            labelText: 'Nom',
+                            labelText: AppLocalizations.of(context).nameLabel,
                             labelStyle: GoogleFonts.nunito(
                               color: primaryText.withValues(alpha: 0.7),
                             ),
@@ -128,7 +129,7 @@ class _ManageProfilesPageState extends State<ManageProfilesPage> {
                             ),
                           ),
                           validator: (v) => v == null || v.trim().isEmpty
-                              ? 'Entrez un nom'
+                              ? AppLocalizations.of(context).enterName
                               : null,
                         ),
                         const SizedBox(height: 16),
@@ -137,7 +138,7 @@ class _ManageProfilesPageState extends State<ManageProfilesPage> {
                           style: GoogleFonts.nunito(color: primaryText),
                           keyboardType: TextInputType.number,
                           decoration: InputDecoration(
-                            labelText: 'Âge',
+                            labelText: AppLocalizations.of(context).ageLabel,
                             labelStyle: GoogleFonts.nunito(
                               color: primaryText.withValues(alpha: 0.7),
                             ),
@@ -146,7 +147,7 @@ class _ManageProfilesPageState extends State<ManageProfilesPage> {
                             ),
                           ),
                           validator: (v) => v == null || int.tryParse(v) == null
-                              ? 'Entrez un âge valide'
+                              ? AppLocalizations.of(context).enterValidAge
                               : null,
                         ),
                       ],
@@ -158,7 +159,7 @@ class _ManageProfilesPageState extends State<ManageProfilesPage> {
                 TextButton(
                   onPressed: () => Navigator.pop(context),
                   child: Text(
-                    'Annuler',
+                    AppLocalizations.of(context).cancel,
                     style: GoogleFonts.nunito(
                       color: isDark ? Colors.white70 : Colors.grey.shade700,
                     ),
@@ -188,8 +189,8 @@ class _ManageProfilesPageState extends State<ManageProfilesPage> {
 
                       if (mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Profil mis à jour !'),
+                          SnackBar(
+                            content: Text(AppLocalizations.of(context).profileUpdated),
                             backgroundColor: Colors.green,
                           ),
                         );
@@ -198,7 +199,7 @@ class _ManageProfilesPageState extends State<ManageProfilesPage> {
                       if (mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: Text('Erreur : $e'),
+                            content: Text(AppLocalizations.of(context).genericError),
                             backgroundColor: Colors.red,
                           ),
                         );
@@ -206,7 +207,7 @@ class _ManageProfilesPageState extends State<ManageProfilesPage> {
                     }
                   },
                   child: Text(
-                    'Sauvegarder',
+                    AppLocalizations.of(context).save,
                     style: GoogleFonts.nunito(
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
@@ -233,14 +234,14 @@ class _ManageProfilesPageState extends State<ManageProfilesPage> {
         backgroundColor: cardBg,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         title: Text(
-          'Supprimer le profil',
+          AppLocalizations.of(context).deleteProfile,
           style: GoogleFonts.nunito(
             fontWeight: FontWeight.bold,
             color: primaryText,
           ),
         ),
         content: Text(
-          'Voulez-vous vraiment supprimer le profil de $profileName ? Cette action est irréversible.',
+          AppLocalizations.of(context).deleteProfileConfirm(profileName),
           style: GoogleFonts.nunito(
             color: isDark ? Colors.white70 : Colors.black87,
           ),
@@ -249,7 +250,7 @@ class _ManageProfilesPageState extends State<ManageProfilesPage> {
           TextButton(
             onPressed: () => Navigator.pop(context, false),
             child: Text(
-              'Annuler',
+              AppLocalizations.of(context).cancel,
               style: GoogleFonts.nunito(
                 color: isDark ? Colors.white70 : Colors.grey.shade700,
               ),
@@ -259,7 +260,7 @@ class _ManageProfilesPageState extends State<ManageProfilesPage> {
             onPressed: () => Navigator.pop(context, true),
             style: TextButton.styleFrom(foregroundColor: Colors.red),
             child: Text(
-              'Supprimer',
+              AppLocalizations.of(context).delete,
               style: GoogleFonts.nunito(
                 fontWeight: FontWeight.bold,
                 color: Colors.red,
@@ -276,8 +277,8 @@ class _ManageProfilesPageState extends State<ManageProfilesPage> {
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Profil et données supprimés'),
+            SnackBar(
+              content: Text(AppLocalizations.of(context).profileAndDataDeleted),
               backgroundColor: Colors.orange,
             ),
           );
@@ -285,7 +286,7 @@ class _ManageProfilesPageState extends State<ManageProfilesPage> {
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Erreur : $e'), backgroundColor: Colors.red),
+            SnackBar(content: Text(AppLocalizations.of(context).genericError), backgroundColor: Colors.red),
           );
         }
       }
@@ -315,7 +316,7 @@ class _ManageProfilesPageState extends State<ManageProfilesPage> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Profil actif : $name'),
+              content: Text(AppLocalizations.of(context).activeProfileNamed(name)),
               backgroundColor: AppTheme.accentColor,
               duration: const Duration(seconds: 1),
             ),
@@ -330,7 +331,7 @@ class _ManageProfilesPageState extends State<ManageProfilesPage> {
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Erreur : $e'), backgroundColor: Colors.red),
+            SnackBar(content: Text(AppLocalizations.of(context).genericError), backgroundColor: Colors.red),
           );
         }
       }
@@ -361,7 +362,7 @@ class _ManageProfilesPageState extends State<ManageProfilesPage> {
         backgroundColor: backgroundColor,
         body: Center(
           child: Text(
-            'Veuillez vous connecter.',
+            AppLocalizations.of(context).pleaseSignIn,
             style: GoogleFonts.nunito(color: primaryTextColor, fontSize: 16),
           ),
         ),
@@ -373,7 +374,7 @@ class _ManageProfilesPageState extends State<ManageProfilesPage> {
       backgroundColor: editMode ? backgroundColor : Colors.transparent,
       appBar: AppBar(
         title: Text(
-          editMode ? 'Gérer les profils' : 'Qui lit aujourd\'hui ?',
+          editMode ? AppLocalizations.of(context).manageProfiles : AppLocalizations.of(context).whoIsReadingToday,
           style: GoogleFonts.fredoka(
             fontWeight: FontWeight.w600,
             fontSize: 24,
@@ -387,7 +388,7 @@ class _ManageProfilesPageState extends State<ManageProfilesPage> {
         actions: [
           if (!editMode)
             IconButton(
-              tooltip: 'Gérer les profils (parents)',
+              tooltip: AppLocalizations.of(context).manageProfilesTooltip,
               icon: Icon(
                 Icons.lock_outline_rounded,
                 color: primaryTextColor.withValues(alpha: 0.6),
@@ -446,7 +447,7 @@ class _ManageProfilesPageState extends State<ManageProfilesPage> {
                         ),
                         const SizedBox(height: 12),
                         Text(
-                          'Créer un profil',
+                          AppLocalizations.of(context).createProfile,
                           style: GoogleFonts.nunito(
                             fontWeight: FontWeight.bold,
                             fontSize: 15,
@@ -514,7 +515,7 @@ class _ManageProfilesPageState extends State<ManageProfilesPage> {
                               ),
                             ),
                             Text(
-                              '$age ans',
+                              AppLocalizations.of(context).ageYears(age),
                               style: GoogleFonts.nunito(
                                 color: isDark
                                     ? Colors.grey.shade400
@@ -570,9 +571,10 @@ class _ManageProfilesPageState extends State<ManageProfilesPage> {
 
           return Column(
             children: [
-              const Padding(
-                padding: EdgeInsets.fromLTRB(24, 8, 24, 0),
-                child: Mascot(message: 'Coucou ! Qui vient lire avec moi ?'),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
+                child:
+                    Mascot(message: AppLocalizations.of(context).mascotWhoReads),
               ),
               Expanded(child: grid),
             ],

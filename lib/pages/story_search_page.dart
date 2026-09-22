@@ -1,3 +1,4 @@
+import 'package:lumiconte/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:lumiconte/models/category_model.dart';
 import 'package:lumiconte/models/profile_model.dart';
@@ -59,7 +60,7 @@ class StorySearchButton extends StatelessWidget {
               const Icon(Icons.search_rounded, color: AppTheme.accentColor),
               const SizedBox(width: 12),
               Text(
-                'Rechercher une histoire…',
+                AppLocalizations.of(context).searchHint,
                 style: TextStyle(
                   fontSize: 16,
                   color: onSurface.withValues(alpha: 0.6),
@@ -98,7 +99,7 @@ class _StorySearchPageState extends State<StorySearchPage> {
       ReadingProgressService().getUserReadingProgress(widget.profile.id);
 
   late final Map<String, String> _categoryNames = {
-    for (final category in widget.categories) category.id: category.name,
+    for (final category in widget.categories) category.id: category.displayName,
   };
 
   /// Thèmes proposés : seulement ceux qui contiennent au moins une histoire.
@@ -127,7 +128,7 @@ class _StorySearchPageState extends State<StorySearchPage> {
       // On cherche dans les noms de catégories, pas dans leurs identifiants
       final categories =
           story.categoryIds.map((id) => _categoryNames[id] ?? id).toList();
-      final score = storySearchScore(query, story.name, categories);
+      final score = storySearchScore(query, story.displayName, categories);
       if (score != null) scored.add((story, score));
     }
 
@@ -135,7 +136,7 @@ class _StorySearchPageState extends State<StorySearchPage> {
     scored.sort((a, b) {
       final byScore = b.$2.compareTo(a.$2);
       if (byScore != 0) return byScore;
-      return a.$1.name.length.compareTo(b.$1.name.length);
+      return a.$1.displayName.length.compareTo(b.$1.displayName.length);
     });
     return scored.map((e) => e.$1).toList();
   }
@@ -219,7 +220,7 @@ class _StorySearchPageState extends State<StorySearchPage> {
       child: Row(
         children: [
           IconButton(
-            tooltip: 'Retour',
+            tooltip: AppLocalizations.of(context).back,
             icon: const Icon(Icons.arrow_back_rounded),
             color: onSurface,
             onPressed: () => Navigator.of(context).pop(),
@@ -232,7 +233,7 @@ class _StorySearchPageState extends State<StorySearchPage> {
               textInputAction: TextInputAction.search,
               style: TextStyle(fontSize: 17, color: onSurface),
               decoration: InputDecoration(
-                hintText: 'Titre, animal, personnage…',
+                hintText: AppLocalizations.of(context).searchFieldHint,
                 hintStyle: TextStyle(color: onSurface.withValues(alpha: 0.5)),
                 prefixIcon: const Icon(
                   Icons.search_rounded,
@@ -241,7 +242,7 @@ class _StorySearchPageState extends State<StorySearchPage> {
                 suffixIcon: _controller.text.isEmpty
                     ? null
                     : IconButton(
-                        tooltip: 'Effacer',
+                        tooltip: AppLocalizations.of(context).clear,
                         icon: const Icon(Icons.close_rounded),
                         color: onSurface.withValues(alpha: 0.7),
                         onPressed: _controller.clear,
@@ -276,25 +277,22 @@ class _StorySearchPageState extends State<StorySearchPage> {
       final results = _search(query);
       if (results.isEmpty) {
         return _buildScrollView([
-          const SliverToBoxAdapter(
+          SliverToBoxAdapter(
             child: Padding(
-              padding: EdgeInsets.fromLTRB(20, 24, 20, 8),
+              padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
               child: Mascot(
-                message: 'Je n\'ai pas trouvé cette histoire… '
-                    'Essaie un autre mot !',
+                message: AppLocalizations.of(context).searchNotFound,
               ),
             ),
           ),
-          _sectionTitle(context, 'Tu aimeras peut-être'),
+          _sectionTitle(context, AppLocalizations.of(context).youMightLike),
           _buildGrid(_suggestedStories.take(6).toList(), progressByStory),
         ]);
       }
       return _buildScrollView([
         _sectionTitle(
           context,
-          results.length > 1
-              ? '${results.length} histoires trouvées'
-              : '1 histoire trouvée',
+          AppLocalizations.of(context).searchResultsCount(results.length),
         ),
         _buildGrid(results, progressByStory),
       ]);
@@ -309,11 +307,13 @@ class _StorySearchPageState extends State<StorySearchPage> {
             .toList();
 
     return _buildScrollView([
-      _sectionTitle(context, 'Des idées ?'),
+      _sectionTitle(context, AppLocalizations.of(context).anyIdeas),
       SliverToBoxAdapter(child: _buildCategoryChips(context)),
       _sectionTitle(
         context,
-        selected == null ? 'Pour toi' : _categoryNames[selected] ?? 'Histoires',
+        selected == null
+            ? AppLocalizations.of(context).forYou
+            : _categoryNames[selected] ?? AppLocalizations.of(context).stories,
       ),
       _buildGrid(shownStories, progressByStory),
     ]);
@@ -362,7 +362,7 @@ class _StorySearchPageState extends State<StorySearchPage> {
           final category = _suggestedCategories[index];
           final isSelected = category.id == _selectedCategoryId;
           return ChoiceChip(
-            label: Text(category.name),
+            label: Text(category.displayName),
             selected: isSelected,
             showCheckmark: false,
             onSelected: (_) => setState(() {

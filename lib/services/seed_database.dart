@@ -16,9 +16,12 @@ Future<void> seedDatabase() async {
   // 1. Catégorie ("categories", camelCase, via CategoryModel.toMap)
   final category = CategoryModel(
     id: '',
-    name: 'Aventure',
+    name: const LocalizedText({'fr': 'Aventure', 'en': 'Adventure'}),
     image: 'assets/images/boy_avatar.png',
-    description: 'Histoires d\'aventure',
+    description: const LocalizedText({
+      'fr': 'Histoires d\'aventure',
+      'en': 'Adventure stories',
+    }),
     ageGroup: '6-8',
   );
   final categoryRef =
@@ -36,11 +39,16 @@ Future<void> seedDatabase() async {
   // 3. Story ("stories"), respectant le nouveau format audio Map<String, AudioVoiceData>
   final story = StoryModel(
     id: '',
-    name: 'Mission Lune',
+    name: const LocalizedText({
+      'fr': 'Mission Lune',
+      'en': 'Moon Mission',
+    }),
     age_min: 1,
     age_max: 10,
-    content:
-        'bla bla bla la mmission lune bla bla aller sur la lune owi la lune ca brille',
+    content: const LocalizedText({
+      'fr':
+          'bla bla bla la mmission lune bla bla aller sur la lune owi la lune ca brille',
+    }),
     image: 'lien_image_story',
     illustrations: 'lien_illustrations',
     audio: {

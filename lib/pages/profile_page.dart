@@ -1,3 +1,4 @@
+import 'package:lumiconte/l10n/app_localizations.dart';
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -142,7 +143,7 @@ class _ProfilePageState extends State<ProfilePage> {
     if (_uid == null) {
       return Scaffold(
         body: Center(
-          child: Text('Utilisateur non connecté.',
+          child: Text(AppLocalizations.of(context).userNotConnected,
               style: TextStyle(color: theme.colorScheme.onSurface)),
         ),
       );
@@ -162,7 +163,7 @@ class _ProfilePageState extends State<ProfilePage> {
             }
             if (!profileSnapshot.hasData || !profileSnapshot.data!.exists) {
               return Center(
-                  child: Text('Profil introuvable.',
+                  child: Text(AppLocalizations.of(context).profileNotFound,
                       style: TextStyle(color: theme.colorScheme.onSurface)));
             }
 
@@ -223,13 +224,8 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   /// La mascotte encourage l'enfant selon sa série de lecture.
-  String _mascotMessage(int streak) {
-    if (streak >= 2) return 'Bravo ! Tu lis depuis $streak jours d\'affilée !';
-    if (streak == 1) {
-      return 'C\'est parti ! Reviens lire demain pour faire grandir ta flamme.';
-    }
-    return 'Lis une histoire pour allumer ta flamme !';
-  }
+  String _mascotMessage(BuildContext context, int streak) =>
+      AppLocalizations.of(context).streakEncouragement(streak);
 
   Widget _buildContent(BuildContext context, ProfileModel profile,
       int storiesReadCount, int streak) {
@@ -250,7 +246,7 @@ class _ProfilePageState extends State<ProfilePage> {
               foregroundColor: onSurface.withValues(alpha: 0.6),
             ),
             icon: const Icon(Icons.lock_outline_rounded, size: 18),
-            label: const Text('Espace parents'),
+            label: Text(AppLocalizations.of(context).parentSpace),
           ),
         ),
         const SizedBox(height: 8),
@@ -280,7 +276,7 @@ class _ProfilePageState extends State<ProfilePage> {
         ),
         const SizedBox(height: 20),
 
-        Mascot(message: _mascotMessage(streak)),
+        Mascot(message: _mascotMessage(context, streak)),
         const SizedBox(height: 16),
 
         // Mes exploits
@@ -292,8 +288,8 @@ class _ProfilePageState extends State<ProfilePage> {
               iconColor: streak == 0
                   ? onSurface.withValues(alpha: 0.3)
                   : Colors.deepOrange,
-              value: formatStreak(streak),
-              label: 'de lecture\nd\'affilée',
+              value: formatStreak(AppLocalizations.of(context), streak),
+              label: AppLocalizations.of(context).streakTileLabel,
             ),
             const SizedBox(width: 12),
             _buildAchievementTile(
@@ -301,9 +297,8 @@ class _ProfilePageState extends State<ProfilePage> {
               icon: Icons.auto_stories_rounded,
               iconColor: AppTheme.accentColor,
               value: '$storiesReadCount',
-              label: storiesReadCount > 1
-                  ? 'histoires\nterminées'
-                  : 'histoire\nterminée',
+              label: AppLocalizations.of(context)
+                  .storiesFinishedTileLabel(storiesReadCount),
             ),
           ],
         ),
@@ -314,8 +309,9 @@ class _ProfilePageState extends State<ProfilePage> {
           context,
           icon: Icons.auto_awesome_rounded,
           iconColor: AppTheme.accentColor,
-          title: 'Mes morales',
-          subtitle: '$storiesReadCount / ${widget.stories.length} débloquées',
+          title: AppLocalizations.of(context).myMorals,
+          subtitle: AppLocalizations.of(context).moralsUnlockedSubtitle(
+              storiesReadCount, widget.stories.length),
           progress: widget.stories.isEmpty
               ? null
               : storiesReadCount / widget.stories.length,
@@ -342,8 +338,10 @@ class _ProfilePageState extends State<ProfilePage> {
               context,
               icon: Icons.emoji_events_rounded,
               iconColor: const Color(0xFFF1C40F),
-              title: 'Mes badges',
-              subtitle: earnedCount == null ? null : '$earnedCount / $total gagnés',
+              title: AppLocalizations.of(context).myBadges,
+              subtitle: earnedCount == null
+                  ? null
+                  : AppLocalizations.of(context).badgesEarnedSubtitle(earnedCount, total),
               progress: earnedCount == null ? null : earnedCount / total,
               onTap: () => _push(
                 NightSkyBackground(
@@ -361,7 +359,7 @@ class _ProfilePageState extends State<ProfilePage> {
           context,
           icon: Icons.swap_horiz_rounded,
           iconColor: theme.colorScheme.primary,
-          title: 'Changer de lecteur',
+          title: AppLocalizations.of(context).changeReader,
           onTap: () => _push(const ManageProfilesPage()),
         ),
       ],

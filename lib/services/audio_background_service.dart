@@ -1,3 +1,4 @@
+import 'package:lumiconte/models/app_language.dart';
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
@@ -34,18 +35,19 @@ class AudioBackgroundService extends BaseAudioHandler
   /// "suivant" quand il n'y a pas d'histoire avant ou après. Ce sont des
   /// actions personnalisées : Android 13+ les place dans les emplacements
   /// laissés libres par "précédent" et "suivant", dans cet ordre.
-  static const _previousDisabled = MediaControl(
-    androidIcon: 'drawable/ic_skip_previous_disabled',
-    label: 'Pas d\'histoire précédente',
-    action: MediaAction.custom,
-    customAction: CustomMediaAction(name: 'previous_disabled'),
-  );
-  static const _nextDisabled = MediaControl(
-    androidIcon: 'drawable/ic_skip_next_disabled',
-    label: 'Pas d\'histoire suivante',
-    action: MediaAction.custom,
-    customAction: CustomMediaAction(name: 'next_disabled'),
-  );
+  // Hors de l'arbre des widgets : les libellés suivent la langue du profil
+  static MediaControl get _previousDisabled => MediaControl(
+        androidIcon: 'drawable/ic_skip_previous_disabled',
+        label: AppLanguage.texts.noPreviousStory,
+        action: MediaAction.custom,
+        customAction: const CustomMediaAction(name: 'previous_disabled'),
+      );
+  static MediaControl get _nextDisabled => MediaControl(
+        androidIcon: 'drawable/ic_skip_next_disabled',
+        label: AppLanguage.texts.noNextStory,
+        action: MediaAction.custom,
+        customAction: const CustomMediaAction(name: 'next_disabled'),
+      );
 
   void setQueueControls({required bool hasPrevious, required bool hasNext}) {
     if (_hasPrevious == hasPrevious && _hasNext == hasNext) return;
@@ -183,7 +185,7 @@ class AudioBackgroundService extends BaseAudioHandler
       mediaItem.add(MediaItem(
         id: story.id,
         album: 'Lumiconte',
-        title: story.name,
+        title: story.displayName,
         artUri: Uri.parse(story.image != null && story.image!.startsWith('http')
             ? story.image!
             : '$_cdnBaseUrl${story.image ?? 'assets/default_story.webp'}'),

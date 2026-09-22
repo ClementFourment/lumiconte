@@ -4,10 +4,10 @@ import 'package:lumiconte/services/story_queue.dart';
 
 StoryModel _story(String id, {bool withAudio = true}) => StoryModel(
       id: id,
-      name: id,
+      name: LocalizedText({'fr': id}),
       age_min: null,
       age_max: null,
-      content: '',
+      content: const LocalizedText.empty(),
       audio: withAudio
           ? {'fr_femme': AudioVoiceData(url: 'audio/$id.mp3', audioTimes: '')}
           : null,
@@ -33,18 +33,18 @@ void main() {
     final queue = StoryQueue.forTesting();
     final otherKey = StoryModel(
       id: 'autre',
-      name: 'autre',
+      name: const LocalizedText({'fr': 'autre'}),
       age_min: null,
       age_max: null,
-      content: '',
+      content: const LocalizedText.empty(),
       audio: {'femme': AudioVoiceData(url: 'audio/x.mp3', audioTimes: '')},
     );
     final emptyUrl = StoryModel(
       id: 'vide',
-      name: 'vide',
+      name: const LocalizedText({'fr': 'vide'}),
       age_min: null,
       age_max: null,
-      content: '',
+      content: const LocalizedText.empty(),
       audio: {'fr_femme': AudioVoiceData(url: ' ', audioTimes: '')},
     );
 
@@ -57,10 +57,10 @@ void main() {
     final queue = StoryQueue.forTesting();
     final bilingual = StoryModel(
       id: 'bi',
-      name: 'bi',
+      name: const LocalizedText({'fr': 'bi'}),
       age_min: null,
       age_max: null,
-      content: '',
+      content: const LocalizedText.empty(),
       audio: {
         'fr_femme': AudioVoiceData(url: 'audio/bi_fr.mp3', audioTimes: ''),
         'en_homme': AudioVoiceData(url: 'audio/bi_en.mp3', audioTimes: ''),
@@ -69,10 +69,10 @@ void main() {
     // Même cas que dans la base : clé en_ présente, url vide
     final frenchOnly = StoryModel(
       id: 'fr',
-      name: 'fr',
+      name: const LocalizedText({'fr': 'fr'}),
       age_min: null,
       age_max: null,
-      content: '',
+      content: const LocalizedText.empty(),
       audio: {
         'fr_femme': AudioVoiceData(url: 'audio/fr.mp3', audioTimes: ''),
         'en_femme': AudioVoiceData(url: '', audioTimes: ''),

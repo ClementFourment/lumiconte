@@ -4,11 +4,14 @@ import 'package:lumiconte/models/settings_model.dart';
 import 'firebase_service.dart';
 
 class SettingsService extends FirebaseService {
+  /// Document unique des paramètres d'un profil : `settings/default`.
+  static const String defaultSettingsId = 'default';
+
   /// Référence vers le document unique de paramètres d'un profil
   DocumentReference<Map<String, dynamic>> _getSettingsDocRef(
     String userId,
     String profileId, [
-    String settingsId = 'default',
+    String settingsId = defaultSettingsId,
   ]) {
     return firestore
         .collection('users')

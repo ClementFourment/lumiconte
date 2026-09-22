@@ -1,4 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:lumiconte/models/app_language.dart';
+import 'package:lumiconte/models/localized_text.dart';
+
+export 'package:lumiconte/models/localized_text.dart';
 
 class AudioVoiceData {
   final String url;
@@ -26,11 +30,11 @@ class AudioVoiceData {
 
 class StoryModel {
   final String id;
-  final String name;
+  final LocalizedText name;
   final int? age_min;
   final int? age_max;
-  final String content;
-  final String morals;
+  final LocalizedText content;
+  final LocalizedText morals;
   final String? image;
   final String? illustrations;
   final Map<String, AudioVoiceData>? audio; // Voix par langue ("fr_femme", "en_homme", "es_femme"...)
@@ -45,7 +49,7 @@ class StoryModel {
     required this.age_min,
     required this.age_max,
     required this.content,
-    this.morals = '',
+    this.morals = const LocalizedText.empty(),
     this.image,
     this.illustrations,
     this.audio,
@@ -96,28 +100,45 @@ class StoryModel {
 
     return StoryModel(
       id: docId,
-      name: map['name'] as String? ?? '',
-      age_min: map['age_min'] as int?,
-      age_max: map['age_max'] as int?,
-      content: map['content'] as String? ?? '',
-      morals: map['morals'] as String? ?? '',
-      image: map['image'] as String?,
-      illustrations: map['illustrations'] as String?,
+      name: LocalizedText.fromAny(map['name']),
+      age_min: (map['age_min'] as num?)?.toInt(),
+      age_max: (map['age_max'] as num?)?.toInt(),
+      content: LocalizedText.fromAny(map['content']),
+      morals: LocalizedText.fromAny(map['morals']),
+      image: map['image'] is String ? map['image'] as String : null,
+      illustrations:
+          map['illustrations'] is String ? map['illustrations'] as String : null,
       audio: parsedAudio,
-      categoryIds: List<String>.from(map['categoryIds'] ?? []),
-      type: map['type'] as String? ?? 'original',
-      createdByProfileId: map['createdByProfileId'] as String? ?? '',
+      categoryIds: [
+        if (map['categoryIds'] is List)
+          for (final id in map['categoryIds'] as List)
+            if (id is String) id,
+      ],
+      type: map['type'] is String ? map['type'] as String : 'original',
+      createdByProfileId: map['createdByProfileId'] is String
+          ? map['createdByProfileId'] as String
+          : '',
       createdAt: parsedDate,
     );
   }
 
   /// Langues des voix : les clés audio sont préfixées ("fr_femme", "en_homme"...).
-  static const List<String> voiceLanguages = ['fr', 'en', 'es'];
+  /// Mêmes langues que celles proposées dans les réglages.
+  static List<String> get voiceLanguages => AppLanguage.codes;
+
+  /// Titre dans la langue du profil.
+  String get displayName => name.display;
+
+  /// Texte de l'histoire dans la langue du profil.
+  String get displayContent => content.display;
+
+  /// Morale dans la langue du profil.
+  String get displayMorals => morals.display;
 
   /// Voix de la langue choisie : le genre demandé s'il existe, sinon l'autre
   /// voix de la même langue. Jamais de voix d'une autre langue.
   AudioVoiceData? voiceFor(String? language, String? voiceGender) {
-    final lang = voiceLanguages.contains(language) ? language! : 'fr';
+    final lang = AppLanguage.sanitize(language);
     final requested =
         (voiceGender == 'homme' || voiceGender == 'male') ? 'homme' : 'femme';
     final alternate = requested == 'homme' ? 'femme' : 'homme';
@@ -130,11 +151,11 @@ class StoryModel {
 
   Map<String, dynamic> toMap() {
     return {
-      'name': name,
+      'name': name.toMap(),
       'age_min': age_min,
       'age_max': age_max,
-      'content': content,
-      'morals': morals,
+      'content': content.toMap(),
+      'morals': morals.toMap(),
       'image': image,
       'illustrations': illustrations,
       'audio': audio?.map((key, value) => MapEntry(key, value.toMap())),

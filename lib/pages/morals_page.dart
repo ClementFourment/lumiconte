@@ -1,3 +1,4 @@
+import 'package:lumiconte/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -27,7 +28,7 @@ class MoralsPage extends StatelessWidget {
       return Scaffold(
         body: Center(
           child: Text(
-            'Utilisateur non connecté',
+            AppLocalizations.of(context).userNotConnected,
             style: textTheme.bodyLarge?.copyWith(
               color: colorScheme.onSurfaceVariant,
             ),
@@ -48,7 +49,7 @@ class MoralsPage extends StatelessWidget {
       appBar: AppBar(
         elevation: 0,
         title: Text(
-          'Mes morales',
+          AppLocalizations.of(context).myMorals,
           style: textTheme.headlineSmall?.copyWith(
             fontWeight: FontWeight.bold,
             letterSpacing: 1,
@@ -123,7 +124,7 @@ class MoralsPage extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              "Sagesse accumulée",
+                              AppLocalizations.of(context).wisdomCollected,
                               style: textTheme.titleSmall?.copyWith(
                                 fontWeight: FontWeight.bold,
                                 color: colorScheme.onSurface,
@@ -131,7 +132,9 @@ class MoralsPage extends StatelessWidget {
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              "$unlockedCount / ${stories.length} morales débloquées",
+                              AppLocalizations.of(context)
+                                  .moralsUnlockedCount(
+                                      unlockedCount, stories.length),
                               style: textTheme.bodySmall?.copyWith(
                                 color: colorScheme.onSurfaceVariant,
                               ),
@@ -186,16 +189,16 @@ class MoralsPage extends StatelessWidget {
             borderRadius: BorderRadius.circular(20),
           ),
           title: Text(
-            story.name,
+            story.displayName,
             style: theme.textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.bold,
             ),
           ),
           content: SingleChildScrollView(
             child: Text(
-              story.morals.isNotEmpty 
-                  ? story.morals 
-                  : "Pas de morale enregistrée pour ce conte.",
+              story.displayMorals.isNotEmpty
+                  ? story.displayMorals
+                  : AppLocalizations.of(context).noMoralForStory,
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: colorScheme.onSurface,
                 height: 1.4,
@@ -205,7 +208,7 @@ class MoralsPage extends StatelessWidget {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Fermer'),
+              child: Text(AppLocalizations.of(context).close),
             ),
           ],
         );
@@ -222,10 +225,10 @@ class MoralsPage extends StatelessWidget {
     final colorScheme = theme.colorScheme;
 
     final String displayText = isUnlocked
-        ? (story.morals.isNotEmpty
-            ? _getMoralPreview(story.morals)
-            : "Pas de morale enregistrée.")
-        : "Terminez cette histoire pour en débloquer la morale.";
+        ? (story.displayMorals.isNotEmpty
+            ? _getMoralPreview(story.displayMorals)
+            : AppLocalizations.of(context).noMoralShort)
+        : AppLocalizations.of(context).moralLocked;
 
     return Container(
       height: 100,
@@ -277,7 +280,7 @@ class MoralsPage extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        story.name,
+                        story.displayName,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: theme.textTheme.titleSmall?.copyWith(

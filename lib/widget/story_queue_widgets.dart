@@ -1,3 +1,4 @@
+import 'package:lumiconte/l10n/app_localizations.dart';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
@@ -36,8 +37,8 @@ class QueueToggleButton extends StatelessWidget {
         return Semantics(
           button: true,
           label: inQueue
-              ? 'Retirer de la file de lecture'
-              : 'Ajouter à la file de lecture',
+              ? AppLocalizations.of(context).removeFromQueue
+              : AppLocalizations.of(context).addToQueue,
           excludeSemantics: true,
           child: GestureDetector(
             behavior: HitTestBehavior.opaque,
@@ -47,9 +48,9 @@ class QueueToggleButton extends StatelessWidget {
               } else if (disabled) {
                 ScaffoldMessenger.of(context)
                   ..hideCurrentSnackBar()
-                  ..showSnackBar(const SnackBar(
+                  ..showSnackBar(SnackBar(
                     content: Text(
-                        'La file est pleine : ${StoryQueue.maxLength} histoires maximum'),
+                        AppLocalizations.of(context).queueFull(StoryQueue.maxLength)),
                   ));
               } else {
                 queue.add(story);
@@ -173,7 +174,7 @@ class StoryQueueBar extends StatelessWidget {
                       ),
                     ),
                     IconButton(
-                      tooltip: 'Vider la file',
+                      tooltip: AppLocalizations.of(context).clearQueue,
                       icon: const Icon(Icons.close_rounded),
                       color: onSurface.withValues(alpha: 0.6),
                       onPressed: queue.clear,
@@ -188,9 +189,9 @@ class StoryQueueBar extends StatelessWidget {
                         shape: const StadiumBorder(),
                       ),
                       icon: const Icon(Icons.play_arrow_rounded, size: 26),
-                      label: const Text(
-                        'Écouter',
-                        style: TextStyle(fontWeight: FontWeight.w800),
+                      label: Text(
+                        AppLocalizations.of(context).listen,
+                        style: const TextStyle(fontWeight: FontWeight.w800),
                       ),
                     ),
                   ],
@@ -265,7 +266,7 @@ class _NowPlayingBar extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            story.name,
+                            story.displayName,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
@@ -274,7 +275,9 @@ class _NowPlayingBar extends StatelessWidget {
                             ),
                           ),
                           Text(
-                            'Histoire ${(queue.currentIndex ?? 0) + 1} sur ${queue.stories.length}',
+                            AppLocalizations.of(context).storyPositionInQueue(
+                                (queue.currentIndex ?? 0) + 1,
+                                queue.stories.length),
                             style: TextStyle(
                               fontSize: 12,
                               color: onSurface.withValues(alpha: 0.6),
@@ -285,7 +288,7 @@ class _NowPlayingBar extends StatelessWidget {
                     ),
                     if (player.hasPrevious)
                       IconButton(
-                        tooltip: 'Histoire précédente',
+                        tooltip: AppLocalizations.of(context).previousStory,
                         icon: const Icon(Icons.skip_previous_rounded),
                         color: onSurface,
                         onPressed: player.skipToPrevious,
@@ -295,7 +298,9 @@ class _NowPlayingBar extends StatelessWidget {
                       builder: (context, snapshot) {
                         final playing = snapshot.data?.playing ?? false;
                         return IconButton(
-                          tooltip: playing ? 'Pause' : 'Lecture',
+                          tooltip: playing
+                              ? AppLocalizations.of(context).pause
+                              : AppLocalizations.of(context).play,
                           iconSize: 32,
                           color: AppTheme.accentColor,
                           icon: Icon(playing
@@ -307,13 +312,13 @@ class _NowPlayingBar extends StatelessWidget {
                     ),
                     if (player.hasNext)
                       IconButton(
-                        tooltip: 'Histoire suivante',
+                        tooltip: AppLocalizations.of(context).nextStory,
                         icon: const Icon(Icons.skip_next_rounded),
                         color: onSurface,
                         onPressed: player.skipToNext,
                       ),
                     IconButton(
-                      tooltip: 'Arrêter la file',
+                      tooltip: AppLocalizations.of(context).stopQueue,
                       icon: const Icon(Icons.close_rounded),
                       color: onSurface.withValues(alpha: 0.6),
                       onPressed: player.stop,
@@ -344,7 +349,7 @@ class _QueuedCover extends StatelessWidget {
   Widget build(BuildContext context) {
     return Semantics(
       button: true,
-      label: 'Retirer ${story.name} de la file',
+      label: AppLocalizations.of(context).removeStoryFromQueue(story.displayName),
       excludeSemantics: true,
       child: GestureDetector(
         onTap: onRemove,

@@ -1,3 +1,4 @@
+import 'package:lumiconte/l10n/app_localizations.dart';
 import 'dart:async';
 import 'dart:math' as math;
 
@@ -96,7 +97,7 @@ Future<void> showBadgeCelebration(
     context: context,
     useRootNavigator: true,
     barrierDismissible: true,
-    barrierLabel: 'Fermer',
+    barrierLabel: AppLocalizations.of(context).close,
     barrierColor: Colors.black.withValues(alpha: 0.6),
     transitionDuration: const Duration(milliseconds: 250),
     pageBuilder: (context, _, __) =>
@@ -149,6 +150,7 @@ class _BadgeCelebrationDialogState extends State<_BadgeCelebrationDialog>
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final onSurface = theme.colorScheme.onSurface;
     final badge = widget.badge;
@@ -173,7 +175,7 @@ class _BadgeCelebrationDialogState extends State<_BadgeCelebrationDialog>
                 children: [
                   if (widget.celebrate)
                     Text(
-                      'Nouveau badge !',
+                      l10n.newBadge,
                       style: theme.textTheme.titleMedium?.copyWith(
                         color: AppTheme.accentColor,
                         letterSpacing: 0.5,
@@ -201,7 +203,7 @@ class _BadgeCelebrationDialogState extends State<_BadgeCelebrationDialog>
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    badge.name,
+                    badge.texts(l10n).name,
                     textAlign: TextAlign.center,
                     style: theme.textTheme.headlineSmall
                         ?.copyWith(color: onSurface),
@@ -210,8 +212,8 @@ class _BadgeCelebrationDialogState extends State<_BadgeCelebrationDialog>
                   Mascot(
                     size: 64,
                     message: widget.celebrate
-                        ? 'Bravo ! ${badge.earnedText}'
-                        : badge.earnedText,
+                        ? l10n.badgeCongrats(badge.texts(l10n).earned)
+                        : badge.texts(l10n).earned,
                   ),
                   const SizedBox(height: 16),
                   SizedBox(
@@ -227,7 +229,7 @@ class _BadgeCelebrationDialogState extends State<_BadgeCelebrationDialog>
                         ),
                       ),
                       child: Text(
-                        widget.celebrate ? 'Super !' : 'Fermer',
+                        widget.celebrate ? l10n.great : l10n.close,
                         style: theme.textTheme.titleMedium?.copyWith(
                           color: const Color(0xFF1E1B29),
                         ),

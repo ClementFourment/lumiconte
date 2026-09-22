@@ -1,8 +1,12 @@
+import 'package:lumiconte/models/localized_text.dart';
+
+export 'package:lumiconte/models/localized_text.dart';
+
 class CategoryModel {
   final String id;
-  final String name;
+  final LocalizedText name;
   final String image;
-  final String description;
+  final LocalizedText description;
   final String ageGroup;
 
   CategoryModel({
@@ -15,20 +19,27 @@ class CategoryModel {
 
   factory CategoryModel.fromMap(Map<String, dynamic>? data, String docId) {
     final map = data ?? {};
+    final age = map['age'] ?? map['ageGroup'];
     return CategoryModel(
       id: docId,
-      name: map['name'] as String? ?? '',
-      image: map['image'] as String? ?? '',
-      description: map['description'] as String? ?? '',
-      ageGroup: (map['age'] ?? map['ageGroup']) as String? ?? '',
+      name: LocalizedText.fromAny(map['name']),
+      image: map['image'] is String ? map['image'] as String : '',
+      description: LocalizedText.fromAny(map['description']),
+      ageGroup: age is String ? age : '',
     );
   }
 
+  /// Nom dans la langue du profil.
+  String get displayName => name.display;
+
+  /// Description dans la langue du profil.
+  String get displayDescription => description.display;
+
   Map<String, dynamic> toMap() {
     return {
-      'name': name,
+      'name': name.toMap(),
       'image': image,
-      'description': description,
+      'description': description.toMap(),
       'age': ageGroup,
     };
   }

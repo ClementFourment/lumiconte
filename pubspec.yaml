@@ -11,6 +11,9 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  intl: any
   google_fonts: ^8.1.0
 
   cupertino_icons: ^1.0.9
@@ -43,6 +46,8 @@ dev_dependencies:
 flutter:
 
   uses-material-design: true
+  # Traductions de l'interface : lib/l10n/app_<langue>.arb -> AppLocalizations
+  generate: true
   assets:
     - assets/images/
 

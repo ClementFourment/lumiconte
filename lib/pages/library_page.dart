@@ -1,3 +1,4 @@
+import 'package:lumiconte/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -79,7 +80,7 @@ class _LibraryPageState extends State<LibraryPage> {
       return Scaffold(
         body: Center(
           child: Text(
-            'Utilisateur non connecté',
+            AppLocalizations.of(context).userNotConnected,
             style: textTheme.bodyLarge?.copyWith(
               color: colorScheme.onSurfaceVariant,
             ),
@@ -146,7 +147,7 @@ class _LibraryPageState extends State<LibraryPage> {
           appBar: AppBar(
             elevation: 0,
             title: Text(
-              'Histoires',
+              AppLocalizations.of(context).stories,
               style: textTheme.headlineSmall?.copyWith(
                 fontWeight: FontWeight.bold,
                 letterSpacing: 1,
@@ -210,11 +211,12 @@ class _LibraryPageState extends State<LibraryPage> {
   Widget _buildFilterBar(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
+    final l10n = AppLocalizations.of(context);
     final filters = [
-      {'id': 'tous', 'label': 'Tous'},
-      {'id': 'favorites', 'label': 'Favoris'},
-      {'id': 'en_cours', 'label': 'En cours'},
-      {'id': 'non_lu', 'label': 'Non lu'},
+      {'id': 'tous', 'label': l10n.filterAll},
+      {'id': 'favorites', 'label': l10n.filterFavorites},
+      {'id': 'en_cours', 'label': l10n.filterInProgress},
+      {'id': 'non_lu', 'label': l10n.filterUnread},
     ];
 
     return Container(
@@ -368,7 +370,7 @@ class _LibraryPageState extends State<LibraryPage> {
                       ],
                     ),
                     child: Text(
-                      category.name.toUpperCase(),
+                      category.displayName.toUpperCase(),
                       style: TextStyle(
                         color: colorScheme.onPrimary,
                         fontSize: 9,
@@ -471,7 +473,7 @@ class _LibraryPageState extends State<LibraryPage> {
                     children: [
                       // Titre
                       Text(
-                        story.name,
+                        story.displayName,
                         maxLines: 3,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(

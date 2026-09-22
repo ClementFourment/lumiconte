@@ -1,3 +1,4 @@
+import 'package:lumiconte/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -88,18 +89,19 @@ class _FeedbackPageState extends State<FeedbackPage> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Merci ! Votre commentaire a bien été envoyé.'),
+          SnackBar(
+            content: Text(AppLocalizations.of(context).feedbackThanks),
             backgroundColor: Colors.green,
           ),
         );
         Navigator.of(context).pop();
       }
     } catch (e) {
+      debugPrint('Envoi du commentaire : $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Erreur lors de l\'envoi : $e'),
+            content: Text(AppLocalizations.of(context).feedbackError),
             backgroundColor: Colors.red,
           ),
         );
@@ -120,19 +122,19 @@ class _FeedbackPageState extends State<FeedbackPage> {
         backgroundColor: cardBg,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text(
-          'Action bloquée',
+          AppLocalizations.of(context).actionBlocked,
           style: TextStyle(color: isDark ? Colors.white : Colors.black87),
         ),
         content: Text(
-          'Pour éviter les abus, vous devez attendre 5 minutes entre chaque commentaire.',
+          AppLocalizations.of(context).feedbackRateLimit,
           style: TextStyle(color: isDark ? Colors.white70 : Colors.black87),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text(
-              'D\'accord',
-              style: TextStyle(
+            child: Text(
+              AppLocalizations.of(context).gotIt,
+              style: const TextStyle(
                 color: AppTheme.accentColor,
                 fontWeight: FontWeight.bold,
               ),
@@ -163,7 +165,7 @@ class _FeedbackPageState extends State<FeedbackPage> {
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: Text(
-          'Envoyer un commentaire',
+          AppLocalizations.of(context).sendFeedback,
           style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold,
@@ -183,7 +185,7 @@ class _FeedbackPageState extends State<FeedbackPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Votre avis nous intéresse !',
+                      AppLocalizations.of(context).yourOpinionMatters,
                       style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
@@ -192,7 +194,7 @@ class _FeedbackPageState extends State<FeedbackPage> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Une idée, un bug ou une suggestion ? Écrivez-nous ci-dessous.',
+                      AppLocalizations.of(context).feedbackIntro,
                       style: TextStyle(
                         fontSize: 14,
                         color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
@@ -205,7 +207,7 @@ class _FeedbackPageState extends State<FeedbackPage> {
                       maxLength: _maxCharacters,
                       style: TextStyle(color: primaryTextColor),
                       decoration: InputDecoration(
-                        hintText: 'Écrivez votre message ici...',
+                        hintText: AppLocalizations.of(context).feedbackHint,
                         fillColor: cardColor,
                         filled: true,
                         counterText: '$_currentLength / $_maxCharacters',
@@ -223,10 +225,10 @@ class _FeedbackPageState extends State<FeedbackPage> {
                       ),
                       validator: (value) {
                         if (value == null || value.trim().isEmpty) {
-                          return 'Le message ne peut pas être vide';
+                          return AppLocalizations.of(context).feedbackEmpty;
                         }
                         if (value.trim().length < 10) {
-                          return 'Le message est un peu trop court (10 caractères min)';
+                          return AppLocalizations.of(context).feedbackTooShort;
                         }
                         return null;
                       },
@@ -245,9 +247,9 @@ class _FeedbackPageState extends State<FeedbackPage> {
                           elevation: 0,
                         ),
                         onPressed: _submitFeedback,
-                        child: const Text(
-                          'Envoyer',
-                          style: TextStyle(
+                        child: Text(
+                          AppLocalizations.of(context).send,
+                          style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
                           ),
