@@ -1,0 +1,438 @@
+{
+  "@@locale": "fr",
+  "dataLoadingError": "Erreur lors du chargement des données",
+  "@dataLoadingError": {
+    "description": "Message affiché quand les contes et les thèmes n'ont pas pu être chargés"
+  },
+  "userNotConnected": "Utilisateur non connecté.",
+  "@userNotConnected": {
+    "description": "Message affiché quand aucun compte n'est connecté"
+  },
+  "preferences": "Préférences",
+  "@preferences": {
+    "description": "Titre de la section des réglages, dans l'espace parents"
+  },
+  "language": "Langue",
+  "@language": {
+    "description": "Libellé du choix de la langue, dans l'espace parents"
+  },
+  "navHome": "Accueil",
+  "navLibrary": "Bibliothèque",
+  "navTreasures": "Mes trésors",
+  "@navTreasures": {
+    "description": "Onglet regroupant favoris, morales et badges"
+  },
+  "noProfileFound": "Aucun profil trouvé",
+  "noProfileSelected": "Aucun profil sélectionné.",
+  "greetingEvening": "Une histoire avant de dormir ?",
+  "greetingDay": "Quelle histoire on lit aujourd'hui ?",
+  "continueReading": "Reprendre la lecture",
+  "forYourAge": "Adapté à ton âge",
+  "newStories": "Nouveautés",
+  "percentDone": "{percent}% terminé",
+  "@percentDone": {
+    "description": "Part de l'histoire deja lue, sur une vignette",
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "filterAll": "Tout",
+  "filterInProgress": "En cours",
+  "filterUnread": "Non lu",
+  "myFavorites": "Mes Favoris",
+  "noFavoritesYet": "Pas encore de favoris",
+  "noFavoritesHint": "Enregistrez vos histoires préférées pour les retrouver facilement ici !",
+  "myMorals": "Mes morales",
+  "wisdomCollected": "Sagesse accumulée",
+  "moralsUnlockedCount": "{unlocked} / {total} morales débloquées",
+  "@moralsUnlockedCount": {
+    "description": "Compteur de morales debloquees",
+    "placeholders": {
+      "unlocked": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "noMoralForStory": "Pas de morale enregistrée pour ce conte.",
+  "noMoralShort": "Pas de morale enregistrée.",
+  "moralLocked": "Terminez cette histoire pour en débloquer la morale.",
+  "close": "Fermer",
+  "myBadges": "Mes badges",
+  "badgesLoadError": "Impossible de charger tes badges pour le moment.",
+  "surpriseBadge": "Badge surprise",
+  "badgesIntroNone": "Des badges surprises t'attendent ! Lis les indices pour les trouver.",
+  "badgesIntroAll": "Incroyable, tu as trouvé tous les badges !",
+  "badgesIntroSome": "{count, plural, one{Bravo, tu as déjà 1 badge ! Qui sera le prochain ?} other{Bravo, tu as déjà {count} badges ! Qui sera le prochain ?}}",
+  "@badgesIntroSome": {
+    "description": "Phrase d'accueil de l'ecran des badges",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "filterFavorites": "Favoris",
+  "badgeFirstPageName": "Première page",
+  "badgeFirstPageHint": "Ouvre ta toute première histoire…",
+  "badgeFirstPageEarned": "Tu as ouvert ta première histoire !",
+  "badgeSmallFlameName": "Petite flamme",
+  "badgeSmallFlameHint": "Lis 3 jours de suite…",
+  "badgeSmallFlameEarned": "Tu as lu 3 jours de suite !",
+  "badgeBigFlameName": "Grande flamme",
+  "badgeBigFlameHint": "Lis 7 jours de suite…",
+  "badgeBigFlameEarned": "Une semaine entière de lecture !",
+  "badgeBonfireName": "Feu de joie",
+  "badgeBonfireHint": "Lis 14 jours de suite…",
+  "badgeBonfireEarned": "Deux semaines de lecture sans t'arrêter !",
+  "badgeFavoriteName": "Coup de cœur",
+  "badgeFavoriteHint": "Garde une histoire dans tes favoris…",
+  "badgeFavoriteEarned": "Tu as trouvé une histoire que tu adores !",
+  "badgeStoryTreasureName": "Trésor de contes",
+  "badgeStoryTreasureHint": "Garde 5 histoires dans tes favoris…",
+  "badgeStoryTreasureEarned": "Tu as un vrai trésor de 5 histoires préférées !",
+  "badgeCuriousEarName": "Oreille curieuse",
+  "badgeCuriousEarHint": "Écoute une histoire racontée…",
+  "badgeCuriousEarEarned": "Tu as écouté ta première histoire !",
+  "badgeExplorerName": "Explorateur",
+  "badgeExplorerHint": "Termine des histoires de 3 thèmes différents…",
+  "badgeExplorerEarned": "Tu as exploré 3 thèmes différents !",
+  "badgeGreatExplorerName": "Grand explorateur",
+  "badgeGreatExplorerHint": "Termine des histoires de 6 thèmes différents…",
+  "badgeGreatExplorerEarned": "Tu as voyagé dans 6 thèmes différents !",
+  "badgeBedtimeTaleName": "Conte du soir",
+  "badgeBedtimeTaleHint": "Lis une histoire le soir, avant de dormir…",
+  "badgeBedtimeTaleEarned": "Une histoire avant de dormir !",
+  "badgeEarlyBirdName": "Lève-tôt",
+  "badgeEarlyBirdHint": "Lis une histoire le matin…",
+  "badgeEarlyBirdEarned": "Une histoire pour bien commencer la journée !",
+  "badgeMagicWeekendName": "Week-end enchanté",
+  "badgeMagicWeekendHint": "Lis une histoire le samedi ou le dimanche…",
+  "badgeMagicWeekendEarned": "Même le week-end, tu lis des histoires !",
+  "badgeOnceMoreName": "Encore une fois",
+  "badgeOnceMoreHint": "Relis une histoire que tu as déjà terminée…",
+  "badgeOnceMoreEarned": "Tu as relu une histoire que tu aimes !",
+  "badgeBigBookName": "Grand livre",
+  "badgeBigBookHint": "Termine une des plus longues histoires…",
+  "badgeBigBookEarned": "Tu as terminé une très longue histoire !",
+  "badgeMagicHourglassName": "Sablier magique",
+  "badgeMagicHourglassHint": "Passe une heure à lire des histoires…",
+  "badgeMagicHourglassEarned": "Une heure entière avec tes histoires !",
+  "badgeGrandClockName": "Grande horloge",
+  "badgeGrandClockHint": "Passe 5 heures à lire des histoires…",
+  "badgeGrandClockEarned": "Cinq heures de voyage dans les histoires !",
+  "badgeCongrats": "Bravo ! {text}",
+  "@badgeCongrats": {
+    "description": "Felicitations affichees quand un badge vient d'etre gagne",
+    "placeholders": {
+      "text": {
+        "type": "String"
+      }
+    }
+  },
+  "profileNotFound": "Profil introuvable.",
+  "streakEncouragement": "{days, plural, =0{Lis une histoire pour allumer ta flamme !} one{C’est parti ! Reviens lire demain pour faire grandir ta flamme.} other{Bravo ! Tu lis depuis {days} jours d’affilée !}}",
+  "@streakEncouragement": {
+    "description": "Phrase de la mascotte selon la serie de jours de lecture",
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "parentSpace": "Espace parents",
+  "streakTileLabel": "de lecture\nd’affilée",
+  "storiesFinishedTileLabel": "{count, plural, one{histoire\nterminée} other{histoires\nterminées}}",
+  "@storiesFinishedTileLabel": {
+    "description": "Libelle de la tuile des histoires terminees",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "moralsUnlockedSubtitle": "{count} / {total} débloquées",
+  "@moralsUnlockedSubtitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "badgesEarnedSubtitle": "{count} / {total} gagnés",
+  "@badgesEarnedSubtitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "changeReader": "Changer de lecteur",
+  "parentsOnly": "Réservé aux parents",
+  "parentalGateInstruction": "Pour continuer, touchez ces chiffres dans l’ordre :",
+  "parentalGateWrong": "Ce n’est pas ça. Nouveau code ci-dessus.",
+  "digitZero": "zéro",
+  "digitOne": "un",
+  "digitTwo": "deux",
+  "digitThree": "trois",
+  "digitFour": "quatre",
+  "digitFive": "cinq",
+  "digitSix": "six",
+  "digitSeven": "sept",
+  "digitEight": "huit",
+  "digitNine": "neuf",
+  "settingsTitle": "Paramètres",
+  "noSettingsFound": "Aucun paramètre trouvé.",
+  "narrationVoice": "Voix de la narration",
+  "voiceFemale": "Féminine",
+  "voiceMale": "Masculine",
+  "accessibility": "Accessibilité",
+  "dyslexiaMode": "Mode Dyslexie",
+  "dyslexiaHint": "Adapte les couleurs, l’espacement et la taille",
+  "textDisplay": "Affichage du texte",
+  "textSize": "Taille du texte",
+  "readingTheme": "Thème de lecture",
+  "editProfile": "Modifier le profil",
+  "enterName": "Entrez un nom",
+  "enterValidAge": "Entrez un âge valide",
+  "profileUpdated": "Profil mis à jour !",
+  "deleteProfile": "Supprimer le profil",
+  "deleteProfileConfirm": "Voulez-vous vraiment supprimer le profil de {name} ? Cette action est irréversible.",
+  "@deleteProfileConfirm": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "profileAndDataDeleted": "Profil et données supprimés",
+  "activeProfileNamed": "Profil actif : {name}",
+  "@activeProfileNamed": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "pleaseSignIn": "Veuillez vous connecter.",
+  "manageProfiles": "Gérer les profils",
+  "whoIsReadingToday": "Qui lit aujourd’hui ?",
+  "manageProfilesTooltip": "Gérer les profils (parents)",
+  "createProfile": "Créer un profil",
+  "ageYears": "{age} ans",
+  "@ageYears": {
+    "placeholders": {
+      "age": {
+        "type": "int"
+      }
+    }
+  },
+  "mascotWhoReads": "Coucou ! Qui vient lire avec moi ?",
+  "whoIsOurAdventurer": "Qui est notre aventurier(e) ?",
+  "theirName": "Son nom ?",
+  "nameHintExample": "Ex : Léo, Nina…",
+  "theirAge": "Son âge ?",
+  "createProfileAndStart": "Créer le profil et commencer la lecture",
+  "reconnectNeeded": "Reconnexion nécessaire",
+  "reconnectExplain": "Par sécurité, la suppression du compte demande une connexion récente. Vous allez être déconnecté : reconnectez-vous, puis revenez ici pour supprimer le compte.",
+  "deleteAccountQuestion": "Supprimer le compte ?",
+  "deleteAccountExplain": "Tous les profils, la progression, les récompenses et les réglages seront définitivement effacés. Cette action est irréversible.\n\nSi vous avez un abonnement, pensez à le résilier depuis l’App Store ou Google Play : supprimer le compte ne l’arrête pas.",
+  "deleteForever": "Supprimer définitivement",
+  "readingTracking": "Suivi de lecture",
+  "readingTrackingOf": "Suivi de lecture de {name}",
+  "@readingTrackingOf": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "statStoriesRead": "Histoires\nlues",
+  "statReadingTime": "Temps de\nlecture",
+  "statStreak": "Lecture\nd’affilée",
+  "queueFull": "La file est pleine : {max} histoires maximum",
+  "@queueFull": {
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "addToQueue": "Ajouter à la file de lecture",
+  "removeFromQueue": "Retirer de la file de lecture",
+  "removeStoryFromQueue": "Retirer {title} de la file",
+  "@removeStoryFromQueue": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "clearQueue": "Vider la file",
+  "previousStory": "Histoire précédente",
+  "nextStory": "Histoire suivante",
+  "stopQueue": "Arrêter la file",
+  "noPreviousStory": "Pas d’histoire précédente",
+  "noNextStory": "Pas d’histoire suivante",
+  "searchHint": "Rechercher une histoire…",
+  "searchNotFound": "Je n’ai pas trouvé cette histoire… Essaie un autre mot !",
+  "youMightLike": "Tu aimeras peut-être",
+  "searchResultsCount": "{count, plural, one{1 histoire trouvée} other{{count} histoires trouvées}}",
+  "@searchResultsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "anyIdeas": "Des idées ?",
+  "forYou": "Pour toi",
+  "stories": "Histoires",
+  "actionBlocked": "Action bloquée",
+  "feedbackRateLimit": "Pour éviter les abus, vous devez attendre 5 minutes entre chaque commentaire.",
+  "sendFeedback": "Envoyer un commentaire",
+  "yourOpinionMatters": "Votre avis nous intéresse !",
+  "feedbackIntro": "Une idée, un bug ou une suggestion ? Écrivez-nous ci-dessous.",
+  "feedbackHint": "Écrivez votre message ici…",
+  "feedbackEmpty": "Le message ne peut pas être vide",
+  "feedbackTooShort": "Le message est un peu trop court (10 caractères min)",
+  "feedbackThanks": "Merci ! Votre commentaire a bien été envoyé.",
+  "feedbackError": "Erreur lors de l’envoi",
+  "googleSignInFailed": "Échec de la connexion avec Google",
+  "appleSignInFailed": "Échec de la connexion avec Apple",
+  "signUpFailed": "Échec de l’inscription",
+  "noAccountWithEmail": "Aucun compte avec cet email",
+  "wrongPassword": "Mot de passe incorrect",
+  "invalidEmail": "Email invalide",
+  "emailRequired": "Email requis",
+  "passwordHint": "Mot de passe",
+  "passwordRequired": "Mot de passe requis",
+  "passwordTooShort": "Au minimum 6 caractères",
+  "signingIn": "Connexion en cours…",
+  "signingUp": "Inscription en cours…",
+  "continueWithGoogle": "Continuer avec Google",
+  "continueWithApple": "Continuer avec Apple",
+  "termsNotice": "En continuant, tu acceptes nos conditions\nd’utilisation et notre politique de confidentialité",
+  "cancel": "Annuler",
+  "signOut": "Se déconnecter",
+  "deleteMyAccount": "Supprimer mon compte",
+  "deleteError": "Erreur lors de la suppression",
+  "audioError": "Erreur audio",
+  "favoriteUpdateError": "Erreur lors de la mise à jour des favoris",
+  "streakDays": "{count, plural, one{{count} jour} other{{count} jours}}",
+  "@streakDays": {
+    "description": "Nombre de jours de lecture daffilee",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "durationSeconds": "{count} sec",
+  "@durationSeconds": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "durationMinutes": "{count}min",
+  "@durationMinutes": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "durationHours": "{hours}h",
+  "@durationHours": {
+    "placeholders": {
+      "hours": {
+        "type": "int"
+      }
+    }
+  },
+  "durationHoursMinutes": "{hours}h{minutes}",
+  "@durationHoursMinutes": {
+    "description": "Minutes deja completees a deux chiffres",
+    "placeholders": {
+      "hours": {
+        "type": "int"
+      },
+      "minutes": {
+        "type": "String"
+      }
+    }
+  },
+  "onboardingTagline": "Des histoires magiques\npour les petits rêveurs",
+  "sectionProfilesAndReading": "Profils et lecture",
+  "sectionSupportAndInfo": "Assistance et informations",
+  "readingSettings": "Paramètres de lecture",
+  "termsOfService": "Conditions Générales d'Utilisation",
+  "privacyPolicy": "Politique de Confidentialité",
+  "chooseYourAvatar": "Choisis ton avatar",
+  "signInError": "Erreur de connexion",
+  "notificationChannelName": "Rappels de lecture",
+  "notificationChannelDescription": "Notifications pour rappeler de finir son histoire",
+  "notificationReminderBody": "Tu n’as pas fini ta lecture ! Viens vite découvrir la suite de ton histoire.",
+  "profileCreationFailed": "Le profil n’a pas pu être créé. Réessayez.",
+  "listen": "Écouter",
+  "storyPositionInQueue": "Histoire {position} sur {total}",
+  "@storyPositionInQueue": {
+    "placeholders": {
+      "position": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "readingPreviewSample": "Il y était une fois, dans une ville de Perse, deux frères nommés Kassim et Ali-Baba.",
+  "@readingPreviewSample": {
+    "description": "Phrase d'exemple pour regler la taille et le theme de lecture"
+  },
+  "emailLabel": "Email",
+  "nameLabel": "Nom",
+  "ageLabel": "Âge",
+  "ageHintExample": "Ex : 5",
+  "readThemeClassic": "Classique",
+  "readThemeImmersive": "Immersif",
+  "readThemeManuscript": "Manuscrit",
+  "back": "Retour",
+  "searchFieldHint": "Titre, animal, personnage…",
+  "clear": "Effacer",
+  "genericError": "Une erreur est survenue. Réessayez.",
+  "readingReminders": "Rappels de lecture",
+  "nightMode": "Mode nuit",
+  "signIn": "Se connecter",
+  "signUp": "S’inscrire",
+  "gotIt": "D’accord",
+  "newBadge": "Nouveau badge !",
+  "great": "Super !",
+  "greetingHello": "Bonjour {name} !",
+  "@greetingHello": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "send": "Envoyer",
+  "avatar": "Avatar",
+  "save": "Sauvegarder",
+  "delete": "Supprimer",
+  "start": "Commencer",
+  "pause": "Pause",
+  "play": "Lecture"
+}

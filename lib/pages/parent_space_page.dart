@@ -5,6 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:lumiconte/main.dart';
 import 'package:lumiconte/models/profile_model.dart';
 import 'package:lumiconte/models/reading_progress_model.dart';
+import 'package:lumiconte/l10n/app_localizations.dart';
+import 'package:lumiconte/models/app_language.dart';
+import 'package:lumiconte/services/settings_service.dart';
 import 'package:lumiconte/models/settings_model.dart';
 import 'package:lumiconte/pages/feedback_page.dart';
 import 'package:lumiconte/pages/manage_profiles_page.dart';
@@ -84,7 +87,7 @@ class _ParentSpacePageState extends State<ParentSpacePage> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erreur : $e')),
+          SnackBar(content: Text(AppLocalizations.of(context).genericError)),
         );
       }
     } finally {
@@ -99,20 +102,18 @@ class _ParentSpacePageState extends State<ParentSpacePage> {
       final reconnect = await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
-          title: const Text('Reconnexion nécessaire'),
-          content: const Text(
-            'Par sécurité, la suppression du compte demande une connexion '
-            'récente. Vous allez être déconnecté : reconnectez-vous, puis '
-            'revenez ici pour supprimer le compte.',
+          title: Text(AppLocalizations.of(context).reconnectNeeded),
+          content: Text(
+            AppLocalizations.of(context).reconnectExplain,
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),
-              child: const Text('Annuler'),
+              child: Text(AppLocalizations.of(context).cancel),
             ),
             TextButton(
               onPressed: () => Navigator.pop(context, true),
-              child: const Text('Se déconnecter'),
+              child: Text(AppLocalizations.of(context).signOut),
             ),
           ],
         ),
@@ -124,22 +125,19 @@ class _ParentSpacePageState extends State<ParentSpacePage> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Supprimer le compte ?'),
-        content: const Text(
-          'Tous les profils, la progression, les récompenses et les réglages '
-          'seront définitivement effacés. Cette action est irréversible.\n\n'
-          'Si vous avez un abonnement, pensez à le résilier depuis '
-          'l\'App Store ou Google Play : supprimer le compte ne l\'arrête pas.',
+        title: Text(AppLocalizations.of(context).deleteAccountQuestion),
+        content: Text(
+          AppLocalizations.of(context).deleteAccountExplain,
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Annuler'),
+            child: Text(AppLocalizations.of(context).cancel),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
             style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Supprimer définitivement'),
+            child: Text(AppLocalizations.of(context).deleteForever),
           ),
         ],
       ),
@@ -151,10 +149,11 @@ class _ParentSpacePageState extends State<ParentSpacePage> {
       await _authService.deleteAccount();
       if (mounted) Navigator.of(context).popUntil((route) => route.isFirst);
     } catch (e) {
+      debugPrint('Suppression du compte : $e');
       if (mounted) {
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erreur lors de la suppression : $e')),
+          SnackBar(content: Text(AppLocalizations.of(context).deleteError)),
         );
       }
     }
@@ -170,11 +169,11 @@ class _ParentSpacePageState extends State<ParentSpacePage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Espace parents'),
+        title: Text(AppLocalizations.of(context).parentSpace),
       ),
       body: _uid == null
           ? Center(
-              child: Text('Utilisateur non connecté.',
+              child: Text(AppLocalizations.of(context).userNotConnected,
                   style: TextStyle(color: theme.colorScheme.onSurface)),
             )
           : _isLoading
@@ -214,9 +213,12 @@ class _ParentSpacePageState extends State<ParentSpacePage> {
             return StreamBuilder<QuerySnapshot>(
               stream: _settingsStream,
               builder: (context, settingsSnapshot) {
-                String currentLangCode = 'fr';
+                String currentLangCode = AppLanguage.defaultCode;
                 String settingsDocId = '';
-                String timeDisplay = '0 min';
+                // Même formatage que la vraie valeur, pour éviter un « 0 min »
+                // français qui traînerait dans une app en allemand
+                String timeDisplay =
+                    formatReadingTime(AppLocalizations.of(context), 0);
                 int streak = 0;
 
                 if (settingsSnapshot.hasData &&
@@ -227,8 +229,9 @@ class _ParentSpacePageState extends State<ParentSpacePage> {
                     settingsDoc.data() as Map<String, dynamic>? ?? {},
                     settingsDoc.id,
                   );
-                  currentLangCode = settings.language;
-                  timeDisplay = formatReadingTime(settings.totalReadingTime);
+                  currentLangCode = AppLanguage.sanitize(settings.language);
+                  timeDisplay = formatReadingTime(
+                      AppLocalizations.of(context), settings.totalReadingTime);
                   streak = currentStreak(settings);
                 }
 
@@ -239,20 +242,20 @@ class _ParentSpacePageState extends State<ParentSpacePage> {
                     _buildSectionTitle(
                       context,
                       profileName == null
-                          ? 'Suivi de lecture'
-                          : 'Suivi de lecture de $profileName',
+                          ? AppLocalizations.of(context).readingTracking
+                          : AppLocalizations.of(context).readingTrackingOf(profileName),
                     ),
                     const SizedBox(height: 12),
                     Row(
                       children: [
                         _buildStatCard(
-                            context, 'Histoires\nlues', '$storiesReadCount'),
+                            context, AppLocalizations.of(context).statStoriesRead, '$storiesReadCount'),
                         _buildStatCard(
-                            context, 'Temps de\nlecture', timeDisplay),
+                            context, AppLocalizations.of(context).statReadingTime, timeDisplay),
                         _buildStatCard(
                           context,
-                          'Lecture\nd\'affilée',
-                          formatStreak(streak),
+                          AppLocalizations.of(context).statStreak,
+                          formatStreak(AppLocalizations.of(context), streak),
                           icon: Icons.local_fire_department_rounded,
                           iconColor: streak == 0
                               ? theme.colorScheme.onSurface
@@ -264,7 +267,8 @@ class _ParentSpacePageState extends State<ParentSpacePage> {
                     const SizedBox(height: 28),
 
                     // Section Préférences
-                    _buildSectionTitle(context, 'Préférences'),
+                    _buildSectionTitle(
+                        context, AppLocalizations.of(context).preferences),
                     const SizedBox(height: 8),
                     _buildCard(context, [
                       Padding(
@@ -274,7 +278,7 @@ class _ParentSpacePageState extends State<ParentSpacePage> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              'Langue',
+                              AppLocalizations.of(context).language,
                               style: TextStyle(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w500,
@@ -296,19 +300,25 @@ class _ParentSpacePageState extends State<ParentSpacePage> {
                                 ),
                                 dropdownColor: AppTheme.getCardColor(context),
                                 onChanged: (String? newValue) {
-                                  if (newValue != null &&
-                                      settingsDocId.isNotEmpty) {
-                                    _updateSetting(
-                                        settingsDocId, 'language', newValue);
-                                  }
+                                  if (newValue == null) return;
+                                  // Le document peut ne pas être encore
+                                  // chargé : sans repli, le choix du parent
+                                  // était perdu sans rien afficher.
+                                  _updateSetting(
+                                    settingsDocId.isEmpty
+                                        ? SettingsService.defaultSettingsId
+                                        : settingsDocId,
+                                    'language',
+                                    newValue,
+                                  );
                                 },
-                                items: const [
-                                  DropdownMenuItem(
-                                      value: 'fr', child: Text('Français  ')),
-                                  DropdownMenuItem(
-                                      value: 'en', child: Text('English  ')),
-                                  DropdownMenuItem(
-                                      value: 'es', child: Text('Español  ')),
+                                items: [
+                                  for (final language
+                                      in AppLanguage.supported)
+                                    DropdownMenuItem(
+                                      value: language.code,
+                                      child: Text('${language.label}  '),
+                                    ),
                                 ],
                               ),
                             ),
@@ -320,7 +330,7 @@ class _ParentSpacePageState extends State<ParentSpacePage> {
                         builder: (context, isNotificationsEnabled, child) {
                           return _buildSwitchTile(
                             context,
-                            'Rappels de lecture',
+                            AppLocalizations.of(context).readingReminders,
                             value: isNotificationsEnabled,
                             onChanged: _toggleNotifications,
                           );
@@ -331,7 +341,7 @@ class _ParentSpacePageState extends State<ParentSpacePage> {
                         builder: (context, isDarkMode, child) {
                           return _buildSwitchTile(
                             context,
-                            'Mode nuit',
+                            AppLocalizations.of(context).nightMode,
                             value: isDarkMode,
                             onChanged: (newValue) => appSettings.toggleDarkMode(
                                 widget.profileId, newValue),
@@ -342,19 +352,20 @@ class _ParentSpacePageState extends State<ParentSpacePage> {
                     const SizedBox(height: 24),
 
                     // Section Profils & lecture
-                    _buildSectionTitle(context, 'Profils et lecture'),
+                    _buildSectionTitle(
+                        context, AppLocalizations.of(context).sectionProfilesAndReading),
                     const SizedBox(height: 8),
                     _buildCard(context, [
                       _buildListTile(
                         context,
-                        'Gérer les profils',
+                        AppLocalizations.of(context).manageProfiles,
                         icon: Icons.people_outline,
                         onTap: () =>
                             _push(const ManageProfilesPage(editMode: true)),
                       ),
                       _buildListTile(
                         context,
-                        'Paramètres de lecture',
+                        AppLocalizations.of(context).readingSettings,
                         icon: Icons.menu_book_outlined,
                         onTap: () =>
                             _push(SettingsPage(profileId: widget.profileId)),
@@ -363,25 +374,26 @@ class _ParentSpacePageState extends State<ParentSpacePage> {
                     const SizedBox(height: 24),
 
                     // Section Assistance
-                    _buildSectionTitle(context, 'Assistance et informations'),
+                    _buildSectionTitle(
+                        context, AppLocalizations.of(context).sectionSupportAndInfo),
                     const SizedBox(height: 8),
                     _buildCard(context, [
                       _buildListTile(
                         context,
-                        'Envoyer un commentaire',
+                        AppLocalizations.of(context).sendFeedback,
                         icon: Icons.chat_bubble_outline,
                         onTap: () =>
                             _push(FeedbackPage(profileId: widget.profileId)),
                       ),
                       _buildListTile(
                         context,
-                        "Conditions Générales d'Utilisation",
+                        AppLocalizations.of(context).termsOfService,
                         icon: Icons.description_outlined,
                         onTap: () => _push(const TermsOfServicePage()),
                       ),
                       _buildListTile(
                         context,
-                        'Politique de Confidentialité',
+                        AppLocalizations.of(context).privacyPolicy,
                         icon: Icons.lock_outline,
                         onTap: () => _push(const PrivacyPolicyPage()),
                       ),
@@ -401,7 +413,7 @@ class _ParentSpacePageState extends State<ParentSpacePage> {
                       icon: Icon(Icons.logout,
                           color: Colors.red.shade400, size: 20),
                       label: Text(
-                        'Se déconnecter',
+                        AppLocalizations.of(context).signOut,
                         style: TextStyle(
                           color: Colors.red.shade400,
                           fontWeight: FontWeight.bold,
@@ -415,7 +427,7 @@ class _ParentSpacePageState extends State<ParentSpacePage> {
                       style: TextButton.styleFrom(
                         foregroundColor: Colors.red.shade400,
                       ),
-                      child: const Text('Supprimer mon compte'),
+                      child: Text(AppLocalizations.of(context).deleteMyAccount),
                     ),
                   ],
                 );

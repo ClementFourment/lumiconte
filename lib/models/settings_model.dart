@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:lumiconte/models/app_language.dart';
 
 class SettingsModel {
   final String id;
@@ -19,7 +20,7 @@ class SettingsModel {
   static const String defaultTheme = 'light';
   static const String defaultReadTheme = 'classic';
   static const bool defaultDyslexia = false;
-  static const String defaultLanguage = 'fr';
+  static const String defaultLanguage = AppLanguage.defaultCode;
   static const String defaultVoiceGender = 'femme';
   static const int defaultTotalReadingTime = 0;
   static const int defaultStreak = 0;
@@ -60,7 +61,8 @@ class SettingsModel {
       theme: map['theme'] as String? ?? defaultTheme,
       readTheme: map['readTheme'] as String? ?? defaultReadTheme,
       dyslexia: map['dyslexia'] as bool? ?? defaultDyslexia,
-      language: map['language'] as String? ?? defaultLanguage,
+      // Une langue retirée de l'app ou mal saisie retombe sur le français
+      language: AppLanguage.sanitize(map['language'] as String?),
       voiceGender: rawGender,
       totalReadingTime:
           (map['totalReadingTime'] as num?)?.toInt() ?? defaultTotalReadingTime,
@@ -89,17 +91,6 @@ class SettingsModel {
       'lastReadingDate': Timestamp.fromDate(lastReadingDate),
       'stopRead': stopRead != null ? Timestamp.fromDate(stopRead!) : null,
     };
-  }
-
-  String get formattedReadingTime {
-    if (totalReadingTime < 60) return '$totalReadingTime min';
-    final hours = totalReadingTime ~/ 60;
-    final minutes = totalReadingTime % 60;
-    return minutes > 0 ? '${hours}h $minutes' : '${hours}h';
-  }
-
-  String get formattedStreak {
-    return '$streak ${streak > 1 ? 'jours' : 'jour'}';
   }
 
   SettingsModel copyWith({

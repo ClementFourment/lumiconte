@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:lumiconte/models/app_language.dart';
 import 'package:lumiconte/models/story_model.dart';
 
 /// File de lecture : quelques histoires audio écoutées à la suite, juste pour
@@ -34,7 +35,7 @@ class StoryQueue extends ChangeNotifier {
       _currentIndex != null && _currentIndex! < _stories.length - 1;
 
   /// Langue du profil, suivie par StoryQueuePlayer.followLanguage.
-  String _language = 'fr';
+  String _language = AppLanguage.defaultCode;
 
   String get language => _language;
 

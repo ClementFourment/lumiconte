@@ -1,3 +1,4 @@
+import 'package:lumiconte/l10n/app_localizations.dart';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
@@ -27,18 +28,20 @@ class _ParentalGateDialog extends StatefulWidget {
 }
 
 class _ParentalGateDialogState extends State<_ParentalGateDialog> {
-  static const _digitWords = [
-    'zéro',
-    'un',
-    'deux',
-    'trois',
-    'quatre',
-    'cinq',
-    'six',
-    'sept',
-    'huit',
-    'neuf',
-  ];
+  /// Le chiffre écrit en toutes lettres, dans la langue du parent : la porte
+  /// ne s'ouvre qu'à quelqu'un qui sait lire la consigne.
+  static String _digitWord(AppLocalizations l10n, int digit) => switch (digit) {
+        0 => l10n.digitZero,
+        1 => l10n.digitOne,
+        2 => l10n.digitTwo,
+        3 => l10n.digitThree,
+        4 => l10n.digitFour,
+        5 => l10n.digitFive,
+        6 => l10n.digitSix,
+        7 => l10n.digitSeven,
+        8 => l10n.digitEight,
+        _ => l10n.digitNine,
+      };
   static const _codeLength = 3;
 
   final Random _random = Random();
@@ -87,6 +90,7 @@ class _ParentalGateDialogState extends State<_ParentalGateDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final onSurface = theme.colorScheme.onSurface;
 
@@ -102,7 +106,7 @@ class _ParentalGateDialogState extends State<_ParentalGateDialog> {
                 size: 36, color: AppTheme.accentColor),
             const SizedBox(height: 12),
             Text(
-              'Réservé aux parents',
+              l10n.parentsOnly,
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
@@ -111,7 +115,7 @@ class _ParentalGateDialogState extends State<_ParentalGateDialog> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Pour continuer, touchez ces chiffres dans l\'ordre :',
+              l10n.parentalGateInstruction,
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 14,
@@ -120,7 +124,7 @@ class _ParentalGateDialogState extends State<_ParentalGateDialog> {
             ),
             const SizedBox(height: 12),
             Text(
-              _challenge.map((d) => _digitWords[d]).join('  ·  '),
+              _challenge.map((d) => _digitWord(l10n, d)).join('  ·  '),
               textAlign: TextAlign.center,
               style: const TextStyle(
                 fontSize: 22,
@@ -151,7 +155,7 @@ class _ParentalGateDialogState extends State<_ParentalGateDialog> {
               child: Center(
                 child: _hasError
                     ? Text(
-                        'Ce n\'est pas ça. Nouveau code ci-dessus.',
+                        l10n.parentalGateWrong,
                         style: TextStyle(
                           fontSize: 13,
                           color: Colors.red.shade400,
@@ -165,7 +169,7 @@ class _ParentalGateDialogState extends State<_ParentalGateDialog> {
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
               child: Text(
-                'Annuler',
+                l10n.cancel,
                 style: TextStyle(color: onSurface.withValues(alpha: 0.7)),
               ),
             ),

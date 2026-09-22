@@ -1,3 +1,4 @@
+import 'package:lumiconte/l10n/app_localizations.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -101,8 +102,8 @@ class BottomNavState extends State<BottomNav> {
   @override
   Widget build(BuildContext context) {
     if (_uid == null) {
-      return const Scaffold(
-        body: Center(child: Text("Utilisateur non connecté.")),
+      return Scaffold(
+        body: Center(child: Text(AppLocalizations.of(context).userNotConnected)),
       );
     }
 
@@ -116,8 +117,10 @@ class BottomNavState extends State<BottomNav> {
         }
 
         if (staticSnapshot.hasError || !staticSnapshot.hasData) {
-          return const Scaffold(
-            body: Center(child: Text("Erreur lors du chargement des données")),
+          return Scaffold(
+            body: Center(
+              child: Text(AppLocalizations.of(context).dataLoadingError),
+            ),
           );
         }
 
@@ -153,8 +156,10 @@ class BottomNavState extends State<BottomNav> {
                 final profiles = profilesSnapshot.data ?? [];
 
                 if (profiles.isEmpty) {
-                  return const Scaffold(
-                    body: Center(child: Text("Aucun profil trouvé")),
+                  return Scaffold(
+                    body: Center(
+                      child: Text(AppLocalizations.of(context).noProfileFound),
+                    ),
                   );
                 }
 
@@ -190,6 +195,8 @@ class BottomNavState extends State<BottomNav> {
                   ),
                 ];
 
+                final l10n = AppLocalizations.of(context);
+
                 return ValueListenableBuilder<int>(
                   valueListenable: _currentIndexNotifier,
                   builder: (context, currentIndex, child) {
@@ -219,20 +226,20 @@ class BottomNavState extends State<BottomNav> {
                             onTap: (value) =>
                                 _currentIndexNotifier.value = value,
                             items: [
-                              const FloatingNavItem(
+                              FloatingNavItem(
                                 icon: Icons.home_rounded,
-                                label: "Accueil",
+                                label: l10n.navHome,
                               ),
-                              const FloatingNavItem(
+                              FloatingNavItem(
                                 icon: Icons.auto_stories_rounded,
-                                label: "Histoires",
+                                label: l10n.navLibrary,
                               ),
                               FloatingNavItem(
                                 avatar: AssetImage(
                                   activeProfile.avatarPath ??
                                       AppAvatars.defaultAvatar,
                                 ),
-                                label: "Mes trésors",
+                                label: l10n.navTreasures,
                               ),
                             ],
                           ),

@@ -1,21 +1,42 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'package:lumiconte/models/story_model.dart';
 
 import 'firebase_service.dart';
 
 class StoryService extends FirebaseService {
+  /// Une histoire mal renseignée ne doit pas vider la bibliothèque : le
+  /// document fautif est signalé puis laissé de côté, les autres s'affichent.
+  static List<StoryModel> _parse(
+    QuerySnapshot<Map<String, dynamic>> snapshot,
+  ) {
+    final stories = <StoryModel>[];
+    for (final doc in snapshot.docs) {
+      try {
+        stories.add(StoryModel.fromMap(doc.data(), doc.id));
+      } catch (e) {
+        debugPrint('Histoire ignorée (${doc.id}) : $e');
+      }
+    }
+    return stories;
+  }
+
+  /// Tri sur le titre affiché : le champ `name` de Firestore est un texte par
+  /// langue, on ne peut plus trier dessus côté serveur.
+  static List<StoryModel> _sortedByName(List<StoryModel> stories) {
+    stories.sort((a, b) =>
+        a.displayName.toLowerCase().compareTo(b.displayName.toLowerCase()));
+    return stories;
+  }
+
   // Récupérer toutes les stories
   Future<List<StoryModel>> getAllStories() async {
     try {
-      final querySnapshot = await firestore
-          .collection('stories')
-          .orderBy('name', descending: false)
-          .get();
+      final querySnapshot = await firestore.collection('stories').get();
 
-      return querySnapshot.docs
-          .map((doc) => StoryModel.fromMap(doc.data(), doc.id))
-          .toList();
+      return _sortedByName(_parse(querySnapshot));
     } catch (e) {
-      print('Erreur récupération stories: $e');
+      debugPrint('Erreur récupération stories: $e');
       rethrow;
     }
   }
@@ -25,11 +46,11 @@ class StoryService extends FirebaseService {
     try {
       final doc = await firestore.collection('stories').doc(storyId).get();
       if (doc.exists) {
-        return StoryModel.fromMap(doc.data() as Map<String, dynamic>, storyId);
+        return StoryModel.fromMap(doc.data(), storyId);
       }
       return null;
     } catch (e) {
-      print('Erreur récupération story: $e');
+      debugPrint('Erreur récupération story: $e');
       rethrow;
     }
   }
@@ -42,11 +63,9 @@ class StoryService extends FirebaseService {
           .where('categoryIds', arrayContains: categoryId)
           .get();
 
-      return querySnapshot.docs
-          .map((doc) => StoryModel.fromMap(doc.data(), doc.id))
-          .toList();
+      return _parse(querySnapshot);
     } catch (e) {
-      print('Erreur récupération stories par catégorie: $e');
+      debugPrint('Erreur récupération stories par catégorie: $e');
       rethrow;
     }
   }
@@ -60,11 +79,9 @@ class StoryService extends FirebaseService {
           .orderBy('ageGroup', descending: true)
           .get();
 
-      return querySnapshot.docs
-          .map((doc) => StoryModel.fromMap(doc.data(), doc.id))
-          .toList();
+      return _parse(querySnapshot);
     } catch (e) {
-      print('Erreur récupération stories par âge: $e');
+      debugPrint('Erreur récupération stories par âge: $e');
       rethrow;
     }
   }
@@ -75,10 +92,6 @@ class StoryService extends FirebaseService {
         .collection('stories')
         .orderBy('createdAt', descending: true)
         .snapshots()
-        .map((querySnapshot) {
-      return querySnapshot.docs
-          .map((doc) => StoryModel.fromMap(doc.data(), doc.id))
-          .toList();
-    });
+        .map(_parse);
   }
 }

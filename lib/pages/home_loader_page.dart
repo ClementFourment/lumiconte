@@ -1,3 +1,4 @@
+import 'package:lumiconte/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -25,8 +26,8 @@ class HomePageLoader extends StatelessWidget {
     final profileService = ProfileService();
 
     if (uid == null) {
-      return const Scaffold(
-          body: Center(child: Text('Utilisateur non connecté')));
+      return Scaffold(
+          body: Center(child: Text(AppLocalizations.of(context).userNotConnected)));
     }
 
     // 1. Écoute en temps réel de l'utilisateur (pour activeProfileId)

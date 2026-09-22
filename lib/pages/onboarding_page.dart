@@ -1,3 +1,4 @@
+import 'package:lumiconte/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
 import 'package:go_router/go_router.dart';
@@ -187,7 +188,7 @@ class _TitleSection extends StatelessWidget {
           ),
           const SizedBox(height: 30),
           Text(
-            "Des histoires magiques\npour les petits rêveurs",
+            AppLocalizations.of(context).onboardingTagline,
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 17,
@@ -634,7 +635,7 @@ class _PremiumButtonState extends State<_PremiumButton> {
         ),
         child: Center(
           child: Text(
-            'Commencer',
+            AppLocalizations.of(context).start,
             textAlign: TextAlign.center,
             style: GoogleFonts.nunito(
               fontSize: 24,

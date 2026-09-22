@@ -1,3 +1,4 @@
+import 'package:lumiconte/l10n/app_localizations.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:lumiconte/models/badge_model.dart';
@@ -30,15 +31,11 @@ class _RewardsPageState extends State<RewardsPage> {
       ? null
       : BadgeService().watch(_uid!, widget.profileId, widget.stories);
 
-  String _mascotMessage(int earnedCount) {
-    if (earnedCount == 0) {
-      return 'Des badges surprises t\'attendent ! Lis les indices pour les trouver.';
-    }
-    if (earnedCount == BadgeModel.all.length) {
-      return 'Incroyable, tu as trouvé tous les badges !';
-    }
-    return 'Bravo, tu as déjà $earnedCount badge${earnedCount > 1 ? 's' : ''} ! '
-        'Qui sera le prochain ?';
+  String _mascotMessage(BuildContext context, int earnedCount) {
+    final l10n = AppLocalizations.of(context);
+    if (earnedCount == 0) return l10n.badgesIntroNone;
+    if (earnedCount == BadgeModel.all.length) return l10n.badgesIntroAll;
+    return l10n.badgesIntroSome(earnedCount);
   }
 
   @override
@@ -52,7 +49,7 @@ class _RewardsPageState extends State<RewardsPage> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         title: Text(
-          'Mes badges',
+          AppLocalizations.of(context).myBadges,
           style: theme.textTheme.headlineSmall?.copyWith(color: onSurface),
         ),
       ),
@@ -65,7 +62,7 @@ class _RewardsPageState extends State<RewardsPage> {
               child: Padding(
                 padding: const EdgeInsets.all(32),
                 child: Text(
-                  'Impossible de charger tes badges pour le moment.',
+                  AppLocalizations.of(context).badgesLoadError,
                   textAlign: TextAlign.center,
                   style: TextStyle(color: onSurface.withValues(alpha: 0.7)),
                 ),
@@ -92,7 +89,7 @@ class _RewardsPageState extends State<RewardsPage> {
               SliverPadding(
                 padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
                 sliver: SliverToBoxAdapter(
-                  child: Mascot(message: _mascotMessage(earnedCount)),
+                  child: Mascot(message: _mascotMessage(context, earnedCount)),
                 ),
               ),
               SliverPadding(
@@ -152,7 +149,9 @@ class _BadgeTile extends StatelessWidget {
               BadgeMedal(badge: badge, earned: earned),
               const SizedBox(height: 12),
               Text(
-                earned ? badge.name : 'Badge surprise',
+                earned
+                    ? badge.texts(AppLocalizations.of(context)).name
+                    : AppLocalizations.of(context).surpriseBadge,
                 textAlign: TextAlign.center,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
@@ -164,7 +163,9 @@ class _BadgeTile extends StatelessWidget {
               const SizedBox(height: 4),
               Expanded(
                 child: Text(
-                  earned ? badge.earnedText : badge.hint,
+                  earned
+                      ? badge.texts(AppLocalizations.of(context)).earned
+                      : badge.texts(AppLocalizations.of(context)).hint,
                   textAlign: TextAlign.center,
                   maxLines: 3,
                   overflow: TextOverflow.ellipsis,

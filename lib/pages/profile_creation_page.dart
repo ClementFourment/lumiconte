@@ -1,3 +1,4 @@
+import 'package:lumiconte/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:go_router/go_router.dart';
@@ -44,7 +45,7 @@ class _ProfileCreationPageState extends State<ProfileCreationPage> {
 
     if (name.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Entrez un nom')),
+        SnackBar(content: Text(AppLocalizations.of(context).enterName)),
       );
       return;
     }
@@ -52,7 +53,7 @@ class _ProfileCreationPageState extends State<ProfileCreationPage> {
     final parsedAge = int.tryParse(ageText);
     if (ageText.isEmpty || parsedAge == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Entrez un âge valide')),
+        SnackBar(content: Text(AppLocalizations.of(context).enterValidAge)),
       );
       return;
     }
@@ -87,10 +88,12 @@ class _ProfileCreationPageState extends State<ProfileCreationPage> {
         context.go('/home');
       }
     } catch (e) {
+      // Le détail technique reste dans les logs : le parent lit un message
+      // traduit, pas le texte brut d'une exception
+      debugPrint('Création de profil : $e');
       if (mounted) {
-        final errorMessage = e.toString().replaceAll('Exception: ', '');
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erreur: $errorMessage')),
+          SnackBar(content: Text(AppLocalizations.of(context).profileCreationFailed)),
         );
       }
     } finally {
@@ -126,7 +129,7 @@ class _ProfileCreationPageState extends State<ProfileCreationPage> {
                 const SizedBox(height: 20),
                 Center(
                   child: Text(
-                    'Qui est notre aventurier(e) ?',
+                    AppLocalizations.of(context).whoIsOurAdventurer,
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 28,
@@ -139,7 +142,7 @@ class _ProfileCreationPageState extends State<ProfileCreationPage> {
 
                 // Sélection de l'avatar
                 Text(
-                  'Choisis ton avatar',
+                  AppLocalizations.of(context).chooseYourAvatar,
                   style: titleStyle(context),
                 ),
                 const SizedBox(height: 15),
@@ -177,7 +180,7 @@ class _ProfileCreationPageState extends State<ProfileCreationPage> {
 
                 const SizedBox(height: 30),
                 Text(
-                  'Son nom ?',
+                  AppLocalizations.of(context).theirName,
                   style: titleStyle(context),
                 ),
                 const SizedBox(height: 15),
@@ -185,7 +188,7 @@ class _ProfileCreationPageState extends State<ProfileCreationPage> {
                   controller: _nameController,
                   style: TextStyle(color: theme.colorScheme.onSurface),
                   decoration: InputDecoration(
-                    hintText: "Ex: Léo, Nina...",
+                    hintText: AppLocalizations.of(context).nameHintExample,
                     hintStyle: TextStyle(
                       color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
                     ),
@@ -199,7 +202,7 @@ class _ProfileCreationPageState extends State<ProfileCreationPage> {
                 ),
                 const SizedBox(height: 30),
                 Text(
-                  'Son âge ?',
+                  AppLocalizations.of(context).theirAge,
                   style: titleStyle(context),
                 ),
                 const SizedBox(height: 15),
@@ -208,7 +211,7 @@ class _ProfileCreationPageState extends State<ProfileCreationPage> {
                   keyboardType: TextInputType.number,
                   style: TextStyle(color: theme.colorScheme.onSurface),
                   decoration: InputDecoration(
-                    hintText: "Ex: 5",
+                    hintText: AppLocalizations.of(context).ageHintExample,
                     hintStyle: TextStyle(
                       color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
                     ),
@@ -238,7 +241,7 @@ class _ProfileCreationPageState extends State<ProfileCreationPage> {
                             strokeWidth: 2,
                           )
                         : Text(
-                            'Créer le profil et commencer la lecture',
+                            AppLocalizations.of(context).createProfileAndStart,
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,

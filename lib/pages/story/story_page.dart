@@ -1,3 +1,4 @@
+import 'package:lumiconte/l10n/app_localizations.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -259,7 +260,7 @@ class _StoryPageState extends State<StoryPage> {
       );
       if (audioWords.isNotEmpty) return StoryDocument(audioWords);
     }
-    return StoryDocument(storyWordsFromText(story.content));
+    return StoryDocument(storyWordsFromText(story.displayContent));
   }
 
   /// Voix choisie dans les paramètres. Pendant l'écoute, c'est la voix jouée
@@ -490,9 +491,10 @@ class _StoryPageState extends State<StoryPage> {
     try {
       await _audioBackgroundService.play();
     } catch (e) {
+      debugPrint('Lecture audio : $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erreur audio: $e')),
+          SnackBar(content: Text(AppLocalizations.of(context).audioError)),
         );
       }
     }
@@ -505,9 +507,9 @@ class _StoryPageState extends State<StoryPage> {
     } else if (!_queue.add(_story)) {
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
-        ..showSnackBar(const SnackBar(
+        ..showSnackBar(SnackBar(
           content: Text(
-              'La file est pleine : ${StoryQueue.maxLength} histoires maximum'),
+              AppLocalizations.of(context).queueFull(StoryQueue.maxLength)),
         ));
     }
   }
@@ -587,8 +589,8 @@ class _StoryPageState extends State<StoryPage> {
       if (mounted) {
         setState(() => _isFavorite = !newState);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text('Erreur lors de la mise à jour des favoris')),
+          SnackBar(
+              content: Text(AppLocalizations.of(context).favoriteUpdateError)),
         );
       }
     }

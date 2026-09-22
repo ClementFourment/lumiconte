@@ -180,7 +180,7 @@ class _Catalog {
   factory _Catalog(List<StoryModel> stories) {
     final wordCounts = {
       for (final s in stories)
-        s.id: s.content.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).length,
+        s.id: s.displayContent.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).length,
     };
     final sortedCounts = wordCounts.values.toList()..sort();
     final longThreshold = sortedCounts.isEmpty

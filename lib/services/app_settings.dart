@@ -1,3 +1,4 @@
+import 'package:lumiconte/models/app_language.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -222,10 +223,10 @@ class AppSettings extends ChangeNotifier {
         return;
       }
 
-      const androidDetails = AndroidNotificationDetails(
+      final androidDetails = AndroidNotificationDetails(
         'reading_reminder_channel',
-        'Rappels de lecture',
-        channelDescription: 'Notifications pour rappeler de finir son histoire',
+        AppLanguage.texts.notificationChannelName,
+        channelDescription: AppLanguage.texts.notificationChannelDescription,
         importance: Importance.max,
         priority: Priority.high,
         playSound: true,
@@ -233,7 +234,7 @@ class AppSettings extends ChangeNotifier {
         largeIcon: DrawableResourceAndroidBitmap('@mipmap/launcher_icon'),
         color: Color(0xFFF59E0B),
       );
-      const platformDetails = NotificationDetails(android: androidDetails);
+      final platformDetails = NotificationDetails(android: androidDetails);
 
       final tz.TZDateTime now = tz.TZDateTime.now(tz.local);
       tz.TZDateTime scheduledTime = tz.TZDateTime(
@@ -253,7 +254,7 @@ class AppSettings extends ChangeNotifier {
         id: 0,
         title: 'Lumiconte 📖',
         body:
-            'Tu n\'as pas fini ta lecture ! Viens vite découvrir la suite de ton histoire.',
+            AppLanguage.texts.notificationReminderBody,
         scheduledDate: scheduledTime,
         notificationDetails: platformDetails,
         androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,

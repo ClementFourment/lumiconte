@@ -1,3 +1,4 @@
+import 'package:lumiconte/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -196,9 +197,10 @@ class _SettingsPageState extends State<SettingsPage> {
     return TextSpan(children: allSpans);
   }
 
-  Widget _buildPreviewBox(SettingsModel settings, bool isDark) {
-    const String sampleText =
-        'Il y était une fois, dans une ville de Perse, deux frères nommés Kassim et Ali-Baba.';
+  Widget _buildPreviewBox(BuildContext context, SettingsModel settings,
+      bool isDark) {
+    final String sampleText =
+        AppLocalizations.of(context).readingPreviewSample;
 
     if (settings.dyslexia) {
       return Container(
@@ -473,7 +475,7 @@ class _SettingsPageState extends State<SettingsPage> {
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: Text(
-          'Paramètres',
+          AppLocalizations.of(context).settingsTitle,
           style: TextStyle(
             color: primaryTextColor,
             fontSize: 18,
@@ -495,7 +497,7 @@ class _SettingsPageState extends State<SettingsPage> {
           if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
             return Center(
               child: Text(
-                'Aucun paramètre trouvé.',
+                AppLocalizations.of(context).noSettingsFound,
                 style: TextStyle(color: secondaryTextColor),
               ),
             );
@@ -511,7 +513,7 @@ class _SettingsPageState extends State<SettingsPage> {
             padding: const EdgeInsets.all(20),
             children: [
               // Voix de la narration
-              _buildSectionTitle('Voix de la narration', secondaryTextColor),
+              _buildSectionTitle(AppLocalizations.of(context).narrationVoice, secondaryTextColor),
               const SizedBox(height: 8),
               Card(
                 color: cardColor,
@@ -526,7 +528,7 @@ class _SettingsPageState extends State<SettingsPage> {
                     children: [
                       Expanded(
                         child: _buildVoiceOption(
-                          label: 'Féminine',
+                          label: AppLocalizations.of(context).voiceFemale,
                           icon: Icons.record_voice_over_rounded,
                           genderKey: 'femme',
                           currentGender: settings.voiceGender,
@@ -537,7 +539,7 @@ class _SettingsPageState extends State<SettingsPage> {
                       const SizedBox(width: 12),
                       Expanded(
                         child: _buildVoiceOption(
-                          label: 'Masculine',
+                          label: AppLocalizations.of(context).voiceMale,
                           icon: Icons.record_voice_over_rounded,
                           genderKey: 'homme',
                           currentGender: settings.voiceGender,
@@ -551,7 +553,7 @@ class _SettingsPageState extends State<SettingsPage> {
               ),
 
               const SizedBox(height: 24),
-              _buildSectionTitle('Accessibilité', secondaryTextColor),
+              _buildSectionTitle(AppLocalizations.of(context).accessibility, secondaryTextColor),
               const SizedBox(height: 8),
 
               // Mode Dyslexie Card
@@ -564,14 +566,14 @@ class _SettingsPageState extends State<SettingsPage> {
                 ),
                 child: SwitchListTile(
                   title: Text(
-                    'Mode Dyslexie',
+                    AppLocalizations.of(context).dyslexiaMode,
                     style: TextStyle(
                       color: primaryTextColor,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
                   subtitle: Text(
-                    'Adapte les couleurs, l\'espacement et la taille',
+                    AppLocalizations.of(context).dyslexiaHint,
                     style: TextStyle(color: secondaryTextColor),
                   ),
                   value: settings.dyslexia,
@@ -583,7 +585,7 @@ class _SettingsPageState extends State<SettingsPage> {
               ),
 
               const SizedBox(height: 24),
-              _buildSectionTitle('Affichage du texte', secondaryTextColor),
+              _buildSectionTitle(AppLocalizations.of(context).textDisplay, secondaryTextColor),
               const SizedBox(height: 8),
 
               // Carte de réglage taille + Aperçu dynamique du thème
@@ -603,7 +605,7 @@ class _SettingsPageState extends State<SettingsPage> {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
-                            'Taille du texte',
+                            AppLocalizations.of(context).textSize,
                             style: TextStyle(
                               color: primaryTextColor,
                               fontWeight: FontWeight.w500,
@@ -640,7 +642,7 @@ class _SettingsPageState extends State<SettingsPage> {
                         onChanged: (double val) {},
                       ),
                       const SizedBox(height: 10),
-                      _buildPreviewBox(settings, isDark),
+                      _buildPreviewBox(context, settings, isDark),
                     ],
                   ),
                 ),
@@ -649,13 +651,13 @@ class _SettingsPageState extends State<SettingsPage> {
               // Sélection des Thèmes de lecture
               if (!settings.dyslexia) ...[
                 const SizedBox(height: 24),
-                _buildSectionTitle('Thème de lecture', secondaryTextColor),
+                _buildSectionTitle(AppLocalizations.of(context).readingTheme, secondaryTextColor),
                 const SizedBox(height: 12),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     _buildThemeOption(
-                      label: 'Classique',
+                      label: AppLocalizations.of(context).readThemeClassic,
                       themeKey: 'classic',
                       currentTheme: settings.readTheme,
                       settingsId: settings.id,
@@ -664,7 +666,7 @@ class _SettingsPageState extends State<SettingsPage> {
                       previewWidget: _buildClassicPreview(),
                     ),
                     _buildThemeOption(
-                      label: 'Immersif',
+                      label: AppLocalizations.of(context).readThemeImmersive,
                       themeKey: 'immersive',
                       currentTheme: settings.readTheme,
                       settingsId: settings.id,
@@ -673,7 +675,7 @@ class _SettingsPageState extends State<SettingsPage> {
                       previewWidget: _buildImmersivePreview(),
                     ),
                     _buildThemeOption(
-                      label: 'Manuscrit',
+                      label: AppLocalizations.of(context).readThemeManuscript,
                       themeKey: 'manuscript',
                       currentTheme: settings.readTheme,
                       settingsId: settings.id,

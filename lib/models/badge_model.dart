@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lumiconte/l10n/app_localizations.dart';
 
 /// Données du profil utilisées pour décider quels badges sont gagnés.
 /// Toutes existent déjà dans Firestore : rien n'est stocké en plus.
@@ -36,17 +37,13 @@ class BadgeStats {
   });
 }
 
+/// Nom, indice et phrase de victoire d'un badge, dans la langue du profil.
+typedef BadgeTexts = ({String name, String hint, String earned});
+
 /// Un badge d'habitude de lecture. Les histoires terminées sont déjà
 /// récompensées par les morales : les badges récompensent la façon de lire.
 class BadgeModel {
   final String id;
-  final String name;
-
-  /// Indice montré tant que le badge n'est pas gagné.
-  final String hint;
-
-  /// Phrase montrée une fois le badge gagné.
-  final String earnedText;
   final IconData icon;
   final Color color;
 
@@ -55,22 +52,103 @@ class BadgeModel {
 
   const BadgeModel({
     required this.id,
-    required this.name,
-    required this.hint,
-    required this.earnedText,
     required this.icon,
     required this.color,
     this.isEarned,
   });
+
+  /// Textes du badge dans la langue du profil. Ils sont rangés avec les autres
+  /// traductions (lib/l10n) plutôt que dans le modèle : un badge est une
+  /// icône, une couleur et une condition — sa formulation change de langue.
+  BadgeTexts texts(AppLocalizations l10n) => switch (id) {
+        'premiere_page' => (
+            name: l10n.badgeFirstPageName,
+            hint: l10n.badgeFirstPageHint,
+            earned: l10n.badgeFirstPageEarned,
+          ),
+        'petite_flamme' => (
+            name: l10n.badgeSmallFlameName,
+            hint: l10n.badgeSmallFlameHint,
+            earned: l10n.badgeSmallFlameEarned,
+          ),
+        'grande_flamme' => (
+            name: l10n.badgeBigFlameName,
+            hint: l10n.badgeBigFlameHint,
+            earned: l10n.badgeBigFlameEarned,
+          ),
+        'feu_de_joie' => (
+            name: l10n.badgeBonfireName,
+            hint: l10n.badgeBonfireHint,
+            earned: l10n.badgeBonfireEarned,
+          ),
+        'coup_de_coeur' => (
+            name: l10n.badgeFavoriteName,
+            hint: l10n.badgeFavoriteHint,
+            earned: l10n.badgeFavoriteEarned,
+          ),
+        'tresor_de_contes' => (
+            name: l10n.badgeStoryTreasureName,
+            hint: l10n.badgeStoryTreasureHint,
+            earned: l10n.badgeStoryTreasureEarned,
+          ),
+        'oreille_curieuse' => (
+            name: l10n.badgeCuriousEarName,
+            hint: l10n.badgeCuriousEarHint,
+            earned: l10n.badgeCuriousEarEarned,
+          ),
+        'explorateur' => (
+            name: l10n.badgeExplorerName,
+            hint: l10n.badgeExplorerHint,
+            earned: l10n.badgeExplorerEarned,
+          ),
+        'grand_explorateur' => (
+            name: l10n.badgeGreatExplorerName,
+            hint: l10n.badgeGreatExplorerHint,
+            earned: l10n.badgeGreatExplorerEarned,
+          ),
+        'conte_du_soir' => (
+            name: l10n.badgeBedtimeTaleName,
+            hint: l10n.badgeBedtimeTaleHint,
+            earned: l10n.badgeBedtimeTaleEarned,
+          ),
+        'leve_tot' => (
+            name: l10n.badgeEarlyBirdName,
+            hint: l10n.badgeEarlyBirdHint,
+            earned: l10n.badgeEarlyBirdEarned,
+          ),
+        'week_end_enchante' => (
+            name: l10n.badgeMagicWeekendName,
+            hint: l10n.badgeMagicWeekendHint,
+            earned: l10n.badgeMagicWeekendEarned,
+          ),
+        'encore_une_fois' => (
+            name: l10n.badgeOnceMoreName,
+            hint: l10n.badgeOnceMoreHint,
+            earned: l10n.badgeOnceMoreEarned,
+          ),
+        'grand_livre' => (
+            name: l10n.badgeBigBookName,
+            hint: l10n.badgeBigBookHint,
+            earned: l10n.badgeBigBookEarned,
+          ),
+        'sablier_magique' => (
+            name: l10n.badgeMagicHourglassName,
+            hint: l10n.badgeMagicHourglassHint,
+            earned: l10n.badgeMagicHourglassEarned,
+          ),
+        'grande_horloge' => (
+            name: l10n.badgeGrandClockName,
+            hint: l10n.badgeGrandClockHint,
+            earned: l10n.badgeGrandClockEarned,
+          ),
+        _ => (name: id, hint: '', earned: ''),
+      };
 
   static const String firstListenId = 'oreille_curieuse';
 
   static final List<BadgeModel> all = [
     BadgeModel(
       id: 'premiere_page',
-      name: 'Première page',
-      hint: 'Ouvre ta toute première histoire…',
-      earnedText: 'Tu as ouvert ta première histoire !',
       icon: Icons.menu_book_rounded,
       color: const Color(0xFF4FA3F7),
       isEarned: (s) => s.storiesStarted >= 1,
@@ -79,27 +157,18 @@ class BadgeModel {
     // Séries de jours de lecture
     BadgeModel(
       id: 'petite_flamme',
-      name: 'Petite flamme',
-      hint: 'Lis 3 jours de suite…',
-      earnedText: 'Tu as lu 3 jours de suite !',
       icon: Icons.local_fire_department_rounded,
       color: const Color(0xFFFF8A3D),
       isEarned: (s) => s.currentStreak >= 3,
     ),
     BadgeModel(
       id: 'grande_flamme',
-      name: 'Grande flamme',
-      hint: 'Lis 7 jours de suite…',
-      earnedText: 'Une semaine entière de lecture !',
       icon: Icons.whatshot_rounded,
       color: const Color(0xFFE8453C),
       isEarned: (s) => s.currentStreak >= 7,
     ),
     BadgeModel(
       id: 'feu_de_joie',
-      name: 'Feu de joie',
-      hint: 'Lis 14 jours de suite…',
-      earnedText: 'Deux semaines de lecture sans t\'arrêter !',
       icon: Icons.fireplace_rounded,
       color: const Color(0xFFC62828),
       isEarned: (s) => s.currentStreak >= 14,
@@ -108,18 +177,12 @@ class BadgeModel {
     // Favoris
     BadgeModel(
       id: 'coup_de_coeur',
-      name: 'Coup de cœur',
-      hint: 'Garde une histoire dans tes favoris…',
-      earnedText: 'Tu as trouvé une histoire que tu adores !',
       icon: Icons.favorite_rounded,
       color: const Color(0xFFF06292),
       isEarned: (s) => s.favoritesCount >= 1,
     ),
     BadgeModel(
       id: 'tresor_de_contes',
-      name: 'Trésor de contes',
-      hint: 'Garde 5 histoires dans tes favoris…',
-      earnedText: 'Tu as un vrai trésor de 5 histoires préférées !',
       icon: Icons.diamond_rounded,
       color: const Color(0xFF29B6F6),
       isEarned: (s) => s.favoritesCount >= 5,
@@ -127,9 +190,6 @@ class BadgeModel {
 
     const BadgeModel(
       id: firstListenId,
-      name: 'Oreille curieuse',
-      hint: 'Écoute une histoire racontée…',
-      earnedText: 'Tu as écouté ta première histoire !',
       icon: Icons.headphones_rounded,
       color: Color(0xFF26A69A),
     ),
@@ -137,18 +197,12 @@ class BadgeModel {
     // Thèmes
     BadgeModel(
       id: 'explorateur',
-      name: 'Explorateur',
-      hint: 'Termine des histoires de 3 thèmes différents…',
-      earnedText: 'Tu as exploré 3 thèmes différents !',
       icon: Icons.explore_rounded,
       color: const Color(0xFF66BB6A),
       isEarned: (s) => s.finishedCategoriesCount >= 3,
     ),
     BadgeModel(
       id: 'grand_explorateur',
-      name: 'Grand explorateur',
-      hint: 'Termine des histoires de 6 thèmes différents…',
-      earnedText: 'Tu as voyagé dans 6 thèmes différents !',
       icon: Icons.public_rounded,
       color: const Color(0xFF2E7D32),
       // Sans assez de thèmes au catalogue, tous les explorer suffit
@@ -161,27 +215,18 @@ class BadgeModel {
     // Moments de lecture
     BadgeModel(
       id: 'conte_du_soir',
-      name: 'Conte du soir',
-      hint: 'Lis une histoire le soir, avant de dormir…',
-      earnedText: 'Une histoire avant de dormir !',
       icon: Icons.bedtime_rounded,
       color: const Color(0xFF7E57C2),
       isEarned: (s) => s.hasEveningReading,
     ),
     BadgeModel(
       id: 'leve_tot',
-      name: 'Lève-tôt',
-      hint: 'Lis une histoire le matin…',
-      earnedText: 'Une histoire pour bien commencer la journée !',
       icon: Icons.wb_sunny_rounded,
       color: const Color(0xFFFF8A80),
       isEarned: (s) => s.hasMorningReading,
     ),
     BadgeModel(
       id: 'week_end_enchante',
-      name: 'Week-end enchanté',
-      hint: 'Lis une histoire le samedi ou le dimanche…',
-      earnedText: 'Même le week-end, tu lis des histoires !',
       icon: Icons.weekend_rounded,
       color: const Color(0xFFAB47BC),
       isEarned: (s) => s.hasWeekendReading,
@@ -190,18 +235,12 @@ class BadgeModel {
     // Façons de lire
     BadgeModel(
       id: 'encore_une_fois',
-      name: 'Encore une fois',
-      hint: 'Relis une histoire que tu as déjà terminée…',
-      earnedText: 'Tu as relu une histoire que tu aimes !',
       icon: Icons.replay_rounded,
       color: const Color(0xFF9CCC65),
       isEarned: (s) => s.hasReread,
     ),
     BadgeModel(
       id: 'grand_livre',
-      name: 'Grand livre',
-      hint: 'Termine une des plus longues histoires…',
-      earnedText: 'Tu as terminé une très longue histoire !',
       icon: Icons.import_contacts_rounded,
       color: const Color(0xFF8D6E63),
       isEarned: (s) => s.finishedLongStory,
@@ -210,18 +249,12 @@ class BadgeModel {
     // Temps de lecture
     BadgeModel(
       id: 'sablier_magique',
-      name: 'Sablier magique',
-      hint: 'Passe une heure à lire des histoires…',
-      earnedText: 'Une heure entière avec tes histoires !',
       icon: Icons.hourglass_bottom_rounded,
       color: const Color(0xFFF1B90F),
       isEarned: (s) => s.totalReadingSeconds >= 3600,
     ),
     BadgeModel(
       id: 'grande_horloge',
-      name: 'Grande horloge',
-      hint: 'Passe 5 heures à lire des histoires…',
-      earnedText: 'Cinq heures de voyage dans les histoires !',
       icon: Icons.watch_later_rounded,
       color: const Color(0xFF3949AB),
       isEarned: (s) => s.totalReadingSeconds >= 5 * 3600,

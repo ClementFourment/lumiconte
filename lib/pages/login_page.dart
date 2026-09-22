@@ -1,3 +1,4 @@
+import 'package:lumiconte/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:lumiconte/services/auth_service.dart';
 import 'package:lumiconte/services/profile_service.dart';
@@ -89,7 +90,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
       debugPrint("Erreur Google Sign In : $e");
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Échec de la connexion avec Google")),
+          SnackBar(content: Text(AppLocalizations.of(context).googleSignInFailed)),
         );
       }
     } finally {
@@ -115,7 +116,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
       debugPrint("Erreur Apple Sign In : $e");
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Échec de la connexion avec Apple")),
+          SnackBar(content: Text(AppLocalizations.of(context).appleSignInFailed)),
         );
       }
     } finally {
@@ -148,16 +149,16 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
 
       switch (e.code) {
         case 'user-not-found':
-          message = "Aucun compte avec cet email";
+          message = AppLocalizations.of(context).noAccountWithEmail;
           break;
         case 'wrong-password':
-          message = "Mot de passe incorrect";
+          message = AppLocalizations.of(context).wrongPassword;
           break;
         case 'invalid-email':
-          message = "Email invalide";
+          message = AppLocalizations.of(context).invalidEmail;
           break;
         default:
-          message = "Erreur de connexion";
+          message = AppLocalizations.of(context).signInError;
       }
 
       if (mounted) {
@@ -195,7 +196,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
       debugPrint("Erreur inscription : $e");
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Échec de l'inscription")),
+          SnackBar(content: Text(AppLocalizations.of(context).signUpFailed)),
         );
       }
     } finally {
@@ -288,8 +289,8 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                                 const SizedBox(height: 16),
                                 Text(
                                   _isLoginMode
-                                      ? "Connexion en cours..."
-                                      : "Inscription en cours...",
+                                      ? AppLocalizations.of(context).signingIn
+                                      : AppLocalizations.of(context).signingUp,
                                   style: TextStyle(
                                     color: Colors.white.withValues(alpha: 0.7),
                                     fontSize: 14,
@@ -308,8 +309,8 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                                   const SizedBox(height: 32),
                                   _buildPrimaryButton(
                                     label: _isLoginMode
-                                        ? 'Se connecter'
-                                        : 'S\'inscrire',
+                                        ? AppLocalizations.of(context).signIn
+                                        : AppLocalizations.of(context).signUp,
                                     onPressed: _isLoginMode
                                         ? _signInWithEmail
                                         : _signUpWithEmail,
@@ -355,14 +356,14 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                                           .supportsAuthenticate())
                                         _buildSocialIconButton(
                                           type: 'google',
-                                          text: 'Continuer avec Google',
+                                          text: AppLocalizations.of(context).continueWithGoogle,
                                           onPressed: _signInWithGoogle,
                                         ),
                                       const SizedBox(height: 12),
                                       if (canUseAppleSignIn)
                                         _buildSocialIconButton(
                                           type: 'apple',
-                                          text: 'Continuer avec Apple',
+                                          text: AppLocalizations.of(context).continueWithApple,
                                           onPressed: _signInWithApple,
                                         ),
                                     ],
@@ -372,7 +373,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                             ),
                           const SizedBox(height: 48),
                           Text(
-                            'En continuant, tu acceptes nos conditions\nd\'utilisation et notre politique de confidentialité',
+                            AppLocalizations.of(context).termsNotice,
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               fontSize: 11,
@@ -418,7 +419,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                       : Colors.transparent,
                 ),
                 child: Text(
-                  'Se connecter',
+                  AppLocalizations.of(context).signIn,
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 14,
@@ -443,7 +444,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                       : Colors.transparent,
                 ),
                 child: Text(
-                  'S\'inscrire',
+                  AppLocalizations.of(context).signUp,
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 14,
@@ -469,7 +470,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
         fontSize: 15,
       ),
       decoration: InputDecoration(
-        hintText: 'Email',
+        hintText: AppLocalizations.of(context).emailLabel,
         hintStyle: TextStyle(
           color: Colors.white.withValues(alpha: 0.4),
           fontSize: 15,
@@ -508,10 +509,10 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
       keyboardType: TextInputType.emailAddress,
       validator: (value) {
         if (value == null || value.isEmpty) {
-          return 'Email requis';
+          return AppLocalizations.of(context).emailRequired;
         }
         if (!value.contains('@')) {
-          return 'Email invalide';
+          return AppLocalizations.of(context).invalidEmail;
         }
         return null;
       },
@@ -527,7 +528,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
       ),
       obscureText: true,
       decoration: InputDecoration(
-        hintText: 'Mot de passe',
+        hintText: AppLocalizations.of(context).passwordHint,
         hintStyle: TextStyle(
           color: Colors.white.withValues(alpha: 0.4),
           fontSize: 15,
@@ -565,10 +566,10 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
       ),
       validator: (value) {
         if (value == null || value.isEmpty) {
-          return 'Mot de passe requis';
+          return AppLocalizations.of(context).passwordRequired;
         }
         if (value.length < 6) {
-          return 'Au minimum 6 caractères';
+          return AppLocalizations.of(context).passwordTooShort;
         }
         return null;
       },

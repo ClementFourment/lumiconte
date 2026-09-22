@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart' show ProcessingState;
+import 'package:lumiconte/models/app_language.dart';
 import 'package:lumiconte/models/badge_model.dart';
 import 'package:lumiconte/models/profile_model.dart';
 import 'package:lumiconte/models/settings_model.dart';
@@ -54,7 +55,8 @@ class StoryQueuePlayer extends ChangeNotifier {
   StreamSubscription? _languageSubscription;
   String? _languageProfileId;
 
-  /// Donne à la file la langue du profil, et la suit quand un parent la change.
+  /// Donne à la file et aux textes des histoires la langue du profil, et la
+  /// suit quand un parent la change.
   void followLanguage(ProfileModel profile) {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null || _languageProfileId == profile.id) return;
@@ -62,10 +64,17 @@ class StoryQueuePlayer extends ChangeNotifier {
     _languageProfileId = profile.id;
     _languageSubscription =
         _settingsService.getSettingsStream(uid, profile.id).listen(
-              (settings) => _queue.language =
-                  settings?.language ?? SettingsModel.defaultLanguage,
+              (settings) => applyLanguage(
+                  settings?.language ?? SettingsModel.defaultLanguage),
               onError: (e) => debugPrint('Erreur langue de la file : $e'),
             );
+  }
+
+  /// Langue de lecture du profil : la file s'y conforme, et les histoires
+  /// affichent leurs textes dans cette langue.
+  void applyLanguage(String language) {
+    AppLanguage.select(language);
+    _queue.language = language;
   }
 
   /// Écoute la file préparée, depuis la première histoire.
