@@ -20,7 +20,7 @@ class AudioBackgroundService extends BaseAudioHandler
   late AudioPlayer _audioPlayer;
   bool _isInitialized = false;
   int? _lastPositionUpdate;
-  static const String _cdnBaseUrl = 'https://lumiconte-cdn.clementfourment.fr/';
+  static const String cdnBaseUrl = 'https://lumiconte-cdn.clementfourment.fr/';
 
   /// Histoires avant / après dans la file de lecture : boutons "précédent" et
   /// "suivant" affichés sur l'écran verrouillé et dans la notification.
@@ -166,8 +166,9 @@ class AudioBackgroundService extends BaseAudioHandler
   Future<void> setStory(StoryModel story, String objectKey) async {
     if (!_isInitialized) await init();
 
-    final url = '$_cdnBaseUrl$objectKey';
-
+    final url = '$cdnBaseUrl$objectKey';
+    debugPrint("aaaaaaaaaaaaaaaaaaaaaaaaa");
+    debugPrint(url);
     try {
       // 1. Charger l'URL
       await _audioPlayer.setUrl(url);
@@ -188,7 +189,7 @@ class AudioBackgroundService extends BaseAudioHandler
         title: story.displayName,
         artUri: Uri.parse(story.image != null && story.image!.startsWith('http')
             ? story.image!
-            : '$_cdnBaseUrl${story.image ?? 'assets/default_story.webp'}'),
+            : '$cdnBaseUrl${story.image ?? 'assets/default_story.webp'}'),
         duration: duration,
       ));
 

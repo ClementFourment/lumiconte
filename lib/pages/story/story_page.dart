@@ -255,12 +255,25 @@ class _StoryPageState extends State<StoryPage> {
   /// Avec l'audio, on affiche les mots minutés de la voix pour pouvoir les surligner.
   StoryDocument _documentFor(StoryModel story, AudioVoiceData? voice) {
     if (voice != null) {
-      final audioWords = storyWordsFromSegments(
-        StorySyncService.parseSegments(voice.audioTimes),
-      );
-      if (audioWords.isNotEmpty) return StoryDocument(audioWords);
+      final segments = StorySyncService.cachedSegments(voice.audioTimes);
+      if (segments == null) {
+        _loadVoiceSegments(story, voice);
+      } else {
+        final audioWords = storyWordsFromSegments(segments);
+        if (audioWords.isNotEmpty) return StoryDocument(audioWords);
+      }
     }
     return StoryDocument(storyWordsFromText(story.displayContent));
+  }
+
+  /// Les mots minutés sont téléchargés sur le CDN : en attendant, le texte
+  /// brut est affiché, puis remplacé s'il s'agit toujours de la même voix.
+  Future<void> _loadVoiceSegments(StoryModel story, AudioVoiceData voice) async {
+    final segments = await StorySyncService.loadSegments(voice.audioTimes);
+    if (!mounted || _story.id != story.id || !identical(_voice, voice)) return;
+    final audioWords = storyWordsFromSegments(segments);
+    if (audioWords.isEmpty) return;
+    setState(() => _replaceDocument(StoryDocument(audioWords)));
   }
 
   /// Voix choisie dans les paramètres. Pendant l'écoute, c'est la voix jouée
