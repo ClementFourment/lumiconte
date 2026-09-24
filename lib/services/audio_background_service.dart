@@ -295,6 +295,40 @@ class AudioBackgroundService extends BaseAudioHandler
   /// Obtenir la durée totale
   Duration get duration => _audioPlayer.duration ?? Duration.zero;
 
+  /// Durées déjà connues, par chemin du fichier audio.
+  static final Map<String, Duration> _durations = {};
+  static final Map<String, Future<Duration?>> _pendingDurations = {};
+
+  /// Durée d'un audio sans le lire, pour l'afficher avant la lecture.
+  static Future<Duration?> durationOf(String objectKey) {
+    final key = objectKey.trim();
+    if (key.isEmpty) return Future.value(null);
+    final known = _durations[key];
+    if (known != null) return Future.value(known);
+    return _pendingDurations[key] ??= _probeDuration(key).whenComplete(() {
+      _pendingDurations.remove(key);
+    });
+  }
+
+  /// Un lecteur à part lit l'en-tête du fichier : l'écoute en cours n'est pas
+  /// interrompue et la session audio n'est pas réclamée.
+  static Future<Duration?> _probeDuration(String key) async {
+    final player = AudioPlayer(
+      handleAudioSessionActivation: false,
+      handleInterruptions: false,
+    );
+    try {
+      final duration = await player.setUrl('$cdnBaseUrl$key');
+      if (duration != null) _durations[key] = duration;
+      return duration;
+    } catch (e) {
+      debugPrint('Durée de $key : $e');
+      return null;
+    } finally {
+      await player.dispose();
+    }
+  }
+
   /// Fermer le service
   Future<void> dispose() async {
     await _audioPlayer.dispose();
