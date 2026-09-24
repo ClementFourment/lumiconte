@@ -12,6 +12,9 @@ class StoryViewParams {
   final bool isFavorite;
   final bool isAudio;
   final bool isPlaying;
+
+  /// L'histoire est celle en cours d'écoute (en lecture ou en pause).
+  final bool isListening;
   final bool isLoading;
   final Duration audioPosition;
   final Duration audioDuration;
@@ -50,6 +53,7 @@ class StoryViewParams {
     required this.isFavorite,
     required this.isAudio,
     required this.isPlaying,
+    required this.isListening,
     required this.isLoading,
     required this.audioPosition,
     required this.audioDuration,

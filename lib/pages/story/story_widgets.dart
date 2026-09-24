@@ -50,10 +50,13 @@ class StoryTextArea extends StatelessWidget {
         final words = params.document.words.sublist(page.start, page.end);
 
         int? activeIndex;
-        if (params.isAudio && params.document.hasTimings) {
-          final seconds = params.audioPosition.inMilliseconds / 1000.0;
-          final index = words.indexWhere((word) => word.isSpokenAt(seconds));
-          if (index >= 0) activeIndex = index;
+        if (params.isAudio && params.isListening) {
+          final spoken = params.document.spokenWordAt(
+            params.audioPosition.inMilliseconds / 1000.0,
+          );
+          if (spoken != null && spoken >= page.start && spoken < page.end) {
+            activeIndex = spoken - page.start;
+          }
         }
 
         return StoryPageTransition(

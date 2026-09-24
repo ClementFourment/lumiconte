@@ -167,8 +167,7 @@ class AudioBackgroundService extends BaseAudioHandler
     if (!_isInitialized) await init();
 
     final url = '$cdnBaseUrl$objectKey';
-    debugPrint("aaaaaaaaaaaaaaaaaaaaaaaaa");
-    debugPrint(url);
+
     try {
       // 1. Charger l'URL
       await _audioPlayer.setUrl(url);

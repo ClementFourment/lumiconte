@@ -713,6 +713,7 @@ class _StoryPageState extends State<StoryPage> {
           isFavorite: _isFavorite,
           isAudio: _isAudio,
           isPlaying: _isPlaying,
+          isListening: _isCurrent,
           isLoading: _isLoading,
           // Avant l'écoute : là où elle reprendra, selon la page lue
           audioPosition: _isCurrent

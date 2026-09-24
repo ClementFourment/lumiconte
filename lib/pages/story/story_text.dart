@@ -31,9 +31,6 @@ class StoryWord {
   /// Numéro de l'illustration `[img:N]` placée juste avant ce mot.
   final int? imageNumber;
 
-  bool isSpokenAt(double seconds) =>
-      start != null && end != null && seconds >= start! && seconds <= end!;
-
   StoryWord _withText(String newText) => StoryWord(
         newText,
         start: start,
@@ -239,6 +236,21 @@ class StoryDocument {
     return result;
   }
 
+  /// Mot à surligner : le dernier prononcé. Il reste surligné pendant les
+  /// courts silences entre deux mots, pour que la pastille ne clignote pas,
+  /// mais s'efface lors d'une vraie pause.
+  int? spokenWordAt(double seconds) {
+    final index = wordAtTime(seconds);
+    if (index == null) return null;
+    final word = words[index];
+    final start = word.start;
+    if (start == null || seconds < start) return null;
+    final end = word.end ?? start;
+    return seconds <= end + _highlightLinger ? index : null;
+  }
+
+  static const double _highlightLinger = 1.2;
+
   /// Dernière illustration rencontrée avant le mot `wordEnd` (exclu).
   int? imageNumberBefore(int wordEnd) {
     int? number;
@@ -423,7 +435,7 @@ StoryPageLayout layoutStoryPage(
     if (withCap != null) return withCap;
   }
 
-  final paragraph = _buildParagraph(words, metrics, colors, activeIndex);
+  final paragraph = _buildParagraph(words, metrics, colors);
   return StoryPageLayout._(
     height: _measureHeight(paragraph, request, request.area.width),
     rest: paragraph,
@@ -469,7 +481,7 @@ StoryPageLayout? _layoutWithDropCap(
   final narrowWidth = width - capBox.width;
   if (narrowWidth < width * 0.5) return null;
 
-  final all = _buildParagraph(words, metrics, colors, activeIndex,
+  final all = _buildParagraph(words, metrics, colors,
       skipFirstChar: true);
   final painter = _layoutPainter(all.span, request, narrowWidth);
   final rows = math.max(1, (capBox.height / painter.preferredLineHeight).ceil());
@@ -494,7 +506,6 @@ StoryPageLayout? _layoutWithDropCap(
   final beside = besideIsAll
       ? all
       : _buildParagraph(words.sublist(0, besideCount), metrics, colors,
-          activeIndex,
           skipFirstChar: true);
   final besideHeight =
       besideIsAll ? allHeight : _measureHeight(beside, request, narrowWidth);
@@ -502,8 +513,7 @@ StoryPageLayout? _layoutWithDropCap(
   StoryParagraph? rest;
   var restHeight = 0.0;
   if (besideCount < words.length) {
-    rest = _buildParagraph(words.sublist(besideCount), metrics, colors,
-        activeIndex == null ? null : activeIndex - besideCount);
+    rest = _buildParagraph(words.sublist(besideCount), metrics, colors);
     restHeight = _measureHeight(rest, request, width);
   }
 
@@ -520,8 +530,7 @@ StoryPageLayout? _layoutWithDropCap(
 StoryParagraph _buildParagraph(
   List<StoryWord> words,
   StoryTextMetrics metrics,
-  StoryTextColors colors,
-  int? activeIndex, {
+  StoryTextColors colors, {
   bool skipFirstChar = false,
 }) {
   final base =
@@ -554,10 +563,8 @@ StoryParagraph _buildParagraph(
     if (metrics.dyslexia) {
       children.addAll(_dyslexiaSpans(text, colors.text));
     } else {
-      children.add(TextSpan(
-        text: text,
-        style: i == activeIndex ? TextStyle(color: colors.activeText) : null,
-      ));
+      // Le mot prononcé est recoloré par-dessus, en suivant la pastille
+      children.add(TextSpan(text: text));
     }
     ranges.add(TextRange(start: offset, end: offset + text.length));
     offset += text.length;
@@ -819,72 +826,289 @@ class StoryPageText extends StatelessWidget {
   }
 
   Widget _paragraph(StoryParagraph paragraph, int? active) {
-    final text = RichText(
-      text: paragraph.span,
-      textAlign: request.metrics.textAlign,
-      textScaler: request.textScaler,
-      locale: request.locale,
-    );
-    if (active == null || active < 0 || active >= paragraph.wordRanges.length) {
-      return text;
-    }
-    final range = paragraph.wordRanges[active];
-    if (range.isCollapsed) return text;
+    final range = active == null ||
+            active < 0 ||
+            active >= paragraph.wordRanges.length
+        ? null
+        : paragraph.wordRanges[active];
 
-    return CustomPaint(
-      painter: _WordHighlightPainter(
-        span: paragraph.span,
-        range: range,
-        request: request,
-        color: colors.highlight,
+    // Toujours présent, même sans mot actif : la pastille peut s'effacer en fondu
+    return _WordHighlight(
+      span: paragraph.span,
+      range: range == null || range.isCollapsed ? null : range,
+      request: request,
+      color: colors.highlight,
+      // En mode dyslexie, le mot garde les couleurs de ses syllabes
+      activeText: request.metrics.dyslexia ? null : colors.activeText,
+      child: RichText(
+        text: paragraph.span,
+        textAlign: request.metrics.textAlign,
+        textScaler: request.textScaler,
+        locale: request.locale,
       ),
-      child: text,
     );
   }
 }
 
-class _WordHighlightPainter extends CustomPainter {
-  _WordHighlightPainter({
+/// Pastille derrière le mot prononcé, et couleur du mot par-dessus. Elles
+/// glissent d'un mot à l'autre sur une même ligne, et passent d'une ligne à
+/// l'autre en fondu.
+class _WordHighlight extends StatefulWidget {
+  const _WordHighlight({
     required this.span,
     required this.range,
     required this.request,
     required this.color,
+    required this.activeText,
+    required this.child,
   });
 
   final TextSpan span;
-  final TextRange range;
+  final TextRange? range;
   final StoryLayoutRequest request;
   final Color color;
 
+  /// Couleur du mot prononcé ; null pour garder celle du texte.
+  final Color? activeText;
+  final Widget child;
+
   @override
-  void paint(Canvas canvas, Size size) {
-    final painter = TextPainter(
-      text: span,
+  State<_WordHighlight> createState() => _WordHighlightState();
+}
+
+class _WordHighlightState extends State<_WordHighlight>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 180),
+    value: 1,
+  );
+  late final Animation<double> _progress = CurvedAnimation(
+    parent: _controller,
+    curve: Curves.easeOutCubic,
+  );
+  final _WordBoxes _boxes = _WordBoxes();
+
+  TextRange? _from;
+  TextRange? _to;
+
+  @override
+  void initState() {
+    super.initState();
+    _to = widget.range;
+  }
+
+  @override
+  void didUpdateWidget(_WordHighlight oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Le texte est reconstruit à chaque position : on ne remesure que si sa
+    // mise en page ou ses couleurs changent vraiment
+    if (oldWidget.request != widget.request ||
+        oldWidget.activeText != widget.activeText ||
+        oldWidget.span.compareTo(widget.span) != RenderComparison.identical) {
+      _boxes.invalidate();
+    }
+    if (widget.range == _to) return;
+    _from = _to;
+    _to = widget.range;
+    _controller.forward(from: 0);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _boxes.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final activeText = widget.activeText;
+    return CustomPaint(
+      painter: _WordHighlightPainter(
+        boxes: _boxes,
+        span: widget.span,
+        request: widget.request,
+        from: _from,
+        to: _to,
+        progress: _progress,
+        color: widget.color,
+      ),
+      foregroundPainter: activeText == null
+          ? null
+          : _WordHighlightPainter(
+              boxes: _boxes,
+              span: widget.span,
+              request: widget.request,
+              from: _from,
+              to: _to,
+              progress: _progress,
+              color: activeText,
+              recolorsText: true,
+            ),
+      child: widget.child,
+    );
+  }
+}
+
+/// Mise en page du paragraphe, gardée d'une frame à l'autre pendant l'animation.
+class _WordBoxes {
+  TextPainter? _painter;
+  TextPainter? _recolored;
+  double? _width;
+
+  void invalidate() {
+    _painter?.dispose();
+    _painter = null;
+    _recolored?.dispose();
+    _recolored = null;
+  }
+
+  /// Le paragraphe entier dans la couleur [color], sans ombres : il est
+  /// découpé à la forme de la pastille.
+  TextPainter recolored(
+    TextSpan span,
+    StoryLayoutRequest request,
+    double width,
+    Color color,
+  ) {
+    if (_width != width) invalidate();
+    _width = width;
+    return _recolored ??= TextPainter(
+      text: TextSpan(
+        text: span.text,
+        style: (span.style ?? const TextStyle())
+            .copyWith(color: color, shadows: const []),
+        children: span.children,
+      ),
       textAlign: request.metrics.textAlign,
       textDirection: TextDirection.ltr,
       textScaler: request.textScaler,
       locale: request.locale,
-    )..layout(minWidth: size.width, maxWidth: size.width);
+    )..layout(minWidth: width, maxWidth: width);
+  }
 
-    final paint = Paint()..color = color;
-    final boxes = painter.getBoxesForSelection(
-      TextSelection(baseOffset: range.start, extentOffset: range.end),
-    );
-    for (final box in boxes) {
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(
-          box.toRect().inflate(2.5),
-          const Radius.circular(4),
-        ),
-        paint,
-      );
+  /// Cadres du mot, un par ligne s'il est coupé.
+  List<Rect> rectsFor(
+    TextRange range,
+    TextSpan span,
+    StoryLayoutRequest request,
+    double width,
+  ) {
+    if (_width != width) invalidate();
+    var painter = _painter;
+    if (painter == null) {
+      painter = TextPainter(
+        text: span,
+        textAlign: request.metrics.textAlign,
+        textDirection: TextDirection.ltr,
+        textScaler: request.textScaler,
+        locale: request.locale,
+      )..layout(minWidth: width, maxWidth: width);
+      _painter = painter;
+      _width = width;
     }
-    painter.dispose();
+    return [
+      for (final box in painter.getBoxesForSelection(
+        TextSelection(baseOffset: range.start, extentOffset: range.end),
+      ))
+        box.toRect().inflate(2.5),
+    ];
+  }
+
+  void dispose() => invalidate();
+}
+
+class _WordHighlightPainter extends CustomPainter {
+  _WordHighlightPainter({
+    required this.boxes,
+    required this.span,
+    required this.request,
+    required this.from,
+    required this.to,
+    required this.progress,
+    required this.color,
+    this.recolorsText = false,
+  }) : super(repaint: progress);
+
+  final _WordBoxes boxes;
+  final TextSpan span;
+  final StoryLayoutRequest request;
+  final TextRange? from;
+  final TextRange? to;
+  final Animation<double> progress;
+  final Color color;
+
+  /// Au premier plan : repeint le texte en [color] à l'intérieur de la
+  /// pastille, au lieu de dessiner la pastille elle-même.
+  final bool recolorsText;
+
+  static const Radius _radius = Radius.circular(4);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final t = progress.value;
+    final fromRects = from == null || t >= 1
+        ? const <Rect>[]
+        : boxes.rectsFor(from!, span, request, size.width);
+    final toRects = to == null
+        ? const <Rect>[]
+        : boxes.rectsFor(to!, span, request, size.width);
+
+    // Mot suivant sur la même ligne : la pastille glisse jusqu'à lui
+    if (fromRects.length == 1 &&
+        toRects.length == 1 &&
+        (fromRects.single.center.dy - toRects.single.center.dy).abs() < 1) {
+      _draw(
+        canvas,
+        size,
+        [Rect.lerp(fromRects.single, toRects.single, t)!],
+        1,
+      );
+      return;
+    }
+
+    // Changement de ligne, début ou fin : fondu
+    _draw(canvas, size, fromRects, 1 - t);
+    _draw(canvas, size, toRects, t);
+  }
+
+  void _draw(Canvas canvas, Size size, List<Rect> rects, double opacity) {
+    if (rects.isEmpty || opacity <= 0) return;
+    if (!recolorsText) {
+      final paint = Paint()
+        ..color = color.withValues(alpha: color.a * opacity);
+      for (final rect in rects) {
+        canvas.drawRRect(RRect.fromRectAndRadius(rect, _radius), paint);
+      }
+      return;
+    }
+
+    final text = boxes.recolored(span, request, size.width, color);
+    final clip = Path();
+    for (final rect in rects) {
+      clip.addRRect(RRect.fromRectAndRadius(rect, _radius));
+    }
+    canvas
+      ..save()
+      ..clipPath(clip);
+    if (opacity < 1) {
+      canvas.saveLayer(
+        clip.getBounds(),
+        Paint()..color = Color.fromRGBO(0, 0, 0, opacity),
+      );
+      text.paint(canvas, Offset.zero);
+      canvas.restore();
+    } else {
+      text.paint(canvas, Offset.zero);
+    }
+    canvas.restore();
   }
 
   @override
   bool shouldRepaint(_WordHighlightPainter oldDelegate) =>
-      oldDelegate.range != range ||
+      oldDelegate.from != from ||
+      oldDelegate.to != to ||
       oldDelegate.color != color ||
       oldDelegate.request != request ||
       oldDelegate.span != span;
