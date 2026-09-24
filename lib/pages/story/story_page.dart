@@ -203,8 +203,10 @@ class _StoryPageState extends State<StoryPage> {
       }));
 
       _audioSubscriptions.add(player.durationStream.listen((duration) {
-        if (!mounted || !_isCurrent) return;
-        setState(() => _audioDuration = duration ?? Duration.zero);
+        // Au chargement du fichier, la durée passe par null : on garde celle
+        // déjà affichée
+        if (!mounted || !_isCurrent || duration == null) return;
+        setState(() => _audioDuration = duration);
       }));
     } catch (e) {
       debugPrint('Erreur initialisation service audio: $e');
@@ -226,6 +228,7 @@ class _StoryPageState extends State<StoryPage> {
     if (current == null || (current.id != _story.id && !_followsQueue)) {
       _followsQueue = false;
       _resetAudioState();
+      _showVoiceDuration();
       return;
     }
 
@@ -255,12 +258,35 @@ class _StoryPageState extends State<StoryPage> {
   /// Avec l'audio, on affiche les mots minutés de la voix pour pouvoir les surligner.
   StoryDocument _documentFor(StoryModel story, AudioVoiceData? voice) {
     if (voice != null) {
-      final audioWords = storyWordsFromSegments(
-        StorySyncService.parseSegments(voice.audioTimes),
-      );
-      if (audioWords.isNotEmpty) return StoryDocument(audioWords);
+      final segments = StorySyncService.cachedSegments(voice.audioTimes);
+      if (segments == null) {
+        _loadVoiceSegments(story, voice);
+      } else {
+        final audioWords = storyWordsFromSegments(segments);
+        if (audioWords.isNotEmpty) return StoryDocument(audioWords);
+      }
     }
     return StoryDocument(storyWordsFromText(story.displayContent));
+  }
+
+  /// Les mots minutés sont téléchargés sur le CDN : en attendant, le texte
+  /// brut est affiché, puis remplacé s'il s'agit toujours de la même voix.
+  Future<void> _loadVoiceSegments(StoryModel story, AudioVoiceData voice) async {
+    final segments = await StorySyncService.loadSegments(voice.audioTimes);
+    if (!mounted || _story.id != story.id || !identical(_voice, voice)) return;
+    final audioWords = storyWordsFromSegments(segments);
+    if (audioWords.isEmpty) return;
+    setState(() => _replaceDocument(StoryDocument(audioWords)));
+  }
+
+  /// Avant la lecture, affiche la durée de l'audio de la voix choisie.
+  Future<void> _showVoiceDuration() async {
+    final voice = _voice;
+    if (voice == null) return;
+    final duration = await AudioBackgroundService.durationOf(voice.url);
+    if (!mounted || duration == null || _isCurrent) return;
+    if (!identical(_voice, voice)) return;
+    setState(() => _audioDuration = duration);
   }
 
   /// Voix choisie dans les paramètres. Pendant l'écoute, c'est la voix jouée
@@ -271,6 +297,7 @@ class _StoryPageState extends State<StoryPage> {
     _isAudio = voice != null;
     if (identical(voice, _voice)) return;
     _voice = voice;
+    _showVoiceDuration();
 
     // Appelé pendant le build : le document est remplacé après la frame
     final story = _story;
@@ -407,28 +434,46 @@ class _StoryPageState extends State<StoryPage> {
   }
 
   /// Lance l'écoute de l'histoire affichée, depuis le début de la page affichée.
-  Future<void> _startListening() async {
+  /// Premier mot de la page affichée : l'écoute démarre là.
+  int get _pageStart {
     final pagination = _pagination;
-    final pageStart = pagination == null
+    return pagination == null
         ? _anchorWord
         : pagination.pages[_currentPageIndex].start;
-    final wordStart = pageStart > 0 ? _document.words[pageStart].start : null;
-    final readFraction = _document.fractionBefore(pageStart);
+  }
 
+  /// Moment de l'audio où commence le mot [pageStart].
+  static Duration _audioTimeOf(
+    StoryDocument document,
+    int pageStart,
+    Duration duration,
+  ) {
+    if (pageStart <= 0) return Duration.zero;
+    final wordStart = document.words[pageStart].start;
+    if (wordStart != null) {
+      return Duration(milliseconds: (wordStart * 1000).round());
+    }
+    // Sans minutage, on se place au prorata du texte déjà lu
+    return duration * document.fractionBefore(pageStart);
+  }
+
+  Future<void> _startListening() async {
+    final document = _document;
+    final pageStart = _pageStart;
+
+    // La durée et la position affichées restent en place pendant le chargement
     setState(() {
       _followsQueue = true;
-      _resetAudioState();
+      _isPlaying = false;
       _isLoading = true;
+      _audioPosition = _audioTimeOf(document, pageStart, _audioDuration);
     });
     await _queuePlayer.playStory(
       widget.profile,
       _story,
       startAt: pageStart <= 0
           ? null
-          : (duration) => wordStart != null
-              ? Duration(milliseconds: (wordStart * 1000).round())
-              // Sans minutage, on se place au prorata du texte déjà lu
-              : duration * readFraction,
+          : (duration) => _audioTimeOf(document, pageStart, duration),
     );
   }
 
@@ -668,8 +713,12 @@ class _StoryPageState extends State<StoryPage> {
           isFavorite: _isFavorite,
           isAudio: _isAudio,
           isPlaying: _isPlaying,
+          isListening: _isCurrent,
           isLoading: _isLoading,
-          audioPosition: _audioPosition,
+          // Avant l'écoute : là où elle reprendra, selon la page lue
+          audioPosition: _isCurrent
+              ? _audioPosition
+              : _audioTimeOf(_document, _pageStart, _audioDuration),
           audioDuration: _audioDuration,
           fontSize: settings.fontSize.toDouble(),
           isDyslexia: settings.dyslexia,

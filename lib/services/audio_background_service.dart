@@ -20,7 +20,7 @@ class AudioBackgroundService extends BaseAudioHandler
   late AudioPlayer _audioPlayer;
   bool _isInitialized = false;
   int? _lastPositionUpdate;
-  static const String _cdnBaseUrl = 'https://lumiconte-cdn.clementfourment.fr/';
+  static const String cdnBaseUrl = 'https://lumiconte-cdn.clementfourment.fr/';
 
   /// Histoires avant / après dans la file de lecture : boutons "précédent" et
   /// "suivant" affichés sur l'écran verrouillé et dans la notification.
@@ -166,7 +166,7 @@ class AudioBackgroundService extends BaseAudioHandler
   Future<void> setStory(StoryModel story, String objectKey) async {
     if (!_isInitialized) await init();
 
-    final url = '$_cdnBaseUrl$objectKey';
+    final url = '$cdnBaseUrl$objectKey';
 
     try {
       // 1. Charger l'URL
@@ -188,7 +188,7 @@ class AudioBackgroundService extends BaseAudioHandler
         title: story.displayName,
         artUri: Uri.parse(story.image != null && story.image!.startsWith('http')
             ? story.image!
-            : '$_cdnBaseUrl${story.image ?? 'assets/default_story.webp'}'),
+            : '$cdnBaseUrl${story.image ?? 'assets/default_story.webp'}'),
         duration: duration,
       ));
 
@@ -293,6 +293,40 @@ class AudioBackgroundService extends BaseAudioHandler
 
   /// Obtenir la durée totale
   Duration get duration => _audioPlayer.duration ?? Duration.zero;
+
+  /// Durées déjà connues, par chemin du fichier audio.
+  static final Map<String, Duration> _durations = {};
+  static final Map<String, Future<Duration?>> _pendingDurations = {};
+
+  /// Durée d'un audio sans le lire, pour l'afficher avant la lecture.
+  static Future<Duration?> durationOf(String objectKey) {
+    final key = objectKey.trim();
+    if (key.isEmpty) return Future.value(null);
+    final known = _durations[key];
+    if (known != null) return Future.value(known);
+    return _pendingDurations[key] ??= _probeDuration(key).whenComplete(() {
+      _pendingDurations.remove(key);
+    });
+  }
+
+  /// Un lecteur à part lit l'en-tête du fichier : l'écoute en cours n'est pas
+  /// interrompue et la session audio n'est pas réclamée.
+  static Future<Duration?> _probeDuration(String key) async {
+    final player = AudioPlayer(
+      handleAudioSessionActivation: false,
+      handleInterruptions: false,
+    );
+    try {
+      final duration = await player.setUrl('$cdnBaseUrl$key');
+      if (duration != null) _durations[key] = duration;
+      return duration;
+    } catch (e) {
+      debugPrint('Durée de $key : $e');
+      return null;
+    } finally {
+      await player.dispose();
+    }
+  }
 
   /// Fermer le service
   Future<void> dispose() async {
