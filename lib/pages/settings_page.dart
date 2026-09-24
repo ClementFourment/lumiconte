@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lumiconte/models/settings_model.dart';
+import 'package:lumiconte/pages/story/story_text.dart';
 import 'package:lumiconte/theme/app_theme.dart';
 
 class SettingsPage extends StatefulWidget {
@@ -22,7 +23,8 @@ class _SettingsPageState extends State<SettingsPage> {
   late final String _uid;
   late final CollectionReference _settingsCollection;
 
-  static const String _localPreviewImageAsset = 'assets/images/preview_cover.webp';
+  static const String _localPreviewImageAsset =
+      'assets/images/preview_cover.webp';
 
   @override
   void initState() {
@@ -42,119 +44,6 @@ class _SettingsPageState extends State<SettingsPage> {
         .set({key: value}, SetOptions(merge: true));
   }
 
-  List<TextSpan> _parseWordToDyslexiaSpans(
-    String word,
-    TextStyle baseDysStyle,
-    Color defaultTextColor,
-  ) {
-    final Color colorRed = Colors.red.shade700;
-    final Color colorBlue = Colors.blue.shade700;
-    final Color colorSilent = defaultTextColor.withOpacity(0.35);
-
-    if (word.trim().isEmpty) {
-      return [
-        TextSpan(
-            text: word, style: baseDysStyle.copyWith(color: defaultTextColor))
-      ];
-    }
-
-    final matchStart = RegExp(r'^[^a-zA-ZÀ-ÿ]+').firstMatch(word);
-    final matchEnd = RegExp(r'[^a-zA-ZÀ-ÿ]+$').firstMatch(word);
-
-    String prefix = matchStart?.group(0) ?? '';
-    String suffix = matchEnd?.group(0) ?? '';
-    String cleanWord = word;
-
-    if (prefix.length + suffix.length < word.length) {
-      cleanWord = word.substring(prefix.length, word.length - suffix.length);
-    } else {
-      return [
-        TextSpan(
-            text: word, style: baseDysStyle.copyWith(color: defaultTextColor))
-      ];
-    }
-
-    if (cleanWord.isEmpty) {
-      return [
-        TextSpan(
-            text: word, style: baseDysStyle.copyWith(color: defaultTextColor))
-      ];
-    }
-
-    String silentLetters = '';
-    final silentMatch = RegExp(r'(ts|ds|es|[stdxega])$', caseSensitive: false)
-        .firstMatch(cleanWord);
-
-    if (silentMatch != null &&
-        cleanWord.length > 2 &&
-        !['les', 'des', 'mes', 'tes', 'ses', 'est']
-            .contains(cleanWord.toLowerCase())) {
-      String potentialSilent = silentMatch.group(0) ?? '';
-      if (cleanWord.length > potentialSilent.length) {
-        silentLetters = potentialSilent;
-        cleanWord =
-            cleanWord.substring(0, cleanWord.length - silentLetters.length);
-      }
-    }
-
-    List<TextSpan> wordSpans = [];
-
-    if (prefix.isNotEmpty) {
-      wordSpans.add(TextSpan(
-          text: prefix, style: baseDysStyle.copyWith(color: defaultTextColor)));
-    }
-
-    List<String> syllables = [];
-    if (cleanWord.length <= 3) {
-      syllables.add(cleanWord);
-    } else {
-      final regex = RegExp(
-        r'[^aeiouyéèàùûâîôœüéèêë]*[aeiouyéèàùûâîôœüéèêë]+(?:[^aeiouyéèàùûâîôœüéèêë](?![aeiouyéèàùûâîôœüéèêë]))*',
-        caseSensitive: false,
-      );
-      final matches = regex.allMatches(cleanWord);
-      if (matches.isEmpty) {
-        syllables.add(cleanWord);
-      } else {
-        for (var m in matches) {
-          syllables.add(m.group(0) ?? '');
-        }
-        int totalLength = syllables.join().length;
-        if (totalLength < cleanWord.length && syllables.isNotEmpty) {
-          syllables[syllables.length - 1] += cleanWord.substring(totalLength);
-        }
-      }
-    }
-
-    for (int i = 0; i < syllables.length; i++) {
-      if (syllables[i].isEmpty) continue;
-      wordSpans.add(TextSpan(
-        text: syllables[i],
-        style: baseDysStyle.copyWith(
-          color: i % 2 == 0 ? colorBlue : colorRed,
-        ),
-      ));
-    }
-
-    if (silentLetters.isNotEmpty) {
-      wordSpans.add(TextSpan(
-        text: silentLetters,
-        style: baseDysStyle.copyWith(
-          color: colorSilent,
-          fontWeight: FontWeight.w300,
-          fontStyle: FontStyle.italic,
-        ),
-      ));
-    }
-
-    if (suffix.isNotEmpty) {
-      wordSpans.add(TextSpan(
-          text: suffix, style: baseDysStyle.copyWith(color: defaultTextColor)));
-    }
-
-    return wordSpans;
-  }
-
   TextSpan _buildColorizedText({
     required String text,
     required double baseFontSize,
@@ -162,66 +51,34 @@ class _SettingsPageState extends State<SettingsPage> {
     required bool isDyslexiaEnabled,
     TextStyle? customTextStyle,
   }) {
-    if (!isDyslexiaEnabled) {
-      return TextSpan(
-        text: text,
-        style: (customTextStyle ?? const TextStyle()).copyWith(
-          color: defaultTextColor,
-          fontSize: baseFontSize,
+    if (isDyslexiaEnabled) {
+      // Même rendu que dans la lecture
+      return storyTextSpan(
+        text,
+        StoryTextMetrics(fontSize: baseFontSize, dyslexia: true),
+        StoryTextColors(
+          text: defaultTextColor,
+          activeText: defaultTextColor,
+          highlight: Colors.transparent,
         ),
+        locale: Localizations.localeOf(context),
       );
     }
-
-    final double dysFontSize = baseFontSize + 4;
-    const double dysLetterSpacing = 1.8;
-    const double dysLineHeight = 1.6;
-
-    final TextStyle baseDysStyle = TextStyle(
-      fontSize: dysFontSize,
-      letterSpacing: dysLetterSpacing,
-      height: dysLineHeight,
-      fontWeight: FontWeight.bold,
+    return TextSpan(
+      text: text,
+      style: (customTextStyle ?? const TextStyle()).copyWith(
+        color: defaultTextColor,
+        fontSize: baseFontSize,
+      ),
     );
-
-    List<TextSpan> allSpans = [];
-    List<String> words = text.split(' ');
-
-    for (int i = 0; i < words.length; i++) {
-      allSpans.addAll(
-          _parseWordToDyslexiaSpans(words[i], baseDysStyle, defaultTextColor));
-      if (i < words.length - 1) {
-        allSpans.add(TextSpan(text: ' ', style: baseDysStyle));
-      }
-    }
-
-    return TextSpan(children: allSpans);
   }
 
-  Widget _buildPreviewBox(BuildContext context, SettingsModel settings,
-      bool isDark) {
-    final String sampleText =
-        AppLocalizations.of(context).readingPreviewSample;
+  Widget _buildPreviewBox(
+      BuildContext context, SettingsModel settings, bool isDark) {
+    final String sampleText = AppLocalizations.of(context).readingPreviewSample;
 
-    if (settings.dyslexia) {
-      return Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.grey.shade300),
-        ),
-        child: RichText(
-          textAlign: TextAlign.left,
-          text: _buildColorizedText(
-            text: sampleText,
-            baseFontSize: settings.fontSize.toDouble(),
-            defaultTextColor: const Color(0xFF2B261F),
-            isDyslexiaEnabled: true,
-          ),
-        ),
-      );
-    }
+    final bool dyslexia = settings.dyslexia;
+    final TextAlign align = dyslexia ? TextAlign.left : TextAlign.center;
 
     if (settings.readTheme == 'immersive') {
       return Container(
@@ -274,7 +131,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   text: sampleText,
                   baseFontSize: settings.fontSize.toDouble(),
                   defaultTextColor: Colors.white,
-                  isDyslexiaEnabled: false,
+                  isDyslexiaEnabled: dyslexia,
                 ),
               ),
             ),
@@ -302,9 +159,11 @@ class _SettingsPageState extends State<SettingsPage> {
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: const [
-                Text('❖  ', style: TextStyle(color: subtleTextColor, fontSize: 8)),
+                Text('❖  ',
+                    style: TextStyle(color: subtleTextColor, fontSize: 8)),
                 Text('✦', style: TextStyle(color: textColor, fontSize: 10)),
-                Text('  ❖', style: TextStyle(color: subtleTextColor, fontSize: 8)),
+                Text('  ❖',
+                    style: TextStyle(color: subtleTextColor, fontSize: 8)),
               ],
             ),
             const SizedBox(height: 8),
@@ -320,47 +179,64 @@ class _SettingsPageState extends State<SettingsPage> {
                   _localPreviewImageAsset,
                   fit: BoxFit.cover,
                   alignment: Alignment.topCenter,
-                  errorBuilder: (context, error, stackTrace) =>
-                      const Icon(Icons.image_outlined, size: 20, color: subtleTextColor),
+                  errorBuilder: (context, error, stackTrace) => const Icon(
+                      Icons.image_outlined,
+                      size: 20,
+                      color: subtleTextColor),
                 ),
               ),
             ),
             const SizedBox(height: 10),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.baseline,
-              textBaseline: TextBaseline.alphabetic,
-              children: [
-                Text(
-                  'I',
-                  style: GoogleFonts.cormorantGaramond(
-                    fontSize: (settings.fontSize * 2.2).clamp(24.0, 48.0),
-                    fontWeight: FontWeight.bold,
-                    color: const Color(0xFF32271B),
-                    height: 0.8,
+            // Pas de lettrine en mode dyslexie, comme dans la lecture
+            if (dyslexia)
+              SizedBox(
+                width: double.infinity,
+                child: RichText(
+                  text: _buildColorizedText(
+                    text: sampleText,
+                    baseFontSize: settings.fontSize.toDouble(),
+                    defaultTextColor: const Color(0xFF32271B),
+                    isDyslexiaEnabled: true,
                   ),
                 ),
-                const SizedBox(width: 4),
-                Expanded(
-                  child: RichText(
-                    textAlign: TextAlign.justify,
-                    text: _buildColorizedText(
-                      text: sampleText.substring(1),
-                      baseFontSize: settings.fontSize.toDouble(),
-                      defaultTextColor: const Color(0xFF32271B),
-                      isDyslexiaEnabled: false,
-                      customTextStyle: GoogleFonts.cormorantGaramond(
-                        height: 1.4,
+              )
+            else
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.baseline,
+                textBaseline: TextBaseline.alphabetic,
+                children: [
+                  Text(
+                    'I',
+                    style: GoogleFonts.cormorantGaramond(
+                      fontSize: (settings.fontSize * 2.2).clamp(24.0, 48.0),
+                      fontWeight: FontWeight.bold,
+                      color: const Color(0xFF32271B),
+                      height: 0.8,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: RichText(
+                      textAlign: TextAlign.justify,
+                      text: _buildColorizedText(
+                        text: sampleText.substring(1),
+                        baseFontSize: settings.fontSize.toDouble(),
+                        defaultTextColor: const Color(0xFF32271B),
+                        isDyslexiaEnabled: false,
+                        customTextStyle: GoogleFonts.cormorantGaramond(
+                          height: 1.4,
+                        ),
                       ),
                     ),
                   ),
-                ),
-              ],
-            ),
+                ],
+              ),
             const SizedBox(height: 8),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: const [
-                Text('❖  ❖  ❖', style: TextStyle(color: subtleTextColor, fontSize: 8)),
+                Text('❖  ❖  ❖',
+                    style: TextStyle(color: subtleTextColor, fontSize: 8)),
               ],
             ),
           ],
@@ -393,12 +269,12 @@ class _SettingsPageState extends State<SettingsPage> {
           Padding(
             padding: const EdgeInsets.all(16),
             child: RichText(
-              textAlign: TextAlign.center,
+              textAlign: align,
               text: _buildColorizedText(
                 text: sampleText,
                 baseFontSize: settings.fontSize.toDouble(),
                 defaultTextColor: Colors.white,
-                isDyslexiaEnabled: false,
+                isDyslexiaEnabled: dyslexia,
               ),
             ),
           ),
@@ -428,7 +304,9 @@ class _SettingsPageState extends State<SettingsPage> {
               : Colors.transparent,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
-            color: isSelected ? AppTheme.accentColor : Colors.grey.withOpacity(0.3),
+            color: isSelected
+                ? AppTheme.accentColor
+                : Colors.grey.withOpacity(0.3),
             width: isSelected ? 2 : 1,
           ),
         ),
@@ -438,7 +316,9 @@ class _SettingsPageState extends State<SettingsPage> {
             Icon(
               icon,
               size: 20,
-              color: isSelected ? AppTheme.accentColor : primaryTextColor.withOpacity(0.7),
+              color: isSelected
+                  ? AppTheme.accentColor
+                  : primaryTextColor.withOpacity(0.7),
             ),
             const SizedBox(width: 8),
             Text(
@@ -513,7 +393,8 @@ class _SettingsPageState extends State<SettingsPage> {
             padding: const EdgeInsets.all(20),
             children: [
               // Voix de la narration
-              _buildSectionTitle(AppLocalizations.of(context).narrationVoice, secondaryTextColor),
+              _buildSectionTitle(AppLocalizations.of(context).narrationVoice,
+                  secondaryTextColor),
               const SizedBox(height: 8),
               Card(
                 color: cardColor,
@@ -523,7 +404,8 @@ class _SettingsPageState extends State<SettingsPage> {
                   side: BorderSide(color: borderColor),
                 ),
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   child: Row(
                     children: [
                       Expanded(
@@ -553,7 +435,8 @@ class _SettingsPageState extends State<SettingsPage> {
               ),
 
               const SizedBox(height: 24),
-              _buildSectionTitle(AppLocalizations.of(context).accessibility, secondaryTextColor),
+              _buildSectionTitle(AppLocalizations.of(context).accessibility,
+                  secondaryTextColor),
               const SizedBox(height: 8),
 
               // Mode Dyslexie Card
@@ -585,7 +468,8 @@ class _SettingsPageState extends State<SettingsPage> {
               ),
 
               const SizedBox(height: 24),
-              _buildSectionTitle(AppLocalizations.of(context).textDisplay, secondaryTextColor),
+              _buildSectionTitle(
+                  AppLocalizations.of(context).textDisplay, secondaryTextColor),
               const SizedBox(height: 8),
 
               // Carte de réglage taille + Aperçu dynamique du thème
@@ -649,43 +533,42 @@ class _SettingsPageState extends State<SettingsPage> {
               ),
 
               // Sélection des Thèmes de lecture
-              if (!settings.dyslexia) ...[
-                const SizedBox(height: 24),
-                _buildSectionTitle(AppLocalizations.of(context).readingTheme, secondaryTextColor),
-                const SizedBox(height: 12),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    _buildThemeOption(
-                      label: AppLocalizations.of(context).readThemeClassic,
-                      themeKey: 'classic',
-                      currentTheme: settings.readTheme,
-                      settingsId: settings.id,
-                      primaryTextColor: primaryTextColor,
-                      secondaryTextColor: secondaryTextColor,
-                      previewWidget: _buildClassicPreview(),
-                    ),
-                    _buildThemeOption(
-                      label: AppLocalizations.of(context).readThemeImmersive,
-                      themeKey: 'immersive',
-                      currentTheme: settings.readTheme,
-                      settingsId: settings.id,
-                      primaryTextColor: primaryTextColor,
-                      secondaryTextColor: secondaryTextColor,
-                      previewWidget: _buildImmersivePreview(),
-                    ),
-                    _buildThemeOption(
-                      label: AppLocalizations.of(context).readThemeManuscript,
-                      themeKey: 'manuscript',
-                      currentTheme: settings.readTheme,
-                      settingsId: settings.id,
-                      primaryTextColor: primaryTextColor,
-                      secondaryTextColor: secondaryTextColor,
-                      previewWidget: _buildManuscriptPreview(),
-                    ),
-                  ],
-                ),
-              ],
+              const SizedBox(height: 24),
+              _buildSectionTitle(AppLocalizations.of(context).readingTheme,
+                  secondaryTextColor),
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  _buildThemeOption(
+                    label: AppLocalizations.of(context).readThemeClassic,
+                    themeKey: 'classic',
+                    currentTheme: settings.readTheme,
+                    settingsId: settings.id,
+                    primaryTextColor: primaryTextColor,
+                    secondaryTextColor: secondaryTextColor,
+                    previewWidget: _buildClassicPreview(),
+                  ),
+                  _buildThemeOption(
+                    label: AppLocalizations.of(context).readThemeImmersive,
+                    themeKey: 'immersive',
+                    currentTheme: settings.readTheme,
+                    settingsId: settings.id,
+                    primaryTextColor: primaryTextColor,
+                    secondaryTextColor: secondaryTextColor,
+                    previewWidget: _buildImmersivePreview(),
+                  ),
+                  _buildThemeOption(
+                    label: AppLocalizations.of(context).readThemeManuscript,
+                    themeKey: 'manuscript',
+                    currentTheme: settings.readTheme,
+                    settingsId: settings.id,
+                    primaryTextColor: primaryTextColor,
+                    secondaryTextColor: secondaryTextColor,
+                    previewWidget: _buildManuscriptPreview(),
+                  ),
+                ],
+              ),
             ],
           );
         },

@@ -1,7 +1,9 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:lumiconte/models/audio_sync_model.dart';
+import 'package:lumiconte/pages/story/syllables.dart';
 
 const String _nbsp = '\u00A0';
 
@@ -287,12 +289,18 @@ class StoryTextMetrics {
 
   bool get usesDropCap => dropCapFontFamily != null && !dyslexia;
 
+  /// Le texte justifié ou centré crée des espaces irréguliers, pénibles en
+  /// mode dyslexie : on aligne toujours à gauche.
+  TextAlign get effectiveTextAlign => dyslexia ? TextAlign.left : textAlign;
+
   TextStyle get baseStyle => dyslexia
       ? TextStyle(
-          fontSize: fontSize + 4,
-          letterSpacing: 1.8,
-          height: 1.6,
-          fontWeight: FontWeight.bold,
+          fontFamily: _dyslexiaFontFamily,
+          fontSize: fontSize + 2,
+          // Espacements recommandés (WCAG 1.4.12) : les mots restent bien séparés
+          letterSpacing: (fontSize + 2) * 0.12,
+          wordSpacing: (fontSize + 2) * 0.35,
+          height: 1.8,
         )
       : TextStyle(
           fontFamily: fontFamily,
@@ -334,7 +342,7 @@ class StoryTextColors {
 
   final Color text;
 
-  /// Couleur du mot prononcé (hors mode dyslexie, qui garde ses couleurs de syllabes).
+  /// Couleur du mot prononcé (sauf avec les syllabes colorées, qui gardent leurs couleurs).
   final Color activeText;
   final Color highlight;
   final List<Shadow>? shadows;
@@ -397,7 +405,7 @@ TextPainter _layoutPainter(
     TextSpan span, StoryLayoutRequest request, double width) {
   return TextPainter(
     text: span,
-    textAlign: request.metrics.textAlign,
+    textAlign: request.metrics.effectiveTextAlign,
     textDirection: TextDirection.ltr,
     textScaler: request.textScaler,
     locale: request.locale,
@@ -435,7 +443,7 @@ StoryPageLayout layoutStoryPage(
     if (withCap != null) return withCap;
   }
 
-  final paragraph = _buildParagraph(words, metrics, colors);
+  final paragraph = _buildParagraph(words, metrics, colors, request.locale);
   return StoryPageLayout._(
     height: _measureHeight(paragraph, request, request.area.width),
     rest: paragraph,
@@ -464,7 +472,12 @@ StoryPageLayout? _layoutWithDropCap(
     ),
   );
   final capBox = _capBoxCache.putIfAbsent(
-    (cap.text!, metrics.dropCapFontFamily, metrics.fontSize, request.textScaler),
+    (
+      cap.text!,
+      metrics.dropCapFontFamily,
+      metrics.fontSize,
+      request.textScaler
+    ),
     () {
       final capPainter = TextPainter(
         text: cap,
@@ -481,10 +494,11 @@ StoryPageLayout? _layoutWithDropCap(
   final narrowWidth = width - capBox.width;
   if (narrowWidth < width * 0.5) return null;
 
-  final all = _buildParagraph(words, metrics, colors,
+  final all = _buildParagraph(words, metrics, colors, request.locale,
       skipFirstChar: true);
   final painter = _layoutPainter(all.span, request, narrowWidth);
-  final rows = math.max(1, (capBox.height / painter.preferredLineHeight).ceil());
+  final rows =
+      math.max(1, (capBox.height / painter.preferredLineHeight).ceil());
   final lines = painter.computeLineMetrics();
 
   var besideCount = words.length;
@@ -505,7 +519,8 @@ StoryPageLayout? _layoutWithDropCap(
   final besideIsAll = besideCount == words.length;
   final beside = besideIsAll
       ? all
-      : _buildParagraph(words.sublist(0, besideCount), metrics, colors,
+      : _buildParagraph(
+          words.sublist(0, besideCount), metrics, colors, request.locale,
           skipFirstChar: true);
   final besideHeight =
       besideIsAll ? allHeight : _measureHeight(beside, request, narrowWidth);
@@ -513,7 +528,8 @@ StoryPageLayout? _layoutWithDropCap(
   StoryParagraph? rest;
   var restHeight = 0.0;
   if (besideCount < words.length) {
-    rest = _buildParagraph(words.sublist(besideCount), metrics, colors);
+    rest = _buildParagraph(
+        words.sublist(besideCount), metrics, colors, request.locale);
     restHeight = _measureHeight(rest, request, width);
   }
 
@@ -527,12 +543,31 @@ StoryPageLayout? _layoutWithDropCap(
   );
 }
 
+/// Police conçue pour la fluidité de lecture, chargée à la première utilisation.
+final String? _dyslexiaFontFamily = GoogleFonts.lexend().fontFamily;
+
+/// Syllabes colorées dans les langues dont on connaît les règles ; ailleurs
+/// (japonais), seule la typographie est adaptée.
+bool _colorsSyllables(StoryTextMetrics metrics, Locale? locale) =>
+    metrics.dyslexia && syllableLanguages.contains(locale?.languageCode);
+
+/// Texte mis en forme comme dans la lecture, pour les aperçus.
+TextSpan storyTextSpan(
+  String text,
+  StoryTextMetrics metrics,
+  StoryTextColors colors, {
+  Locale? locale,
+}) =>
+    _buildParagraph(storyWordsFromText(text), metrics, colors, locale).span;
+
 StoryParagraph _buildParagraph(
   List<StoryWord> words,
   StoryTextMetrics metrics,
-  StoryTextColors colors, {
+  StoryTextColors colors,
+  Locale? locale, {
   bool skipFirstChar = false,
 }) {
+  final syllables = _colorsSyllables(metrics, locale);
   final base =
       metrics.baseStyle.copyWith(color: colors.text, shadows: colors.shadows);
   final children = <InlineSpan>[];
@@ -560,8 +595,8 @@ StoryParagraph _buildParagraph(
     var text = word.text;
     if (i == 0 && skipFirstChar) text = text.substring(_firstCharLength(text));
 
-    if (metrics.dyslexia) {
-      children.addAll(_dyslexiaSpans(text, colors.text));
+    if (syllables) {
+      children.addAll(_dyslexiaSpans(text, colors.text, locale!.languageCode));
     } else {
       // Le mot prononcé est recoloré par-dessus, en suivant la pastille
       children.add(TextSpan(text: text));
@@ -573,72 +608,27 @@ StoryParagraph _buildParagraph(
   return StoryParagraph(TextSpan(style: base, children: children), ranges);
 }
 
-final RegExp _leadingNonLetters = RegExp(r'^[^\p{L}]+', unicode: true);
-final RegExp _trailingNonLetters = RegExp(r'[^\p{L}]+$', unicode: true);
-final RegExp _silentEnding =
-    RegExp(r'(ts|ds|es|[stdxega])$', caseSensitive: false);
-final RegExp _syllable = RegExp(
-  r'[^aeiouyéèàùûâîôœüéèêë]*[aeiouyéèàùûâîôœüéèêë]+(?:[^aeiouyéèàùûâîôœüéèêë](?![aeiouyéèàùûâîôœüéèêë]))*',
-  caseSensitive: false,
-);
-
 /// Syllabes colorées en alternance et lettres muettes estompées.
-List<InlineSpan> _dyslexiaSpans(String word, Color textColor) {
-  final prefix = _leadingNonLetters.firstMatch(word)?.group(0) ?? '';
-  final afterPrefix = word.substring(prefix.length);
-  final suffix = _trailingNonLetters.firstMatch(afterPrefix)?.group(0) ?? '';
-  var cleanWord =
-      afterPrefix.substring(0, afterPrefix.length - suffix.length);
+List<InlineSpan> _dyslexiaSpans(String word, Color textColor, String language) {
+  // Sur fond sombre, des teintes claires gardent un bon contraste
+  final onDark = textColor.computeLuminance() > 0.5;
+  final even = onDark ? Colors.blue.shade200 : Colors.blue.shade700;
+  final odd = onDark ? Colors.red.shade200 : Colors.red.shade700;
 
-  if (cleanWord.isEmpty) return [TextSpan(text: word)];
-
-  var silentLetters = '';
-  final silentMatch = _silentEnding.firstMatch(cleanWord);
-  if (silentMatch != null &&
-      cleanWord.length > 2 &&
-      !['les', 'des', 'mes', 'tes', 'ses', 'est']
-          .contains(cleanWord.toLowerCase())) {
-    final potentialSilent = silentMatch.group(0)!;
-    if (cleanWord.length > potentialSilent.length) {
-      silentLetters = potentialSilent;
-      cleanWord =
-          cleanWord.substring(0, cleanWord.length - silentLetters.length);
-    }
-  }
-
-  final syllables = <String>[];
-  if (cleanWord.length <= 3) {
-    syllables.add(cleanWord);
-  } else {
-    syllables.addAll(_syllable.allMatches(cleanWord).map((m) => m.group(0)!));
-    final covered = syllables.join().length;
-    if (syllables.isEmpty) {
-      syllables.add(cleanWord);
-    } else if (covered < cleanWord.length) {
-      syllables[syllables.length - 1] += cleanWord.substring(covered);
-    }
-  }
-
+  var index = 0;
   return [
-    if (prefix.isNotEmpty) TextSpan(text: prefix),
-    for (var i = 0; i < syllables.length; i++)
-      if (syllables[i].isNotEmpty)
-        TextSpan(
-          text: syllables[i],
-          style: TextStyle(
-            color: i.isEven ? Colors.blue.shade700 : Colors.red.shade700,
+    for (final piece in splitSyllables(word, language))
+      switch (piece.kind) {
+        SyllableKind.syllable => TextSpan(
+            text: piece.text,
+            style: TextStyle(color: (index++).isEven ? even : odd),
           ),
-        ),
-    if (silentLetters.isNotEmpty)
-      TextSpan(
-        text: silentLetters,
-        style: TextStyle(
-          color: textColor.withValues(alpha: 0.35),
-          fontWeight: FontWeight.w300,
-          fontStyle: FontStyle.italic,
-        ),
-      ),
-    if (suffix.isNotEmpty) TextSpan(text: suffix),
+        SyllableKind.silent => TextSpan(
+            text: piece.text,
+            style: TextStyle(color: textColor.withValues(alpha: 0.4)),
+          ),
+        SyllableKind.plain => TextSpan(text: piece.text),
+      },
   ];
 }
 
@@ -698,8 +688,9 @@ StoryPagination paginateStory(
 
   while (start < words.length) {
     final fitEnd = _largestFittingEnd(start, words.length, expectedWords, fits);
-    final end =
-        fitEnd >= words.length ? words.length : _bestBreak(words, start, fitEnd);
+    final end = fitEnd >= words.length
+        ? words.length
+        : _bestBreak(words, start, fitEnd);
     pages.add(StoryTextPage(start, end));
     expectedWords = math.max(1, fitEnd - start);
     start = end;
@@ -826,11 +817,10 @@ class StoryPageText extends StatelessWidget {
   }
 
   Widget _paragraph(StoryParagraph paragraph, int? active) {
-    final range = active == null ||
-            active < 0 ||
-            active >= paragraph.wordRanges.length
-        ? null
-        : paragraph.wordRanges[active];
+    final range =
+        active == null || active < 0 || active >= paragraph.wordRanges.length
+            ? null
+            : paragraph.wordRanges[active];
 
     // Toujours présent, même sans mot actif : la pastille peut s'effacer en fondu
     return _WordHighlight(
@@ -838,11 +828,13 @@ class StoryPageText extends StatelessWidget {
       range: range == null || range.isCollapsed ? null : range,
       request: request,
       color: colors.highlight,
-      // En mode dyslexie, le mot garde les couleurs de ses syllabes
-      activeText: request.metrics.dyslexia ? null : colors.activeText,
+      // Avec les syllabes colorées, le mot garde leurs couleurs
+      activeText: _colorsSyllables(request.metrics, request.locale)
+          ? null
+          : colors.activeText,
       child: RichText(
         text: paragraph.span,
-        textAlign: request.metrics.textAlign,
+        textAlign: request.metrics.effectiveTextAlign,
         textScaler: request.textScaler,
         locale: request.locale,
       ),
@@ -981,7 +973,7 @@ class _WordBoxes {
             .copyWith(color: color, shadows: const []),
         children: span.children,
       ),
-      textAlign: request.metrics.textAlign,
+      textAlign: request.metrics.effectiveTextAlign,
       textDirection: TextDirection.ltr,
       textScaler: request.textScaler,
       locale: request.locale,
@@ -1000,7 +992,7 @@ class _WordBoxes {
     if (painter == null) {
       painter = TextPainter(
         text: span,
-        textAlign: request.metrics.textAlign,
+        textAlign: request.metrics.effectiveTextAlign,
         textDirection: TextDirection.ltr,
         textScaler: request.textScaler,
         locale: request.locale,
@@ -1076,8 +1068,7 @@ class _WordHighlightPainter extends CustomPainter {
   void _draw(Canvas canvas, Size size, List<Rect> rects, double opacity) {
     if (rects.isEmpty || opacity <= 0) return;
     if (!recolorsText) {
-      final paint = Paint()
-        ..color = color.withValues(alpha: color.a * opacity);
+      final paint = Paint()..color = color.withValues(alpha: color.a * opacity);
       for (final rect in rects) {
         canvas.drawRRect(RRect.fromRectAndRadius(rect, _radius), paint);
       }
