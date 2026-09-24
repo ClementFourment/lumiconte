@@ -33,7 +33,8 @@ void main() {
       ]);
     });
 
-    test('les guillemets collés dans le texte reçoivent une espace insécable', () {
+    test('les guillemets collés dans le texte reçoivent une espace insécable',
+        () {
       expect(texts('«Bonjour» dit-il'), ['«${nbsp}Bonjour$nbsp»', 'dit-il']);
     });
 
@@ -87,8 +88,8 @@ void main() {
     final document = StoryDocument(storyWordsFromText(longStory()));
 
     final configs = <String, StoryTextMetrics>{
-      'classique': const StoryTextMetrics(
-          fontSize: 18, textAlign: TextAlign.center),
+      'classique':
+          const StoryTextMetrics(fontSize: 18, textAlign: TextAlign.center),
       'grande police': const StoryTextMetrics(fontSize: 30),
       'dyslexie': const StoryTextMetrics(fontSize: 18, dyslexia: true),
       'lettrine': const StoryTextMetrics(
@@ -101,7 +102,8 @@ void main() {
 
     for (final entry in configs.entries) {
       for (final area in const [Size(320, 220), Size(260, 420)]) {
-        test('${entry.key} ${area.width}x${area.height} : chaque page tient', () {
+        test('${entry.key} ${area.width}x${area.height} : chaque page tient',
+            () {
           final request = StoryLayoutRequest(
             area: area,
             metrics: entry.value,
@@ -180,9 +182,64 @@ void main() {
         ));
 
         final rendered = tester.getSize(find.byType(StoryPageText)).height;
-        expect(rendered,
-            moreOrLessEquals(layoutStoryPage(words, request).height, epsilon: 1));
+        expect(
+            rendered,
+            moreOrLessEquals(layoutStoryPage(words, request).height,
+                epsilon: 1));
       });
     }
+  });
+
+  group('mode dyslexie', () {
+    const metrics = StoryTextMetrics(fontSize: 18, dyslexia: true);
+    const colors = StoryTextColors(
+      text: Color(0xFF000000),
+      activeText: Color(0xFF000000),
+      highlight: Color(0x00000000),
+    );
+
+    List<String> pieces(String text, String language) {
+      final span =
+          storyTextSpan(text, metrics, colors, locale: Locale(language));
+      final result = <String>[];
+      span.visitChildren((child) {
+        final t = (child as TextSpan).text;
+        if (t != null && t != ' ') result.add(t);
+        return true;
+      });
+      return result;
+    }
+
+    test('le a final se prononce', () {
+      expect(pieces('papa', 'fr'), ['pa', 'pa']);
+    });
+
+    test('les consonnes finales muettes sont séparées', () {
+      expect(pieces('chocolat', 'fr'), ['cho', 'co', 'la', 't']);
+    });
+
+    test('le s final de « bus » se prononce', () {
+      expect(pieces('bus', 'fr'), ['bus']);
+    });
+
+    test("l'élision ne change pas la prononciation de la fin", () {
+      expect(pieces("l'Ours", 'fr'), ["l'Ours"]);
+      expect(pieces('l’os', 'fr'), ['l’os']);
+    });
+
+    test('syllabes dans les autres langues', () {
+      expect(pieces('little', 'en'), ['lit', 'tle']);
+      expect(pieces('Mutter', 'de'), ['Mut', 'ter']);
+    });
+
+    test('pas de syllabes en japonais', () {
+      expect(pieces('むかしむかし', 'ja'), ['むかしむかし']);
+    });
+
+    test('le texte est toujours aligné à gauche', () {
+      const justified = StoryTextMetrics(
+          fontSize: 18, dyslexia: true, textAlign: TextAlign.justify);
+      expect(justified.effectiveTextAlign, TextAlign.left);
+    });
   });
 }
